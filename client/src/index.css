@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(20, 14.3%, 4.1%);
+  --muted: hsl(60, 4.8%, 95.9%);
+  --muted-foreground: hsl(25, 5.3%, 44.7%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(20, 14.3%, 4.1%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(20, 14.3%, 4.1%);
+  --border: hsl(20, 5.9%, 90%);
+  --input: hsl(20, 5.9%, 90%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(60, 4.8%, 95.9%);
+  --secondary-foreground: hsl(24, 9.8%, 10%);
+  --accent: hsl(60, 4.8%, 95.9%);
+  --accent-foreground: hsl(24, 9.8%, 10%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(60, 9.1%, 97.8%);
+  --ring: hsl(20, 14.3%, 4.1%);
+  --radius: 0.5rem;
+  
+  /* Custom colors for SongCraft AI */
+  --spotify-green: hsl(141, 76%, 48%);
+  --dark-bg: hsl(0, 0%, 7%);
+  --dark-card: hsl(0, 0%, 10%);
+  --vibrant-orange: hsl(16, 100%, 60%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased;
+    background-color: var(--dark-bg);
+    color: white;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .bg-dark-bg {
+    background-color: var(--dark-bg);
+  }
+  
+  .bg-dark-card {
+    background-color: var(--dark-card);
+  }
+  
+  .bg-spotify-green {
+    background-color: var(--spotify-green);
+  }
+  
+  .text-spotify-green {
+    color: var(--spotify-green);
+  }
+  
+  .bg-vibrant-orange {
+    background-color: var(--vibrant-orange);
+  }
+  
+  .text-vibrant-orange {
+    color: var(--vibrant-orange);
+  }
+  
+  .font-poppins {
+    font-family: 'Poppins', sans-serif;
+  }
+}
+
+/* Custom slider styles */
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: var(--spotify-green);
+  cursor: pointer;
+  border: 2px solid #ffffff;
+}
+
+.slider::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: var(--spotify-green);
+  cursor: pointer;
+  border: 2px solid #ffffff;
+}
+
+/* Audio waveform animation */
+@keyframes pulse {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.5); }
+}
+
+.waveform-bar {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.waveform-bar:nth-child(2) { animation-delay: 0.1s; }
+.waveform-bar:nth-child(3) { animation-delay: 0.2s; }
+.waveform-bar:nth-child(4) { animation-delay: 0.3s; }
+.waveform-bar:nth-child(5) { animation-delay: 0.4s; }
