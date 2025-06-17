@@ -24,9 +24,9 @@ SongCraft AI is a full-stack web application that allows users to generate songs
 - **Development**: tsx for TypeScript execution in development
 
 ### Data Storage Solutions
-- **Primary Database**: PostgreSQL (configured for Neon Database)
+- **Primary Database**: PostgreSQL with Drizzle ORM (active)
 - **File Storage**: Local file system for audio uploads (uploads/ directory)
-- **Fallback Storage**: In-memory storage implementation for development/testing
+- **Database Connection**: Neon serverless PostgreSQL via DATABASE_URL
 
 ## Key Components
 

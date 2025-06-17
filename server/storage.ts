@@ -1,4 +1,6 @@
 import { users, voiceSamples, songs, type User, type InsertUser, type VoiceSample, type InsertVoiceSample, type Song, type InsertSong } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -17,99 +19,77 @@ export interface IStorage {
   deleteSong(id: number): Promise<boolean>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private voiceSamples: Map<number, VoiceSample>;
-  private songs: Map<number, Song>;
-  private currentUserId: number;
-  private currentVoiceSampleId: number;
-  private currentSongId: number;
-
-  constructor() {
-    this.users = new Map();
-    this.voiceSamples = new Map();
-    this.songs = new Map();
-    this.currentUserId = 1;
-    this.currentVoiceSampleId = 1;
-    this.currentSongId = 1;
-  }
-
+export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
     return user;
   }
 
   async createVoiceSample(insertVoiceSample: InsertVoiceSample): Promise<VoiceSample> {
-    const id = this.currentVoiceSampleId++;
-    const voiceSample: VoiceSample = {
-      ...insertVoiceSample,
-      id,
-      createdAt: new Date(),
-    };
-    this.voiceSamples.set(id, voiceSample);
+    const [voiceSample] = await db
+      .insert(voiceSamples)
+      .values(insertVoiceSample)
+      .returning();
     return voiceSample;
   }
 
   async getVoiceSamplesByUser(userId: number): Promise<VoiceSample[]> {
-    return Array.from(this.voiceSamples.values()).filter(
-      (sample) => sample.userId === userId,
-    );
+    return await db.select().from(voiceSamples).where(eq(voiceSamples.userId, userId));
   }
 
   async getVoiceSample(id: number): Promise<VoiceSample | undefined> {
-    return this.voiceSamples.get(id);
+    const [voiceSample] = await db.select().from(voiceSamples).where(eq(voiceSamples.id, id));
+    return voiceSample || undefined;
   }
 
   async deleteVoiceSample(id: number): Promise<boolean> {
-    return this.voiceSamples.delete(id);
+    const result = await db.delete(voiceSamples).where(eq(voiceSamples.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
   async createSong(insertSong: InsertSong): Promise<Song> {
-    const id = this.currentSongId++;
-    const song: Song = {
-      ...insertSong,
-      id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    this.songs.set(id, song);
+    const [song] = await db
+      .insert(songs)
+      .values(insertSong)
+      .returning();
     return song;
   }
 
   async getSongsByUser(userId: number): Promise<Song[]> {
-    return Array.from(this.songs.values()).filter(
-      (song) => song.userId === userId,
-    );
+    return await db.select().from(songs).where(eq(songs.userId, userId));
   }
 
   async getSong(id: number): Promise<Song | undefined> {
-    return this.songs.get(id);
+    const [song] = await db.select().from(songs).where(eq(songs.id, id));
+    return song || undefined;
   }
 
   async updateSong(id: number, updates: Partial<Song>): Promise<Song | undefined> {
-    const song = this.songs.get(id);
-    if (!song) return undefined;
-    
-    const updatedSong = { ...song, ...updates, updatedAt: new Date() };
-    this.songs.set(id, updatedSong);
-    return updatedSong;
+    const [updatedSong] = await db
+      .update(songs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(songs.id, id))
+      .returning();
+    return updatedSong || undefined;
   }
 
   async deleteSong(id: number): Promise<boolean> {
-    return this.songs.delete(id);
+    const result = await db.delete(songs).where(eq(songs.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
