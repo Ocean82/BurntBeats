@@ -109,6 +109,7 @@ The application uses three main database tables:
 ## Changelog
 
 Changelog:
+- June 17, 2025. Extended song length options up to 5:30 minutes per user request
 - June 16, 2025. Initial setup
 
 ## User Preferences
