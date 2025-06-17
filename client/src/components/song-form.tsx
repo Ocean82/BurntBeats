@@ -99,7 +99,8 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep 
     "3:00 - 3:30",
     "3:30 - 4:00", 
     "4:00 - 4:30",
-    "4:30 - 5:00"
+    "4:30 - 5:00",
+    "5:00 - 5:30"
   ];
 
   const wordCount = form.watch("lyrics")?.split(/\s+/).filter(word => word.length > 0).length || 0;
