@@ -2,7 +2,7 @@
 
 ## Overview
 
-SongCraft AI is a full-stack web application that allows users to generate songs from text input. Users can provide lyrics, select musical styles, upload voice samples, and generate AI-powered songs with customizable parameters. The application features a modern, music-focused interface inspired by popular streaming platforms.
+SongCraft AI is a comprehensive text-to-song generator platform with tiered subscription plans. The application transforms user lyrics into full songs with advanced vocal customization, voice cloning capabilities, and professional editing tools. Features include extensive vocal style controls (genre, singing style, mood, tone), custom voice sample uploads, text-to-speech voice creation, real-time song editing, and high-quality audio downloads. The platform offers both free (30-second songs) and Pro ($6.99/month) plans with full-length songs and advanced features.
 
 ## System Architecture
 
@@ -45,11 +45,30 @@ The application uses three main database tables:
    - Uses JSONB fields for flexible song sections and advanced settings storage
 
 ### Core Features
-- **Song Generation**: Multi-step form for creating songs with lyrics, style, and voice preferences
-- **Voice Recording**: Built-in voice recorder for capturing user voice samples
-- **Audio Player**: Custom audio player with section-based navigation and playback controls
-- **Generation Progress**: Real-time progress tracking for song generation process
-- **Download Options**: Multiple format downloads for completed songs
+
+#### Free Plan Features
+- **30-Second Song Generation**: Basic text-to-lyrics conversion with standard vocal styles
+- **Limited Genre Selection**: Access to Pop, Rock, and Electronic genres
+- **Basic Vocal Styles**: Male, Female, and Instrumental options
+- **Standard Audio Quality**: MP3 downloads at 128kbps
+- **Simple Interface**: Core song creation workflow
+
+#### Pro Plan Features ($6.99/month)
+- **Full-Length Songs**: Generate songs up to 5:30 minutes
+- **Advanced Vocal Controls**: Comprehensive singing style, mood, and tone selection
+  - Singing Styles: Smooth, Powerful, Emotional, Raspy, Melodic, Rhythmic
+  - Moods: Happy, Sad, Energetic, Calm, Romantic, Mysterious, Uplifting, Melancholic  
+  - Tones: Warm, Bright, Deep, Light, Rich, Ethereal
+- **Custom Voice Cloning**: Upload voice samples and convert them to singing voices
+- **Text-to-Speech Voice Creator**: Generate both singing and reading voices from text
+- **Professional Song Editor**: 
+  - Edit lyrics and song structure in real-time
+  - Modify individual song sections (Verse, Chorus, Bridge, etc.)
+  - Regenerate specific sections with AI
+  - Advanced timing and arrangement controls
+- **High-Quality Downloads**: Multiple formats (MP3 320kbps, WAV, FLAC)
+- **Advanced Audio Settings**: Intro/outro, instrumental breaks, auto-harmonies
+- **All Genres**: Pop, Rock, Jazz, Electronic, Classical, Hip-Hop, Country, R&B
 
 ### API Endpoints
 - `POST /api/voice-samples` - Upload voice samples with file handling
@@ -109,6 +128,7 @@ The application uses three main database tables:
 ## Changelog
 
 Changelog:
+- June 19, 2025. Implemented comprehensive Pro/Free plan system with advanced vocal controls, voice cloning, text-to-speech, and professional song editing tools
 - June 17, 2025. Added PostgreSQL database with Drizzle ORM, replaced in-memory storage
 - June 17, 2025. Extended song length options up to 5:30 minutes per user request
 - June 16, 2025. Initial setup

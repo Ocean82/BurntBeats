@@ -6,6 +6,8 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  plan: text("plan").notNull().default("free"), // free, pro
+  planExpiresAt: timestamp("plan_expires_at"),
 });
 
 export const voiceSamples = pgTable("voice_samples", {
@@ -14,6 +16,8 @@ export const voiceSamples = pgTable("voice_samples", {
   name: text("name").notNull(),
   filePath: text("file_path").notNull(),
   duration: integer("duration"), // in seconds
+  voiceType: text("voice_type").notNull().default("custom"), // custom, text-reader
+  isProcessed: boolean("is_processed").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -24,6 +28,9 @@ export const songs = pgTable("songs", {
   lyrics: text("lyrics").notNull(),
   genre: text("genre").notNull(),
   vocalStyle: text("vocal_style").notNull(),
+  singingStyle: text("singing_style"), // smooth, powerful, emotional, etc.
+  mood: text("mood"), // happy, sad, energetic, calm, etc.
+  tone: text("tone"), // warm, bright, deep, light, etc.
   tempo: integer("tempo").notNull(),
   songLength: text("song_length").notNull(),
   voiceSampleId: integer("voice_sample_id").references(() => voiceSamples.id),
@@ -32,6 +39,7 @@ export const songs = pgTable("songs", {
   generationProgress: integer("generation_progress").default(0),
   sections: jsonb("sections"), // Array of song sections with timestamps
   settings: jsonb("settings"), // Advanced settings like intro/outro, harmonies, etc.
+  planRestricted: boolean("plan_restricted").default(false), // true for free plan limitations
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
