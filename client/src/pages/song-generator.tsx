@@ -4,6 +4,7 @@ import SongForm from "@/components/song-form";
 import AudioPlayer from "@/components/audio-player";
 import GenerationProgress from "@/components/generation-progress";
 import DownloadOptions from "@/components/download-options";
+import SongEditor from "@/components/song-editor";
 import { Music, HelpCircle, Settings, User } from "lucide-react";
 import type { Song } from "@shared/schema";
 
@@ -11,6 +12,7 @@ export default function SongGenerator() {
   const [currentStep, setCurrentStep] = useState(1);
   const [generatingSong, setGeneratingSong] = useState<Song | null>(null);
   const [completedSong, setCompletedSong] = useState<Song | null>(null);
+  const [userPlan] = useState("free"); // Mock user plan - would come from auth context
 
   const handleSongGenerated = (song: Song) => {
     setGeneratingSong(song);
@@ -20,6 +22,10 @@ export default function SongGenerator() {
     setGeneratingSong(null);
     setCompletedSong(song);
     setCurrentStep(3);
+  };
+
+  const handleSongUpdated = (song: Song) => {
+    setCompletedSong(song);
   };
 
   const steps = [
@@ -97,6 +103,11 @@ export default function SongGenerator() {
             {completedSong && (
               <>
                 <AudioPlayer song={completedSong} />
+                <SongEditor 
+                  song={completedSong} 
+                  userPlan={userPlan}
+                  onSongUpdated={handleSongUpdated}
+                />
                 <DownloadOptions song={completedSong} />
               </>
             )}

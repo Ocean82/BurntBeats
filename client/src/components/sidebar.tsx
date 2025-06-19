@@ -1,4 +1,5 @@
 import { Music, Plus, History, Mic, Download, Crown } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Sidebar() {
   const menuItems = [
@@ -42,9 +43,16 @@ export default function Sidebar() {
         <div className="bg-gray-800 rounded-lg p-4">
           <div className="flex items-center mb-2">
             <Crown className="text-vibrant-orange mr-2 w-5 h-5" />
-            <span className="text-sm font-medium">Pro Plan</span>
+            <span className="text-sm font-medium">Free Plan</span>
           </div>
-          <p className="text-xs text-gray-400">Unlimited generations</p>
+          <div className="space-y-1 mb-3">
+            <p className="text-xs text-gray-400">• 30-second songs only</p>
+            <p className="text-xs text-gray-400">• Basic vocal styles</p>
+            <p className="text-xs text-gray-400">• Limited genres</p>
+          </div>
+          <Button size="sm" className="w-full bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange text-white font-medium">
+            Upgrade to Pro $6.99/mo
+          </Button>
         </div>
       </div>
     </div>
