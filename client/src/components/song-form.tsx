@@ -177,11 +177,11 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep 
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-poppins font-semibold">Song Lyrics</h3>
                 <div className="flex items-center space-x-2">
-                  <Button type="button" variant="outline" size="sm">
+                  <Button type="button" variant="outline" size="sm" className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600">
                     <Sparkles className="w-4 h-4 mr-1" />
                     AI Assist
                   </Button>
-                  <Button type="button" variant="outline" size="sm">
+                  <Button type="button" variant="outline" size="sm" className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600">
                     <Upload className="w-4 h-4 mr-1" />
                     Import
                   </Button>
