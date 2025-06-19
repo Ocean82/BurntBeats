@@ -1,11 +1,17 @@
-import { Music, Plus, History, Mic, Download, Crown } from "lucide-react";
+import { Music, Plus, History, Mic, Download, Crown, Library, BarChart3, GitBranch, Users, BookOpen, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Sidebar() {
   const menuItems = [
     { icon: Plus, label: "New Song", active: true },
+    { icon: Library, label: "Song Library", active: false },
     { icon: History, label: "Recent Creations", active: false },
     { icon: Mic, label: "Voice Samples", active: false },
+    { icon: BarChart3, label: "Analytics", active: false, isPro: true },
+    { icon: GitBranch, label: "Version Control", active: false, isPro: true },
+    { icon: Users, label: "Collaboration", active: false, isPro: true },
+    { icon: BookOpen, label: "Music Theory", active: false, isPro: true },
+    { icon: TrendingUp, label: "Social Hub", active: false },
     { icon: Download, label: "Downloads", active: false },
   ];
 
