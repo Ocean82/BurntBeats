@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Crown, Check, X, Music, Mic, BarChart3, GitBranch, Users, Settings, Star, Zap } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
+import bangerGptLogo from "@/assets/bangergpt-logo.jpeg";
 
 interface PricingPlansProps {
   userId: number;
@@ -70,7 +71,14 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade }: Pricing
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-3xl font-bold mb-2">Choose Your Plan</h2>
+        <div className="flex items-center justify-center mb-4">
+          <img 
+            src={bangerGptLogo} 
+            alt="BangerGPT Logo" 
+            className="w-12 h-12 mr-3 rounded-lg object-cover"
+          />
+          <h2 className="text-3xl font-bold">Choose Your Plan</h2>
+        </div>
         <p className="text-gray-400 mb-4">Unlock powerful AI music creation features</p>
         {usage && (
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 rounded-lg">

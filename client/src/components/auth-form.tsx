@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { insertUserSchema } from "@shared/schema";
 import { z } from "zod";
+import bangerGptLogo from "@/assets/bangergpt-logo.jpeg";
 
 const loginSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -142,9 +143,11 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-spotify-green to-green-600 rounded-full flex items-center justify-center mr-3">
-              <Music className="w-6 h-6 text-white" />
-            </div>
+            <img 
+              src={bangerGptLogo} 
+              alt="BangerGPT Logo" 
+              className="w-12 h-12 mr-3 rounded-lg object-cover"
+            />
             <h1 className="text-3xl font-bold text-white">BangerGPT</h1>
           </div>
           <p className="text-gray-400">
