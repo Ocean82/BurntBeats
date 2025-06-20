@@ -124,7 +124,10 @@ export default function LyricsQualityChecker({ lyrics, onQualityChecked }: Lyric
           "Now we're talking! This has potential.",
           "Not bad! I can work with this energy.",
           "Okay, you came to play. Let's make something fire.",
-          "Finally, some quality content to work with!"
+          "Finally, some quality content to work with!",
+          "This is the way. *Chef's kiss*",
+          "I don't feel like complaining right now - this is actually good!",
+          "You've impressed me, and that's saying something."
         ];
         aiComment = goodComments[Math.floor(Math.random() * goodComments.length)];
       } else if (score >= 60) {

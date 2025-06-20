@@ -53,14 +53,26 @@ export default function AILyricsAssistant({ onLyricsGenerated, currentLyrics, ge
 
   const generateLyricsMutation = useMutation({
     mutationFn: async (data: { prompt: string; style: string; genre: string; mood: string }) => {
-      // Mock AI generation with personality
+      // Check for overly complex requests
+      if (data.prompt.length > 300) {
+        throw new Error("too_complex");
+      }
+      
+      const complexWords = ['quantum', 'metaphysical', 'transcendental', 'existential', 'philosophical'];
+      if (complexWords.some(word => data.prompt.toLowerCase().includes(word))) {
+        throw new Error("too_philosophical");
+      }
+      
       await new Promise(resolve => setTimeout(resolve, 2000));
       
       const sassyResponses = [
         "Alright, I see you want some fire lyrics. Let me cook up something that'll make Spotify jealous...",
         "Hold up, let me channel my inner songwriter genius for you...",
         "Okay okay, time to drop some bars that'll have people hitting repeat...",
-        "You want lyrics? I got lyrics that'll make your phone speakers cry tears of joy..."
+        "You want lyrics? I got lyrics that'll make your phone speakers cry tears of joy...",
+        "This is the way. Let me craft something legendary...",
+        "I don't feel like it right now... just kidding, let's make magic!",
+        "With great power comes great lyrics. Here we go..."
       ];
 
       const mockLyrics = generateMockLyrics(data.prompt, data.style, data.genre, data.mood);
@@ -77,12 +89,45 @@ export default function AILyricsAssistant({ onLyricsGenerated, currentLyrics, ge
         description: data.aiComment,
       });
     },
-    onError: () => {
-      toast({
-        title: "Oops!",
-        description: "My creative brain had a glitch. Give me another shot?",
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      if (error.message === "too_complex") {
+        const complexityResponses = [
+          "Bro, this isn't that kinda app",
+          "You must be confusing me with one of those high dollar apps",
+          "I don't feel like it right now",
+          "I understand what you're asking me to do, but unless I join the DarkSide my Jedi abilities are limited",
+          "Easy there, Shakespeare",
+          "Sir, this is a Wendy's... I mean, a music app"
+        ];
+        const randomResponse = complexityResponses[Math.floor(Math.random() * complexityResponses.length)];
+        
+        toast({
+          title: randomResponse,
+          description: "Keep it simple and I'll keep making hits.",
+          variant: "destructive",
+        });
+      } else if (error.message === "too_philosophical") {
+        const philosophyResponses = [
+          "Whoa there, Socrates",
+          "I'm a music AI, not a philosophy professor",
+          "These aren't the deep thoughts you're looking for",
+          "My circuits aren't wired for existential crises",
+          "Save the deep stuff for your diary"
+        ];
+        const randomResponse = philosophyResponses[Math.floor(Math.random() * philosophyResponses.length)];
+        
+        toast({
+          title: randomResponse,
+          description: "Let's stick to making bangers, not solving life's mysteries.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Oops!",
+          description: "My creative brain had a glitch. Give me another shot?",
+          variant: "destructive",
+        });
+      }
     }
   });
 

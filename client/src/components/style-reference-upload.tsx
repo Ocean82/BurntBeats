@@ -46,6 +46,11 @@ export default function StyleReferenceUpload({ onStyleExtracted, userPlan }: Sty
       setIsAnalyzing(true);
       setAnalysisProgress(0);
       
+      // Check for overly complex analysis requests (file too long or complex)
+      if (file.size > 40 * 1024 * 1024) { // 40MB+ = complex request
+        throw new Error("too_complex_file");
+      }
+      
       // Simulate AI analysis with sassy commentary
       const steps = [
         { progress: 20, message: "Listening to your reference track... not bad taste!" },
@@ -88,14 +93,33 @@ export default function StyleReferenceUpload({ onStyleExtracted, userPlan }: Sty
         description: `Found a ${analysis.genre} vibe with ${analysis.confidence}% confidence. Now let's make something even better!`,
       });
     },
-    onError: () => {
+    onError: (error: any) => {
       setIsAnalyzing(false);
       setAnalysisProgress(0);
-      toast({
-        title: "Analysis failed",
-        description: "Hmm, that file gave me trouble. Try a different format?",
-        variant: "destructive",
-      });
+      
+      if (error.message === "too_complex_file") {
+        const complexFileResponses = [
+          "Bro, this isn't that kinda app",
+          "You must be confusing me with one of those high dollar apps",
+          "I don't feel like it right now",
+          "These aren't the audio files you're looking for",
+          "That file is thicc... too thicc for my taste",
+          "Sir, this is a music app, not NASA"
+        ];
+        const randomResponse = complexFileResponses[Math.floor(Math.random() * complexFileResponses.length)];
+        
+        toast({
+          title: randomResponse,
+          description: "Try something under 40MB and I'll work my magic.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Analysis failed",
+          description: "Hmm, that file gave me trouble. Try a different format?",
+          variant: "destructive",
+        });
+      }
     }
   });
 

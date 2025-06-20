@@ -42,13 +42,24 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
 
   const generateContinuationMutation = useMutation({
     mutationFn: async (data: any) => {
+      // Check for overly complex requests
+      if (data.prompt && data.prompt.length > 200) {
+        throw new Error("too_complex");
+      }
+      
+      if (data.creativity >= 9 && data.length >= 100) {
+        throw new Error("unrealistic_expectations");
+      }
+      
       await new Promise(resolve => setTimeout(resolve, 3000));
       
       const sassyMessages = [
         "Alright, extending your banger with some fresh material...",
         "Time to take this song to the next level. Hold tight!",
         "Adding more fire to an already hot track...",
-        "Let me cook up some continuation magic for you..."
+        "Let me cook up some continuation magic for you...",
+        "This is the way. Extending your masterpiece...",
+        "With great power comes great song extensions..."
       ];
 
       const message = sassyMessages[Math.floor(Math.random() * sassyMessages.length)];
@@ -70,12 +81,45 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
         lyrics: song.lyrics + "\n\n" + result.newSection
       });
     },
-    onError: () => {
-      toast({
-        title: "Extension failed",
-        description: "My creative engine hiccupped. Let's try that again?",
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      if (error.message === "too_complex") {
+        const complexityResponses = [
+          "Bro, this isn't that kinda app",
+          "You must be confusing me with one of those high dollar apps",
+          "I don't feel like it right now",
+          "I understand what you're asking me to do, but unless I join the DarkSide my Jedi abilities are limited",
+          "That's a no from me, dawg",
+          "Houston, we have a problem... and it's your expectations"
+        ];
+        const randomResponse = complexityResponses[Math.floor(Math.random() * complexityResponses.length)];
+        
+        toast({
+          title: randomResponse,
+          description: "Keep your requests simple and I'll keep making bangers.",
+          variant: "destructive",
+        });
+      } else if (error.message === "unrealistic_expectations") {
+        const expectationResponses = [
+          "Whoa there, tiger",
+          "I'm good, but I'm not magic",
+          "You're asking for the impossible here",
+          "These aren't the droids you're looking for",
+          "I find your lack of realistic expectations disturbing"
+        ];
+        const randomResponse = expectationResponses[Math.floor(Math.random() * expectationResponses.length)];
+        
+        toast({
+          title: randomResponse,
+          description: "Dial it back a notch and let's make something achievable.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Extension failed",
+          description: "My creative engine hiccupped. Let's try that again?",
+          variant: "destructive",
+        });
+      }
     }
   });
 
