@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useAudioPlayer } from "@/hooks/use-audio-player";
 import type { Song } from "@shared/schema";
+import SimpleAudioTest from "./simple-audio-test";
 
 interface AudioPlayerProps {
   song: Song;
@@ -21,7 +22,26 @@ interface AudioPlayerProps {
 
 export default function AudioPlayer({ song }: AudioPlayerProps) {
   const [volume, setVolume] = useState([70]);
-  const { isPlaying, currentTime, duration, togglePlayback } = useAudioPlayer();
+  const audioUrl = song.generatedAudioPath || undefined;
+  
+  // Debug logging
+  console.log('AudioPlayer song:', {
+    id: song.id,
+    title: song.title,
+    generatedAudioPath: song.generatedAudioPath,
+    status: song.status
+  });
+  
+  const { 
+    isPlaying, 
+    currentTime, 
+    duration, 
+    togglePlayback, 
+    isLoading, 
+    error, 
+    seekTo, 
+    setVolume: setAudioVolume 
+  } = useAudioPlayer(audioUrl);
 
   const sections = song.sections as any[] || [
     { 
@@ -79,7 +99,9 @@ export default function AudioPlayer({ song }: AudioPlayerProps) {
                 {song.title}
               </h4>
               <p className="text-gray-400 text-sm">
-                {song.genre} • 3:42 • {song.tempo} BPM
+                {song.genre} • {formatTime(duration)} • {song.tempo} BPM
+                {isLoading && <span className="ml-2 text-blue-400">Loading...</span>}
+                {error && <span className="ml-2 text-red-400">Audio Error</span>}
               </p>
               <div className="flex items-center space-x-2 mt-2">
                 <span className="text-xs bg-spotify-green px-2 py-1 rounded-full">
@@ -118,9 +140,10 @@ export default function AudioPlayer({ song }: AudioPlayerProps) {
               <span className="text-xs text-gray-400">{formatTime(currentTime)}</span>
               <Slider
                 value={[currentTime]}
-                max={duration}
+                max={duration || 100}
                 step={1}
                 className="flex-1"
+                onValueChange={(value) => seekTo(value[0])}
               />
               <span className="text-xs text-gray-400">{formatTime(duration)}</span>
             </div>
@@ -130,7 +153,10 @@ export default function AudioPlayer({ song }: AudioPlayerProps) {
               <Volume2 className="w-4 h-4 text-gray-400" />
               <Slider
                 value={volume}
-                onValueChange={setVolume}
+                onValueChange={(value) => {
+                  setVolume(value);
+                  setAudioVolume(value[0]);
+                }}
                 max={100}
                 step={1}
                 className="flex-1"
@@ -138,6 +164,11 @@ export default function AudioPlayer({ song }: AudioPlayerProps) {
             </div>
           </div>
         </div>
+
+        {/* Debug Audio Test */}
+        {audioUrl && (
+          <SimpleAudioTest audioUrl={audioUrl} />
+        )}
 
         {/* Section Editor */}
         <div className="mt-6 space-y-4">
