@@ -20,9 +20,9 @@ export default function Sidebar() {
       <div className="mb-8">
         <h1 className="text-2xl font-poppins font-bold text-spotify-green flex items-center">
           <Music className="mr-2" />
-          SongCraft AI
+          BangerGPT
         </h1>
-        <p className="text-gray-400 text-sm mt-1">Text to Song Generator</p>
+        <p className="text-gray-400 text-sm mt-1">AI Music Creation Platform</p>
       </div>
       
       <nav className="flex-1">
