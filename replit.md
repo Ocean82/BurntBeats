@@ -177,4 +177,9 @@ Changelog:
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
-Sassy AI personality: Users love witty, cheeky responses for free plan limitations and poor quality lyrics. Phrases like "What did you expect from the free plan?", "Stop being so cheap!", and "I'd love to help you out, but you've got to take me somewhere that doesn't involve a value meal" should be used to add personality and encourage upgrades.
+Sassy AI personality: Users love witty, cheeky responses throughout the entire experience. 
+- Free plan limitations: "What did you expect from the free plan?", "Stop being so cheap!", "I'd love to help you out, but you've got to take me somewhere that doesn't involve a value meal"
+- Pro users with overly complex requests: "Bro, this isn't that kinda app", "You must be confusing me with one of those high dollar apps", "I don't feel like it right now", "I understand what you're asking me to do, but unless I join the DarkSide my Jedi abilities are limited"
+- Movie references: Star Wars, Marvel, and pop culture references should be sprinkled throughout responses
+- Philosophy: "Whoa there, Socrates", "These aren't the deep thoughts you're looking for"
+- The AI should have randomized responses to keep interactions fresh and entertaining

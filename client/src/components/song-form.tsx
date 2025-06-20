@@ -107,7 +107,10 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep 
         "Alright, let's cook up some fire! Your song is in the oven.",
         "Time to work my magic. This is gonna be good!",
         "Your song is being crafted. Get ready for something special.",
-        "Let me turn these lyrics into pure gold. This might take a hot minute."
+        "Let me turn these lyrics into pure gold. This might take a hot minute.",
+        "This is the way. Your banger is being forged...",
+        "With great lyrics comes great responsibility. Processing...",
+        "I don't feel like it right now... just kidding, making magic!"
       ];
       const randomMessage = sassySuccessMessages[Math.floor(Math.random() * sassySuccessMessages.length)];
       
