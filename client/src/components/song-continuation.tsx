@@ -94,8 +94,16 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
 
   const handleGenerate = () => {
     if (userPlan === "free") {
+      const sassyMessages = [
+        "What did you expect from the free plan?",
+        "Stop being so cheap!",
+        "I'd love to help you out, but you've got to take me somewhere that doesn't involve a value meal.",
+        "You want more? Pay for more!"
+      ];
+      const randomMessage = sassyMessages[Math.floor(Math.random() * sassyMessages.length)];
+      
       toast({
-        title: "Pro feature locked",
+        title: randomMessage,
         description: "Song continuation is for Pro users. Want to unlock the full creative toolkit?",
         variant: "destructive",
       });
@@ -120,9 +128,9 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
         </CardHeader>
         <CardContent className="text-center py-8">
           <Plus className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-300 mb-2">Extend Your Songs</h3>
+          <h3 className="text-lg font-medium text-gray-300 mb-2">Stop being so cheap!</h3>
           <p className="text-sm text-gray-400 mb-6 max-w-md mx-auto">
-            Add verses, choruses, bridges, or instrumental sections. Keep the creative flow going!
+            You want me to extend your song? What did you expect from the free plan? I can't work miracles on a budget menu.
           </p>
           <Button className="bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange">
             Upgrade to Pro - $4.99/mo
