@@ -590,11 +590,11 @@ async function processAudioGeneration(song: any, composition: any, vocalAnalysis
     const beatsPerSecond = tempo / 60;
     const totalBeats = Math.floor(duration * beatsPerSecond);
     
-    // Build layered musical composition
-    const melodyFreq = baseFreq * moodMod;
-    const bassFreq = baseFreq / 2;
-    const harmonyFreq = baseFreq * 1.25; // Perfect fourth
-    const leadFreq = baseFreq * 1.5; // Perfect fifth
+    // Build layered musical composition with audible frequencies
+    const melodyFreq = Math.max(440, baseFreq * moodMod); // Ensure at least A4 (440Hz) for audibility
+    const bassFreq = Math.max(220, baseFreq / 2); // Ensure audible bass frequency
+    const harmonyFreq = Math.max(330, baseFreq * 1.25); // Perfect fourth, audible range
+    const leadFreq = Math.max(660, baseFreq * 1.5); // Perfect fifth, clear high frequency
     
     // Create dynamic composition with rhythm variations
     let rhythmPattern = '';
@@ -615,10 +615,10 @@ async function processAudioGeneration(song: any, composition: any, vocalAnalysis
       }
     }
     
-    // Create rich musical composition with proper layering
+    // Create rich musical composition with dynamic elements
     const bassLine = `sine=frequency=${bassFreq}:duration=${duration}`;
-    const melody = `sine=frequency=${melodyFreq}:duration=${duration}`;
-    const harmony = `sine=frequency=${harmonyFreq}:duration=${duration}`;
+    const melody = `sine=frequency=${melodyFreq}:duration=${duration},tremolo=f=6:d=0.3`;
+    const harmony = `sine=frequency=${harmonyFreq}:duration=${duration},tremolo=f=4:d=0.2`;
     
     // Build comprehensive musical arrangement
     const chordFreqs = chords.map(chord => chord.frequencies).flat();
@@ -630,8 +630,8 @@ async function processAudioGeneration(song: any, composition: any, vocalAnalysis
     const chordLayer2 = `sine=frequency=${chord2}:duration=${duration}`;
     const chordLayer3 = `sine=frequency=${chord3}:duration=${duration}`;
     
-    // Generate final composition with proper duration control
-    const ffmpegCmd = `ffmpeg -f lavfi -i "${bassLine}" -f lavfi -i "${melody}" -f lavfi -i "${harmony}" -f lavfi -i "${chordLayer1}" -f lavfi -i "${chordLayer2}" -f lavfi -i "${chordLayer3}" -filter_complex "[0:a]volume=0.8[bass];[1:a]volume=0.6[mel];[2:a]volume=0.4[harm];[3:a]volume=0.3[c1];[4:a]volume=0.3[c2];[5:a]volume=0.3[c3];[bass][mel][harm][c1][c2][c3]amix=inputs=6:duration=first:dropout_transition=0[mixed];[mixed]volume=0.7[out]" -map "[out]" -t ${duration} -ar 44100 -ac 2 -b:a 192k "${audioPath}" -y`;
+    // Generate final composition with proper duration control and audible volume
+    const ffmpegCmd = `ffmpeg -f lavfi -i "${bassLine}" -f lavfi -i "${melody}" -f lavfi -i "${harmony}" -f lavfi -i "${chordLayer1}" -f lavfi -i "${chordLayer2}" -f lavfi -i "${chordLayer3}" -filter_complex "[0:a]volume=2.0[bass];[1:a]volume=1.8[mel];[2:a]volume=1.5[harm];[3:a]volume=1.2[c1];[4:a]volume=1.2[c2];[5:a]volume=1.2[c3];[bass][mel][harm][c1][c2][c3]amix=inputs=6:duration=first:dropout_transition=0[mixed];[mixed]volume=3.0[out]" -map "[out]" -t ${duration} -ar 44100 -ac 2 -b:a 192k "${audioPath}" -y`;
     
     console.log('Generating audio with command:', ffmpegCmd);
     await execAsync(ffmpegCmd);
