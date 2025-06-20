@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -12,9 +12,7 @@ import {
   Edit3,
   Play as PlaySection
 } from "lucide-react";
-import { useAudioPlayer } from "@/hooks/use-audio-player";
 import type { Song } from "@shared/schema";
-import SimpleAudioTest from "./simple-audio-test";
 
 interface AudioPlayerProps {
   song: Song;
@@ -22,26 +20,46 @@ interface AudioPlayerProps {
 
 export default function AudioPlayer({ song }: AudioPlayerProps) {
   const [volume, setVolume] = useState([70]);
-  const audioUrl = song.generatedAudioPath || undefined;
-  
-  // Debug logging
-  console.log('AudioPlayer song:', {
-    id: song.id,
-    title: song.title,
-    generatedAudioPath: song.generatedAudioPath,
-    status: song.status
-  });
-  
-  const { 
-    isPlaying, 
-    currentTime, 
-    duration, 
-    togglePlayback, 
-    isLoading, 
-    error, 
-    seekTo, 
-    setVolume: setAudioVolume 
-  } = useAudioPlayer(audioUrl);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const audioElement = audioRef.current;
+    if (audioElement) {
+      if (isPlaying) {
+        audioElement.play();
+      } else {
+        audioElement.pause();
+      }
+    }
+  }, [isPlaying]);
+
+  useEffect(() => {
+    const audioElement = audioRef.current;
+    if (audioElement) {
+      audioElement.volume = volume[0] / 100;
+    }
+  }, [volume]);
+
+  const togglePlayback = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleTimeUpdate = () => {
+    const audioElement = audioRef.current;
+    if (audioElement) {
+      setCurrentTime(audioElement.currentTime);
+    }
+  };
+
+  const handleSeek = (value: number[]) => {
+    const audioElement = audioRef.current;
+    if (audioElement) {
+      audioElement.currentTime = value[0];
+    }
+  };
 
   const sections = song.sections as any[] || [
     { 
@@ -100,8 +118,6 @@ export default function AudioPlayer({ song }: AudioPlayerProps) {
               </h4>
               <p className="text-gray-400 text-sm">
                 {song.genre} • {formatTime(duration)} • {song.tempo} BPM
-                {isLoading && <span className="ml-2 text-blue-400">Loading...</span>}
-                {error && <span className="ml-2 text-red-400">Audio Error</span>}
               </p>
               <div className="flex items-center space-x-2 mt-2">
                 <span className="text-xs bg-spotify-green px-2 py-1 rounded-full">
@@ -143,7 +159,7 @@ export default function AudioPlayer({ song }: AudioPlayerProps) {
                 max={duration || 100}
                 step={1}
                 className="flex-1"
-                onValueChange={(value) => seekTo(value[0])}
+                onValueChange={handleSeek}
               />
               <span className="text-xs text-gray-400">{formatTime(duration)}</span>
             </div>
@@ -153,10 +169,7 @@ export default function AudioPlayer({ song }: AudioPlayerProps) {
               <Volume2 className="w-4 h-4 text-gray-400" />
               <Slider
                 value={volume}
-                onValueChange={(value) => {
-                  setVolume(value);
-                  setAudioVolume(value[0]);
-                }}
+                onValueChange={setVolume}
                 max={100}
                 step={1}
                 className="flex-1"
@@ -165,10 +178,17 @@ export default function AudioPlayer({ song }: AudioPlayerProps) {
           </div>
         </div>
 
-        {/* Debug Audio Test */}
-        {audioUrl && (
-          <SimpleAudioTest audioUrl={audioUrl} />
-        )}
+        {/* HTML5 Audio Element */}
+        <audio 
+          ref={audioRef}
+          src={song.generatedAudioPath || undefined}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={(e) => {
+            const audioElement = e.currentTarget;
+            setDuration(audioElement.duration);
+          }}
+          onEnded={() => setIsPlaying(false)}
+        />
 
         {/* Section Editor */}
         <div className="mt-6 space-y-4">

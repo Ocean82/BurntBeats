@@ -1,0 +1,116 @@
+typescript
+
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Slider } from "@/components/ui/slider";
+import { 
+  Play, 
+  Pause, 
+  SkipBack, 
+  SkipForward, 
+  Volume2, 
+  RotateCcw, 
+  Edit3,
+  Play as PlaySection
+} from "lucide-react";
+import type { Song } from "@shared/schema";
+
+interface AudioPlayerProps {
+  song: Song;
+}
+
+export default function AudioPlayer({ song }: AudioPlayerProps) {
+  const [volume, setVolume] = useState([70]);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const audioElement = audioRef.current;
+    if (audioElement) {
+      if (isPlaying) {
+        audioElement.play();
+      } else {
+        audioElement.pause();
+      }
+    }
+  }, [isPlaying]);
+
+  useEffect(() => {
+    const audioElement = audioRef.current;
+    if (audioElement) {
+      audioElement.volume = volume[0] / 100;
+    }
+  }, [volume]);
+
+  const togglePlayback = () => {
+    setIsPlaying(!isPlaying);
+  };
+
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const handleTimeUpdate = () => {
+    const audioElement = audioRef.current;
+    if (audioElement) {
+      setCurrentTime(audioElement.currentTime);
+    }
+  };
+
+  const handleSeek = (value: number[]) => {
+    const audioElement = audioRef.current;
+    if (audioElement) {
+      audioElement.currentTime = value[0];
+    }
+  };
+
+  const sections = song.sections as any[] || [
+    { 
+      id: 1, 
+      type: "Verse 1", 
+      startTime: 0, 
+      endTime: 45, 
+      lyrics: "Walking down the street tonight, Stars are shining bright..." 
+    },
+    { 
+      id: 2, 
+      type: "Chorus", 
+      startTime: 45, 
+      endTime: 90, 
+      lyrics: "We're dancing through the night, Everything's gonna be alright..." 
+    },
+  ];
+
+  return (
+    <Card className="bg-dark-card border-gray-800 mt-8">
+      {/* Rest of your existing code remains the same */}
+      
+      {/* Add this audio element */}
+      <audio 
+        ref={audioRef}
+        src={song.audioUrl}  // Ensure this property exists in your Song type
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={(e) => {
+          const audioElement = e.currentTarget;
+          setDuration(audioElement.duration);
+        }}
+      />
+
+      {/* In the Progress Bar section, update the Slider */}
+      <Slider
+        value={[currentTime]}
+        max={duration}
+        step={1}
+        onValueChange={handleSeek}
+        className="flex-1"
+      />
+
+      {/* Rest of your existing code */}
+    </Card>
+  );
+}

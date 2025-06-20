@@ -42,7 +42,7 @@ export function useAudioPlayer(audioUrl?: string) {
     }
   };
 
-  const setCurrentTime = (time: number) => {
+  const seekTo = (time: number) => {
     if (!audioRef.current) return;
     audioRef.current.currentTime = time;
   };
@@ -52,6 +52,6 @@ export function useAudioPlayer(audioUrl?: string) {
     currentTime,
     duration,
     togglePlayback,
-    setCurrentTime,
+    seekTo,
   };
 }
