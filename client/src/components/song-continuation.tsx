@@ -184,7 +184,7 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
             You want me to extend your song? What did you expect from the free plan? I can't work miracles on a budget menu.
           </p>
           <Button className="bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange">
-            Upgrade to Pro - $4.99/mo
+            Upgrade to Basic - $6.99/mo
           </Button>
         </CardContent>
       </Card>

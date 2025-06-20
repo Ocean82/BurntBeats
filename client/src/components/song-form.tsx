@@ -562,7 +562,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
                       <Crown className="mr-2 text-vibrant-orange" />
                       Unlock Pro Features
                     </h3>
-                    <span className="text-xl font-bold text-vibrant-orange">$4.99/mo</span>
+                    <span className="text-xl font-bold text-vibrant-orange">$6.99/mo</span>
                   </div>
                   <p className="text-gray-300 text-sm mb-4">
                     Get advanced vocal controls, full-length songs, voice cloning, and professional editing tools.

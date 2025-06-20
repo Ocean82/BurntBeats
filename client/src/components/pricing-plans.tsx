@@ -3,9 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Crown, Check, X, Music, Mic, BarChart3, GitBranch, Users, Settings, Star, Zap } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
+import StripeCheckout from "./stripe-checkout";
 import bangerGptLogo from "@/assets/bangergpt-logo.jpeg";
 
 interface PricingPlansProps {
@@ -22,6 +24,9 @@ interface PricingPlansProps {
 }
 
 export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: PricingPlansProps) {
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState("");
+
   const { data: plans, isLoading } = useQuery({
     queryKey: ["/api/pricing/plans"],
   });
@@ -31,7 +36,22 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
   });
 
   const handleUpgrade = (planName: string) => {
-    onUpgrade(planName);
+    if (planName === "free" || planName === currentPlan) {
+      onUpgrade(planName);
+    } else {
+      setSelectedPlan(planName);
+      setShowCheckout(true);
+    }
+  };
+
+  const handlePaymentSuccess = () => {
+    setShowCheckout(false);
+    onUpgrade(selectedPlan);
+  };
+
+  const handlePaymentCancel = () => {
+    setShowCheckout(false);
+    setSelectedPlan("");
   };
 
   const getButtonText = (planName: string) => {
@@ -265,6 +285,22 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
         <p>All plans include secure payment processing and 24/7 support</p>
         <p>Enterprise customers get priority support and custom integrations</p>
       </div>
+
+      {/* Stripe Checkout Dialog */}
+      <Dialog open={showCheckout} onOpenChange={setShowCheckout}>
+        <DialogContent className="sm:max-w-[600px] bg-dark-bg border-gray-800">
+          <DialogHeader>
+            <DialogTitle className="text-white text-xl">
+              Complete Your Subscription
+            </DialogTitle>
+          </DialogHeader>
+          <StripeCheckout
+            plan={selectedPlan}
+            onSuccess={handlePaymentSuccess}
+            onCancel={handlePaymentCancel}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

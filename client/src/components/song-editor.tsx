@@ -148,7 +148,7 @@ export default function SongEditor({ song, userPlan, onSongUpdated, onUpgrade }:
             <UpgradeModal currentPlan={userPlan} onUpgrade={onUpgrade}>
               <Button className="bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange text-white">
                 <Crown className="w-4 h-4 mr-2" />
-                Upgrade to Pro - $4.99/mo
+                Upgrade to Basic - $6.99/mo
               </Button>
             </UpgradeModal>
           </div>
