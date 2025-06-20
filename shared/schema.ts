@@ -6,8 +6,11 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
-  plan: text("plan").notNull().default("free"), // free, pro
+  plan: text("plan").notNull().default("free"), // free, basic, pro, enterprise
   planExpiresAt: timestamp("plan_expires_at"),
+  songsThisMonth: integer("songs_this_month").default(0).notNull(),
+  monthlyLimit: integer("monthly_limit").default(3).notNull(), // free: 3, basic: 3, pro: 50, enterprise: unlimited
+  lastUsageReset: timestamp("last_usage_reset").defaultNow(),
 });
 
 export const voiceSamples = pgTable("voice_samples", {

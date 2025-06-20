@@ -3,6 +3,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
+import { pricingService } from "./pricing-service";
 import { insertVoiceSampleSchema, insertSongSchema } from "@shared/schema";
 import multer from "multer";
 import type { Request as ExpressRequest } from "express";
@@ -189,7 +190,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/songs", async (req, res) => {
     try {
       const song = insertSongSchema.parse(req.body);
-      const created = await storage.createSong(song);
+      
+      // Check usage limits before creating song
+      const usageCheck = await pricingService.checkUsageLimit(song.userId!);
+      if (!usageCheck.canCreate) {
+        return res.status(429).json({ 
+          message: usageCheck.reason,
+          upgrade: true 
+        });
+      }
+
+      // Get user to validate plan restrictions
+      const user = await storage.getUser(song.userId!);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Validate genre access
+      const availableGenres = pricingService.getAvailableGenres(user.plan);
+      if (!availableGenres.includes(song.genre)) {
+        return res.status(403).json({ 
+          message: `Genre "${song.genre}" is not available on ${user.plan} plan`,
+          upgrade: true 
+        });
+      }
+
+      // Validate song length restrictions
+      const maxLength = pricingService.getMaxSongLength(user.plan);
+      if (song.songLength > maxLength) {
+        return res.status(403).json({ 
+          message: `Song length "${song.songLength}" exceeds maximum "${maxLength}" for ${user.plan} plan`,
+          upgrade: true 
+        });
+      }
+
+      // Apply plan restrictions to song
+      const planLimits = pricingService.getPlanLimits(user.plan);
+      const restrictedSong = {
+        ...song,
+        planRestricted: user.plan === "free",
+        songLength: user.plan === "free" ? "0:30" : song.songLength,
+      };
+
+      const created = await storage.createSong(restrictedSong);
+      
+      // Increment usage count
+      await pricingService.incrementUsage(song.userId!);
       
       // Start generation process in background
       generateSong(created.id);
@@ -297,6 +343,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.download(filePath, fileName);
     } catch (error) {
       res.status(500).json({ message: "Failed to download file" });
+    }
+  });
+
+  // Pricing and usage endpoints
+  app.get("/api/pricing/plans", async (req, res) => {
+    res.json({
+      free: pricingService.getPlanLimits("free"),
+      basic: pricingService.getPlanLimits("basic"),
+      pro: pricingService.getPlanLimits("pro"),
+      enterprise: pricingService.getPlanLimits("enterprise"),
+    });
+  });
+
+  app.get("/api/pricing/usage/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const planLimits = pricingService.getPlanLimits(user.plan);
+      const usageCheck = await pricingService.checkUsageLimit(userId);
+
+      res.json({
+        plan: user.plan,
+        songsThisMonth: user.songsThisMonth || 0,
+        monthlyLimit: planLimits?.songsPerMonth || 3,
+        canCreateMore: usageCheck.canCreate,
+        upgradeRequired: !usageCheck.canCreate,
+        planLimits: planLimits,
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch usage data" });
+    }
+  });
+
+  app.post("/api/pricing/upgrade", async (req, res) => {
+    try {
+      const { userId, newPlan } = req.body;
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const planLimits = pricingService.getPlanLimits(newPlan);
+      if (!planLimits) {
+        return res.status(400).json({ message: "Invalid plan" });
+      }
+
+      await storage.updateUser(userId, {
+        plan: newPlan,
+        monthlyLimit: planLimits.songsPerMonth === -1 ? 999999 : planLimits.songsPerMonth,
+        planExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      });
+
+      res.json({ success: true, newPlan });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to upgrade plan" });
     }
   });
 
