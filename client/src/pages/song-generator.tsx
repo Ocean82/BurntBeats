@@ -9,6 +9,7 @@ import SongLibrary from "@/components/song-library";
 import AnalyticsDashboard from "@/components/analytics-dashboard";
 import VersionControl from "@/components/version-control";
 import CollaborationTools from "@/components/collaboration-tools";
+import CollaborativeWorkspace from "@/components/collaborative-workspace";
 import MusicTheoryTools from "@/components/music-theory-tools";
 import SocialFeatures from "@/components/social-features";
 import VoiceRecorder from "@/components/voice-recorder";
@@ -139,13 +140,17 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
             </div>
           </div>
         );
-      case "Collaboration":
+      case "Collaborative Workspace":
         return userPlan === "pro" ? (
           completedSong ? (
-            <CollaborationTools song={completedSong} userId={user?.id || 1} />
+            <CollaborativeWorkspace 
+              song={completedSong} 
+              currentUser={{ id: user?.id || 1, username: user?.username || "User" }}
+              onSongUpdate={handleSongUpdated}
+            />
           ) : (
             <div className="flex items-center justify-center h-full">
-              <p className="text-gray-400">Select a song to collaborate</p>
+              <p className="text-gray-400">Select a song to start collaborative editing</p>
             </div>
           )
         ) : (
@@ -153,7 +158,7 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
             <div className="text-center">
               <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
               <h3 className="text-xl font-semibold mb-2">Pro Feature</h3>
-              <p className="text-gray-400 mb-4">Collaboration tools are available with Pro subscription</p>
+              <p className="text-gray-400 mb-4">Real-time collaborative workspace is available with Pro subscription</p>
               <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
                 Upgrade to Pro
               </Button>

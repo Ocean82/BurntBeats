@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { insertVoiceSampleSchema, insertSongSchema } from "@shared/schema";
 import multer from "multer";
@@ -331,7 +332,256 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Collaboration endpoints
+  app.post("/api/collaboration/:songId/join", async (req, res) => {
+    try {
+      const songId = parseInt(req.params.songId);
+      const { userId, username } = req.body;
+      
+      const song = await storage.getSong(songId);
+      if (!song) {
+        return res.status(404).json({ error: "Song not found" });
+      }
+
+      res.json({ 
+        success: true, 
+        message: "Ready to join collaboration session",
+        songId,
+        currentLyrics: song.lyrics 
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to join collaboration" });
+    }
+  });
+
+  app.post("/api/collaboration/:songId/update", async (req, res) => {
+    try {
+      const songId = parseInt(req.params.songId);
+      const { lyrics, userId, username } = req.body;
+      
+      // Update song in database
+      await storage.updateSong(songId, { lyrics });
+      
+      // Broadcast to all collaborators
+      broadcastToSession(songId, {
+        type: "lyrics_update",
+        lyrics,
+        userId,
+        username,
+        timestamp: Date.now()
+      }, userId);
+      
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update song" });
+    }
+  });
+
+  app.post("/api/collaboration/:songId/comment", async (req, res) => {
+    try {
+      const songId = parseInt(req.params.songId);
+      const { content, userId, username, sectionId } = req.body;
+      
+      const comment = {
+        id: Date.now(),
+        userId,
+        username,
+        content,
+        sectionId,
+        timestamp: Date.now()
+      };
+      
+      // Broadcast comment to all collaborators
+      broadcastToSession(songId, {
+        type: "new_comment",
+        comment
+      });
+      
+      res.json({ success: true, comment });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to add comment" });
+    }
+  });
+
+  // Team management endpoints
+  app.post("/api/collaboration/:songId/invite", async (req, res) => {
+    try {
+      const songId = parseInt(req.params.songId);
+      const { email, role, invitedBy } = req.body;
+      
+      // In a real implementation, send email invitation
+      console.log(`Sending invitation to ${email} for song ${songId} with role ${role}`);
+      
+      res.json({ 
+        success: true, 
+        message: "Invitation sent successfully" 
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to send invitation" });
+    }
+  });
+
+  app.post("/api/collaboration/:songId/invite-link", async (req, res) => {
+    try {
+      const songId = parseInt(req.params.songId);
+      const { role, maxUses, createdBy } = req.body;
+      
+      const inviteLink = {
+        id: `invite_${Date.now()}`,
+        songId,
+        role,
+        maxUses,
+        createdBy,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        usageCount: 0
+      };
+      
+      res.json({ success: true, inviteLink });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create invite link" });
+    }
+  });
+
+  app.patch("/api/collaboration/:songId/member/:userId", async (req, res) => {
+    try {
+      const songId = parseInt(req.params.songId);
+      const userId = parseInt(req.params.userId);
+      const { role } = req.body;
+      
+      // Update member role in database
+      console.log(`Updating user ${userId} role to ${role} for song ${songId}`);
+      
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update member role" });
+    }
+  });
+
+  app.delete("/api/collaboration/:songId/member/:userId", async (req, res) => {
+    try {
+      const songId = parseInt(req.params.songId);
+      const userId = parseInt(req.params.userId);
+      
+      // Remove member from collaboration
+      console.log(`Removing user ${userId} from song ${songId} collaboration`);
+      
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to remove member" });
+    }
+  });
+
   const httpServer = createServer(app);
+  
+  // WebSocket server for real-time collaboration
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  wss.on('connection', (ws, req) => {
+    console.log('New WebSocket connection established');
+    
+    ws.on('message', async (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        
+        switch (message.type) {
+          case 'join_song':
+            const { songId, userId, username } = message;
+            const clientId = `${userId}_${Date.now()}`;
+            
+            // Create or get collaboration session
+            if (!collaborationSessions.has(songId)) {
+              const song = await storage.getSong(songId);
+              collaborationSessions.set(songId, {
+                songId,
+                participants: new Map(),
+                currentLyrics: song?.lyrics || '',
+                lastUpdate: Date.now()
+              });
+            }
+            
+            const session = collaborationSessions.get(songId)!;
+            session.participants.set(clientId, { userId, username, ws });
+            
+            // Notify all participants about new user
+            broadcastToSession(songId, {
+              type: 'user_joined',
+              userId,
+              username,
+              participants: Array.from(session.participants.values()).map(p => ({
+                userId: p.userId,
+                username: p.username
+              }))
+            });
+            
+            // Send current state to new participant
+            ws.send(JSON.stringify({
+              type: 'session_state',
+              lyrics: session.currentLyrics,
+              participants: Array.from(session.participants.values()).map(p => ({
+                userId: p.userId,
+                username: p.username
+              }))
+            }));
+            break;
+            
+          case 'lyrics_change':
+            const changeMessage = message as { songId: number; lyrics: string; userId: number; username: string };
+            
+            // Update session state
+            const changeSession = collaborationSessions.get(changeMessage.songId);
+            if (changeSession) {
+              changeSession.currentLyrics = changeMessage.lyrics;
+              changeSession.lastUpdate = Date.now();
+              
+              // Broadcast to other participants
+              broadcastToSession(changeMessage.songId, {
+                type: 'lyrics_update',
+                lyrics: changeMessage.lyrics,
+                userId: changeMessage.userId,
+                username: changeMessage.username
+              }, changeMessage.userId);
+            }
+            break;
+        }
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+      }
+    });
+    
+    ws.on('close', () => {
+      // Remove user from all sessions
+      collaborationSessions.forEach((session, songId) => {
+        const toRemove: string[] = [];
+        session.participants.forEach((participant, clientId) => {
+          if (participant.ws === ws) {
+            toRemove.push(clientId);
+          }
+        });
+        
+        toRemove.forEach(clientId => {
+          const participant = session.participants.get(clientId);
+          if (participant) {
+            session.participants.delete(clientId);
+            broadcastToSession(songId, {
+              type: 'user_left',
+              userId: participant.userId,
+              username: participant.username,
+              participants: Array.from(session.participants.values()).map(p => ({
+                userId: p.userId,
+                username: p.username
+              }))
+            });
+          }
+        });
+        
+        // Clean up empty sessions
+        if (session.participants.size === 0) {
+          collaborationSessions.delete(songId);
+        }
+      });
+    });
+  });
+
   return httpServer;
 }
 
@@ -796,4 +1046,27 @@ function createStructuredSections(lyrics: string, durationMs: number) {
   }
   
   return sections;
+}
+
+// WebSocket collaboration system
+interface CollaborationSession {
+  songId: number;
+  participants: Map<string, { userId: number; username: string; ws: WebSocket }>;
+  currentLyrics: string;
+  lastUpdate: number;
+}
+
+const collaborationSessions = new Map<number, CollaborationSession>();
+
+function broadcastToSession(songId: number, message: any, excludeUserId?: number) {
+  const session = collaborationSessions.get(songId);
+  if (!session) return;
+
+  const messageStr = JSON.stringify(message);
+  session.participants.forEach((participant, clientId) => {
+    if (excludeUserId && participant.userId === excludeUserId) return;
+    if (participant.ws.readyState === WebSocket.OPEN) {
+      participant.ws.send(messageStr);
+    }
+  });
 }

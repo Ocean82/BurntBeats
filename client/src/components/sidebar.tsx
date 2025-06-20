@@ -14,7 +14,7 @@ export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: Sideba
     { icon: Mic, label: "Voice Samples", key: "voice" },
     { icon: BarChart3, label: "Analytics", key: "analytics", isPro: true },
     { icon: GitBranch, label: "Version Control", key: "version", isPro: true },
-    { icon: Users, label: "Collaboration", key: "collaboration", isPro: true },
+    { icon: Users, label: "Collaborative Workspace", key: "collaboration", isPro: true },
     { icon: BookOpen, label: "Music Theory", key: "theory", isPro: true },
     { icon: TrendingUp, label: "Social Hub", key: "social" },
     { icon: Download, label: "Downloads", key: "downloads" },
