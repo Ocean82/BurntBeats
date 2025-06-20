@@ -1,0 +1,295 @@
+
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Mic, Upload, Wand2, Music, Layers } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+// Predefined Genre and Style Options
+const genreOptions = [
+  { value: "pop", label: "Pop" },
+  { value: "rock", label: "Rock" },
+  { value: "hiphop", label: "Hip Hop" },
+  { value: "electronic", label: "Electronic" },
+  { value: "classical", label: "Classical" }
+];
+
+const styleOptions = [
+  { value: "smooth", label: "Smooth" },
+  { value: "raw", label: "Raw" },
+  { value: "energetic", label: "Energetic" },
+  { value: "mellow", label: "Mellow" }
+];
+
+// Voice Cloning Props
+interface VoiceCloningProps {
+  userId: number;
+  existingVoiceSamples: Array<{
+    id: number;
+    name: string;
+    audioUrl: string;
+  }>;
+}
+
+// Voice Cloning Component
+export default function VoiceCloning({ userId, existingVoiceSamples }: VoiceCloningProps) {
+  const [selectedVoiceSample, setSelectedVoiceSample] = useState<number | null>(null);
+  const [genre, setGenre] = useState<string>("pop");
+  const [style, setStyle] = useState<string>("smooth");
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [clonedVoice, setClonedVoice] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const { toast } = useToast();
+
+  // Start Recording
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+
+      const chunks: BlobPart[] = [];
+      mediaRecorder.ondataavailable = (event) => {
+        chunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "audio/wav" });
+        setRecordedBlob(blob);
+        stream.getTracks().forEach(track => track.stop());
+        setIsRecording(false);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      toast({
+        title: "Recording Failed",
+        description: "Unable to access microphone",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
+
+  // Stop Recording
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+    }
+  }, []);
+
+  // Voice Cloning Mutation
+  const voiceCloningMutation = useMutation({
+    mutationFn: async () => {
+      // Validate inputs
+      if (!selectedVoiceSample && !recordedBlob) {
+        throw new Error("Please select a voice sample or record a new one");
+      }
+
+      // Prepare form data for voice cloning
+      const formData = new FormData();
+      formData.append("userId", userId.toString());
+      formData.append("genre", genre);
+      formData.append("style", style);
+
+      if (recordedBlob) {
+        formData.append("audioBlob", recordedBlob, "new_recording.wav");
+      } else if (selectedVoiceSample) {
+        formData.append("voiceSampleId", selectedVoiceSample.toString());
+      }
+
+      // Step 1: Voice Embedding with Resemblyzer
+      const embedding = await fetchEmbedding(formData);
+
+      // Step 2: Voice Similarity Analysis
+      const similarity = await analyzeSimilarity(embedding);
+
+      // Step 3: Spectral Transfer
+      const spectralTransfer = await applySpectralTransfer(embedding, similarity);
+
+      // Step 4: Timbre Preservation
+      const timbrePreserved = await preserveTimbre(spectralTransfer);
+
+      // Step 5: Pitch & Formant Manipulation
+      const manipulatedVoice = await manipulatePitchAndFormant(timbrePreserved, genre, style);
+
+      // Simulated API call - replace with actual voice cloning endpoint
+      const response = await fetch("/api/voice-clone", {
+        method: "POST",
+        body: JSON.stringify({ manipulatedVoice }),
+        headers: { "Content-Type": "application/json" },
+        credentials: "include"
+      });
+
+      if (!response.ok) throw new Error("Voice cloning failed");
+      const result = await response.json();
+      return result.audioUrl;
+    },
+    onSuccess: (audioUrl) => {
+      setClonedVoice(audioUrl);
+      toast({
+        title: "Voice Cloned Successfully",
+        description: "Your custom voice is ready for song generation!",
+        icon: <Wand2 className="text-spotify-green" />
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Voice Cloning Failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Helper Functions
+  const fetchEmbedding = async (formData: FormData) => {
+    // Implement this function using Resemblyzer
+    // Example: const embedding = await Resemblyzer.embed(formData.get('audioBlob'));
+    return "mock_embedding";
+  };
+
+  const analyzeSimilarity = async (embedding: string) => {
+    // Implement this function using a similarity analysis model
+    // Example: const similarity = await SimilarityModel.analyze(embedding);
+    return 0.95; // Mock similarity score
+  };
+
+  const applySpectralTransfer = async (embedding: string, similarity: number) => {
+    // Implement this function using a spectral transfer model
+    // Example: const spectralTransfer = await SpectralTransfer.apply(embedding, similarity);
+    return "mock_spectral_transfer";
+  };
+
+  const preserveTimbre = async (spectralTransfer: string) => {
+    // Implement this function using a timbre preservation model
+    // Example: const timbrePreserved = await TimbrePreservation.preserve(spectralTransfer);
+    return "mock_timbre_preserved";
+  };
+
+  const manipulatePitchAndFormant = async (timbrePreserved: string, genre: string, style: string) => {
+    // Implement this function using a pitch and formant manipulation model
+    // Example: const manipulatedVoice = await PitchFormantManipulator.manipulate(timbrePreserved, genre, style);
+    return "mock_manipulated_voice";
+  };
+
+  // UI Render
+  return (
+    <Card className="bg-dark-card border-gray-800 mt-6">
+      <CardHeader>
+        <CardTitle className="text-lg font-poppins font-semibold text-white">
+          Voice Cloning for Song Generation
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {/* Voice Sample Selection */}
+          <div>
+            <label className="text-sm font-medium text-gray-300 mb-2 block">
+              Select Existing Voice Sample
+            </label>
+            <Select onValueChange={(value) => setSelectedVoiceSample(Number(value))}>
+              <SelectTrigger className="bg-gray-800 border-gray-600">
+                <SelectValue placeholder="Select a voice sample" />
+              </SelectTrigger>
+              <SelectContent>
+                {existingVoiceSamples.map((sample) => (
+                  <SelectItem key={sample.id} value={sample.id.toString()}>
+                    {sample.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Genre and Style Selection */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">
+                Genre
+              </label>
+              <Select value={genre} onValueChange={setGenre}>
+                <SelectTrigger className="bg-gray-800 border-gray-600">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {genreOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-300 mb-2 block">
+                Style
+              </label>
+              <Select value={style} onValueChange={setStyle}>
+                <SelectTrigger className="bg-gray-800 border-gray-600">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {styleOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Recording Interface */}
+          <div>
+            <label className="text-sm font-medium text-gray-300 mb-2 block">
+              Record New Voice Sample
+            </label>
+            <div className="flex items-center space-x-4">
+              <Button
+                onClick={isRecording ? stopRecording : startRecording}
+                className={`w-16 h-16 rounded-full ${
+                  isRecording ? 'bg-red-500 hover:bg-red-600' : 'bg-vibrant-orange hover:bg-orange-600'
+                }`}
+              >
+                {isRecording ? (
+                  <Layers className="w-6 h-6" />
+                ) : (
+                  <Mic className="w-6 h-6" />
+                )}
+              </Button>
+              <Button
+                onClick={() => voiceCloningMutation.mutate()}
+                disabled={voiceCloningMutation.isLoading || (!selectedVoiceSample && !recordedBlob)}
+                className="bg-spotify-green hover:bg-green-600"
+              >
+                <Wand2 className="w-4 h-4 mr-2" />
+                {voiceCloningMutation.isLoading ? "Cloning..." : "Clone Voice"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Recorded Blob Preview */}
+          {recordedBlob && (
+            <div className="mt-4">
+              <p className="text-sm text-gray-400 mb-2">New Recording:</p>
+              <audio controls src={URL.createObjectURL(recordedBlob)} />
+            </div>
+          )}
+
+          {/* Cloned Voice Preview */}
+          {clonedVoice && (
+            <div className="mt-4">
+              <p className="text-sm text-gray-400 mb-2">Cloned Voice:</p>
+              <audio controls src={clonedVoice} />
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

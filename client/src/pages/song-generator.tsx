@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import Sidebar from "@/components/sidebar";
 import SongForm from "@/components/song-form";
 import AudioPlayer from "@/components/audio-player";
@@ -13,10 +13,16 @@ import CollaborativeWorkspace from "@/components/collaborative-workspace";
 import MusicTheoryTools from "@/components/music-theory-tools";
 import SocialFeatures from "@/components/social-features";
 import VoiceRecorder from "@/components/voice-recorder";
+import AdvancedVoiceCloning from "@/components/advanced-voice-cloning";
+import EnhancedTextToSpeech from "@/components/enhanced-text-to-speech";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Music, HelpCircle, Settings, User, Crown, LogOut } from "lucide-react";
 import type { Song } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+import { useErrorHandler } from "@/hooks/use-error-handler";
+import { useSongGeneration } from "@/hooks/use-song-generation";
+import { useMainContent } from "@/hooks/use-main-content";
 
 interface SongGeneratorProps {
   user: any;
@@ -64,6 +70,12 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
       case "voice":
         setActiveMenu("Voice Samples");
         break;
+      case "voice-cloning":
+        setActiveMenu("Voice Cloning");
+        break;
+      case "text-to-speech":
+        setActiveMenu("Text-to-Speech");
+        break;
       case "analytics":
         setActiveMenu("Analytics");
         break;
@@ -104,6 +116,36 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
         return <SongLibrary userId={user?.id || 1} onEditSong={handleEditSong} />;
       case "Voice Samples":
         return <VoiceRecorder userId={user?.id || 1} />;
+      case "Voice Cloning":
+        return userPlan === "pro" ? (
+          <AdvancedVoiceCloning userId={user?.id || 1} />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Pro Feature</h3>
+              <p className="text-gray-400 mb-4">Advanced voice cloning is available with Pro subscription</p>
+              <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
+                Upgrade to Pro
+              </Button>
+            </div>
+          </div>
+        );
+      case "Text-to-Speech":
+        return userPlan === "pro" ? (
+          <EnhancedTextToSpeech userId={user?.id || 1} />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Pro Feature</h3>
+              <p className="text-gray-400 mb-4">Enhanced text-to-speech is available with Pro subscription</p>
+              <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
+                Upgrade to Pro
+              </Button>
+            </div>
+          </div>
+        );
       case "Analytics":
         return userPlan === "pro" ? (
           <AnalyticsDashboard userId={user?.id || 1} />
