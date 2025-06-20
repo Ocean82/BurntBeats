@@ -174,7 +174,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
                       name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300">Username</FormLabel>
+                          <FormLabel className="text-white">Username</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -194,7 +194,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300">Password</FormLabel>
+                          <FormLabel className="text-white">Password</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -229,7 +229,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
                       name="username"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300">Username</FormLabel>
+                          <FormLabel className="text-white">Username</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -249,7 +249,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300">Password</FormLabel>
+                          <FormLabel className="text-white">Password</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
@@ -270,7 +270,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
                       name="confirmPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-300">Confirm Password</FormLabel>
+                          <FormLabel className="text-white">Confirm Password</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />

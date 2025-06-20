@@ -285,7 +285,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Audio file not found" });
       }
 
-      const filePath = song.generatedAudioPath.replace('/uploads/', path.join(process.cwd(), 'uploads') + '/');
+      const fs = require('fs');
+      const path = require('path');
+      const audioFileName = song.generatedAudioPath.replace('/uploads/', '');
+      const filePath = path.join(process.cwd(), 'uploads', audioFileName);
+      
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "Audio file not found on disk" });
+      }
       const fileName = `${song.title}.${format}`;
       
       res.download(filePath, fileName);
