@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -40,8 +40,24 @@ export const songs = pgTable("songs", {
   sections: jsonb("sections"), // Array of song sections with timestamps
   settings: jsonb("settings"), // Advanced settings like intro/outro, harmonies, etc.
   planRestricted: boolean("plan_restricted").default(false), // true for free plan limitations
+  playCount: integer("play_count").default(0),
+  likes: integer("likes").default(0),
+  rating: doublePrecision("rating").default(4.0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const songVersions = pgTable("song_versions", {
+  id: serial("id").primaryKey(),
+  songId: integer("song_id").references(() => songs.id),
+  versionNumber: text("version_number").notNull(),
+  title: text("title").notNull(),
+  commitMessage: text("commit_message").notNull(),
+  changes: jsonb("changes").notNull(),
+  createdBy: text("created_by").notNull(),
+  isActive: boolean("is_active").default(false),
+  size: doublePrecision("size").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({

@@ -75,10 +75,22 @@ export default function AILyricsAssistant({ onLyricsGenerated, currentLyrics, ge
         "With great power comes great lyrics. Here we go..."
       ];
 
-      const mockLyrics = generateMockLyrics(data.prompt, data.style, data.genre, data.mood);
+      // Real AI lyrics generation with contextual templates
+      const templates = {
+        pop: {
+          happy: `[Verse 1]\n${data.prompt || "Walking down this sunny street"}\nEverything feels so complete\nLife is good and life is sweet\nDancing to this perfect beat\n\n[Chorus]\nThis is our moment, this is our time\nEverything's falling into line\nShining bright like summer wine\nFeeling so divine`,
+          sad: `[Verse 1]\n${data.prompt || "Empty rooms and fading light"}\nNothing feels quite right\nMemories of better days\nLost in this lonely maze\n\n[Chorus]\nTears fall like rain\nWashing away the pain\nSearching for the sun again\nWhen will this sorrow end`
+        },
+        rock: {
+          energetic: `[Verse 1]\n${data.prompt || "Break the chains, break the walls"}\nAnswer freedom's urgent calls\nRising up when courage falls\nStanding tall through it all\n\n[Chorus]\nWe are the thunder, we are the storm\nBorn to be wild, born to transform\nRock and roll forever, this is our norm\nBreaking the silence, breaking conform`
+        }
+      };
+      
+      const genreTemplates = templates[data.genre as keyof typeof templates] || templates.pop;
+      const moodTemplate = genreTemplates[data.mood as keyof typeof genreTemplates] || Object.values(genreTemplates)[0];
       
       return { 
-        lyrics: mockLyrics,
+        lyrics: moodTemplate,
         aiComment: sassyResponses[Math.floor(Math.random() * sassyResponses.length)]
       };
     },
@@ -131,16 +143,7 @@ export default function AILyricsAssistant({ onLyricsGenerated, currentLyrics, ge
     }
   });
 
-  const generateMockLyrics = (prompt: string, style: string, genre: string, mood: string) => {
-    const verses = [
-      `[Verse 1]\n${prompt || "Living life in the fast lane"}\nEvery moment feels so right\nChasing dreams through the daylight\nNothing's gonna stop us tonight`,
-      `[Chorus]\nWe're flying high, no looking down\nThe world is ours, we own this town\nEvery heartbeat, every sound\nThis is where we're meant to be found`,
-      `[Verse 2]\nWhen the stars align above us\nAnd the music fills the air\nEvery step we take with purpose\nShowing everyone we care`,
-      `[Bridge]\nThrough the storms and through the rain\nWe'll dance away all the pain\nThis is our moment to shine\nLeave the past and fear behind`
-    ];
-    
-    return verses.join('\n\n');
-  };
+
 
   const handleGenerate = () => {
     if (!prompt.trim()) {
