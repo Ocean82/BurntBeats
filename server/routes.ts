@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertVoiceSampleSchema, insertSongSchema } from "@shared/schema";
 import multer from "multer";
+import type { Request as ExpressRequest } from "express";
 import path from "path";
 import fs from "fs";
 
@@ -10,8 +11,88 @@ const upload = multer({ dest: 'uploads/' });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // Authentication routes
+  app.post("/api/auth/signup", async (req, res) => {
+    try {
+      const userData = req.body;
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(userData.username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+
+      // Create new user
+      const newUser = await storage.createUser(userData);
+      res.json({ id: newUser.id, username: newUser.username });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create user" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      const user = await storage.getUserByUsername(username);
+      if (!user || user.password !== password) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      res.json({ id: user.id, username: user.username });
+    } catch (error) {
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  // Payment processing routes
+  app.post("/api/payments/upgrade", async (req, res) => {
+    try {
+      const { cardNumber, expiryDate, cvv, cardholderName, billingEmail, plan, amount } = req.body;
+      
+      // In production, integrate with Stripe or another payment processor
+      // For now, simulate successful payment processing
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Mock payment validation
+      if (!cardNumber || !expiryDate || !cvv || !cardholderName) {
+        return res.status(400).json({ error: "Invalid payment details" });
+      }
+
+      // Simulate payment success (replace with real Stripe integration)
+      const paymentResult = {
+        success: true,
+        transactionId: `txn_${Date.now()}`,
+        plan: plan,
+        amount: amount,
+        subscriptionId: `sub_${Date.now()}`,
+      };
+
+      res.json(paymentResult);
+    } catch (error) {
+      res.status(500).json({ error: "Payment processing failed" });
+    }
+  });
+
+  // User plan management
+  app.post("/api/users/:id/upgrade", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { plan, subscriptionId } = req.body;
+      
+      // Update user plan in database (would need to extend user schema)
+      res.json({
+        success: true,
+        message: "User plan updated successfully",
+        plan: plan
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update user plan" });
+    }
+  });
+
   // Voice Sample routes
-  app.post("/api/voice-samples", upload.single('audio'), async (req, res) => {
+  app.post("/api/voice-samples", upload.single('audio'), async (req: ExpressRequest & { file?: Express.Multer.File }, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No audio file uploaded" });

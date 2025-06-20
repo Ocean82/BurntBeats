@@ -33,16 +33,18 @@ interface SongFormProps {
   onSongGenerated: (song: Song) => void;
   currentStep: number;
   setCurrentStep: (step: number) => void;
+  user: any;
+  onUpgrade: () => void;
 }
 
-export default function SongForm({ onSongGenerated, currentStep, setCurrentStep }: SongFormProps) {
+export default function SongForm({ onSongGenerated, currentStep, setCurrentStep, user, onUpgrade }: SongFormProps) {
   const [tempo, setTempo] = useState([120]);
   const [vocalStyle, setVocalStyle] = useState("male");
   const [singingStyle, setSingingStyle] = useState("smooth");
   const [mood, setMood] = useState("happy");
   const [tone, setTone] = useState("warm");
-  const [userPlan] = useState("free"); // Mock user plan - would come from auth context
-  const [freeUsage] = useState({ songsThisMonth: 2, limit: 3 }); // Mock usage tracking
+  const userPlan = user?.plan || "free";
+  const freeUsage = { songsThisMonth: user?.songsThisMonth || 0, limit: 3 };
   const [selectedVoiceSample, setSelectedVoiceSample] = useState<number | null>(null);
   const [advancedSettings, setAdvancedSettings] = useState({
     introOutro: true,
@@ -553,7 +555,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep 
                 </div>
               </div>
             ) : (
-              <UpgradeModal currentPlan={userPlan}>
+              <UpgradeModal currentPlan={userPlan} onUpgrade={onUpgrade}>
                 <div className="bg-gradient-to-br from-vibrant-orange/20 to-spotify-green/20 border-vibrant-orange/30 rounded-xl p-6 border">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-poppins font-semibold text-white flex items-center">
