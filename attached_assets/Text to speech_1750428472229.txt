@@ -1,0 +1,94 @@
+import { useState, useMemo } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Play, Download, Volume2, Music, AlertCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+// Enhanced Type Definitions
+type VoiceType = 'singing' | 'reading';
+type PitchType = 'low' | 'normal' | 'high';
+type SpeedType = 'slow' | 'normal' | 'fast';
+type ToneType = 'warm' | 'neutral' | 'bright';
+
+interface TextToSpeechProps {
+  userId: number;
+}
+
+// Strongly Typed Voice Settings
+const voiceSettings = {
+  pitch: [
+    { value: "low", label: "Low Pitch" },
+    { value: "normal", label: "Normal Pitch" }, 
+    { value: "high", label: "High Pitch" }
+  ],
+  speed: [
+    { value: "slow", label: "Slow" },
+    { value: "normal", label: "Normal" },
+    { value: "fast", label: "Fast" }
+  ],
+  tone: [
+    { value: "warm", label: "Warm" },
+    { value: "neutral", label: "Neutral" },
+    { value: "bright", label: "Bright" }
+  ]
+};
+
+const sampleTexts = {
+  singing: `Hello, I'm testing my voice for singing. 
+La la la, do re mi fa sol la ti do.
+This voice will be used to create beautiful songs.
+Testing different notes and vocal ranges now.`,
+  
+  reading: `This is a sample text for natural voice reading.
+I can read articles, books, and any written content.
+My voice sounds clear and natural for text-to-speech.
+Perfect for audiobooks and narration projects.`
+};
+
+export default function TextToSpeech({ userId }: TextToSpeechProps) {
+  const [text, setText] = useState(sampleTexts.singing);
+  const [voiceType, setVoiceType] = useState<VoiceType>("singing");
+  const [pitch, setPitch] = useState<PitchType>("normal");
+  const [speed, setSpeed] = useState<SpeedType>("normal");
+  const [tone, setTone] = useState<ToneType>("warm");
+  const { toast } = useToast();
+
+  // Input Validation Hook
+  const isValidText = useMemo(() => {
+    const trimmedText = text.trim();
+    return trimmedText.length >= 10 && trimmedText.length <= 500;
+  }, [text]);
+
+  const generateVoiceMutation = useMutation({
+    mutationFn: async () => {
+      // Validate input before generation
+      if (!isValidText) {
+        throw new Error("Text must be between 10 and 500 characters");
+      }
+
+      // Mock voice generation - replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      return { audioUrl: "/mockd-voice.mp3", success: true };
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Voice generated successfully",
+        description: "Your text has been converted to speech.",
+      });
+      // Potential additional logic with generated audio
+    },
+    onError: (error) => {
+      toast({
+        title: "Generation failed",
+        description: error instanceof Error 
+          ? error.message 
+          : "Failed to generate voice. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const saveVoiceMutation = useMutation

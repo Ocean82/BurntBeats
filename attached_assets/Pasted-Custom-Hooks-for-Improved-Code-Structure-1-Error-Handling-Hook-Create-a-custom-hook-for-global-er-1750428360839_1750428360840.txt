@@ -1,0 +1,209 @@
+Custom Hooks for Improved Code Structure
+1. Error Handling Hook
+Create a custom hook for global error handling to standardize error responses across your application:
+
+typescript
+
+// hooks/use-error-handler.ts
+import { useState, useCallback } from 'react';
+import { useToast } from '@/hooks/use-toast';
+
+export const useErrorHandler = () => {
+  const { toast } = useToast();
+  const [error, setError] = useState<Error | null>(null);
+
+  const handleError = useCallback((error: Error) => {
+    setError(error);
+    toast({
+      title: "Error",
+      description: error.message,
+      variant: "destructive"
+    });
+  }, [toast]);
+
+  return { error, handleError };
+};
+Usage in components:
+
+typescript
+
+// Example in a component
+import { useErrorHandler } from '@/hooks/use-error-handler';
+
+const MyComponent = () => {
+  const { handleError } = useErrorHandler();
+
+  const fetchData = async () => {
+    try {
+      // Some API call or operation
+    } catch (error) {
+      handleError(error as Error);
+    }
+  };
+
+  // Rest of your component logic
+};
+2. Main Content Rendering Hook
+Extract the logic for rendering main content into a custom hook to improve reusability:
+
+typescript
+
+// hooks/use-main-content.ts
+import { useMemo } from 'react';
+import type { Song } from '@shared/schema';
+
+interface MainContentProps {
+  activeMenu: string;
+  user: any;
+  completedSong: Song | null;
+  editingSong: Song | null;
+  handleEditSong: (song: Song) => void;
+  userPlan: string;
+  onUpgrade: () => void;
+}
+
+export const useMainContent = ({
+  activeMenu,
+  user,
+  completedSong,
+  editingSong,
+  handleEditSong,
+  userPlan,
+  onUpgrade,
+}: MainContentProps) => {
+  const mainContent = useMemo(() => {
+    switch (activeMenu) {
+      case "Song Library":
+        return <SongLibrary userId={user?.id || 1} onEditSong={handleEditSong} />;
+      case "Recent Creations":
+        return <SongLibrary userId={user?.id || 1} onEditSong={handleEditSong} />;
+      case "Voice Samples":
+        return <VoiceRecorder userId={user?.id || 1} />;
+      case "Analytics":
+        return userPlan === "pro" ? (
+          <AnalyticsDashboard userId={user?.id || 1} />
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Pro Feature</h3>
+              <p className="text-gray-400 mb-4">Analytics dashboard is available with Pro subscription</p>
+              <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
+                Upgrade to Pro
+              </Button>
+            </div>
+          </div>
+        );
+      // ... rest of the switch cases
+    }
+  }, [activeMenu, user, completedSong, editingSong, handleEditSong, userPlan, onUpgrade]);
+
+  return mainContent;
+};
+Usage in :
+
+typescript
+
+// SongGenerator.tsx
+import { useMainContent } from '@/hooks/use-main-content';
+
+const SongGenerator = ({ user, onUpgrade, onLogout }: SongGeneratorProps) => {
+  // ... existing state and handlers
+
+  const mainContent = useMainContent({
+    activeMenu,
+    user,
+    completedSong,
+    editingSong,
+    handleEditSong,
+    userPlan,
+    onUpgrade,
+  });
+
+  // ... rest of the component
+
+  return (
+    <div className="flex h-screen bg-dark-bg text-white">
+      <Sidebar onMenuClick={handleMenuClick} activeMenu={activeMenu} />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
+        {/* ... existing header code */}
+
+        <div className="flex-1 p-8 overflow-y-auto">
+          <div className="max-w-6xl mx-auto">
+            {mainContent}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+3. Song Generation Hook
+Create a custom hook to handle the song generation process, including state management and API calls:
+
+typescript
+
+// hooks/use-song-generation.ts
+import { useState, useCallback } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import type { Song } from '@shared/schema';
+
+interface UseSongGenerationProps {
+  onGenerationComplete: (song: Song) => void;
+}
+
+export const useSongGeneration = ({ onGenerationComplete }: UseSongGenerationProps) => {
+  const [generatingSong, setGeneratingSong] = useState<Song | null>(null);
+  const { toast } = useToast();
+
+  const generateSongMutation = useMutation({
+    mutationFn: async (songData: any) => {
+      // Mock song generation - replace with actual API call
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      return { ...songData, id: Date.now(), audioUrl: "/mock-generated-song.mp3", success: true } as Song;
+    },
+    onMutate: (songData) => {
+      setGeneratingSong(songData);
+    },
+    onSuccess: (song) => {
+      onGenerationComplete(song);
+      toast({
+        title: "Song generated successfully",
+        description: "Your song has been created.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Generation failed",
+        description: "Failed to generate song. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const generateSong = useCallback((songData: any) => {
+    generateSongMutation.mutate(songData);
+  }, [generateSongMutation]);
+
+  return { generatingSong, generateSong };
+};
+Usage in  or similar components:
+
+typescript
+
+// SongForm.tsx
+import { useSongGeneration } from '@/hooks/use-song-generation';
+
+const SongForm = ({ onSongGenerated, currentStep, setCurrentStep, user, onUpgrade }: SongFormProps) => {
+  const { generatingSong, generateSong } = useSongGeneration({
+    onGenerationComplete: onSongGenerated,
+  });
+
+  const handleSubmit = (songData: any) => {
+    generateSong(songData);
+  };
+
+  // ... rest of the component
+};
