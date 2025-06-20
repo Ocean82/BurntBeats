@@ -25,7 +25,12 @@ import { useSongGeneration } from "@/hooks/use-song-generation";
 import { useMainContent } from "@/hooks/use-main-content";
 
 interface SongGeneratorProps {
-  user: any;
+  user: {
+    id?: number;
+    username?: string;
+    plan?: 'free' | 'basic' | 'pro' | 'enterprise';
+    songsThisMonth?: number;
+  };
   onUpgrade: () => void;
   onLogout: () => void;
 }
@@ -117,44 +122,44 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
       case "Voice Samples":
         return <VoiceRecorder userId={user?.id || 1} />;
       case "Voice Cloning":
-        return userPlan === "pro" ? (
+        return ["basic", "pro", "enterprise"].includes(userPlan) ? (
           <AdvancedVoiceCloning userId={user?.id || 1} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Pro Feature</h3>
-              <p className="text-gray-400 mb-4">Advanced voice cloning is available with Pro subscription</p>
+              <h3 className="text-xl font-semibold mb-2">Basic Plan Feature</h3>
+              <p className="text-gray-400 mb-4">Voice cloning is available starting with Basic plan ($6.99/month)</p>
               <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
-                Upgrade to Pro
+                Upgrade to Basic
               </Button>
             </div>
           </div>
         );
       case "Text-to-Speech":
-        return userPlan === "pro" ? (
+        return ["basic", "pro", "enterprise"].includes(userPlan) ? (
           <EnhancedTextToSpeech userId={user?.id || 1} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Pro Feature</h3>
-              <p className="text-gray-400 mb-4">Enhanced text-to-speech is available with Pro subscription</p>
+              <h3 className="text-xl font-semibold mb-2">Basic Plan Feature</h3>
+              <p className="text-gray-400 mb-4">Enhanced text-to-speech is available starting with Basic plan ($6.99/month)</p>
               <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
-                Upgrade to Pro
+                Upgrade to Basic
               </Button>
             </div>
           </div>
         );
       case "Analytics":
-        return userPlan === "pro" ? (
+        return ["pro", "enterprise"].includes(userPlan) ? (
           <AnalyticsDashboard userId={user?.id || 1} />
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Pro Feature</h3>
-              <p className="text-gray-400 mb-4">Analytics dashboard is available with Pro subscription</p>
+              <h3 className="text-xl font-semibold mb-2">Pro Plan Feature</h3>
+              <p className="text-gray-400 mb-4">Analytics dashboard is available with Pro subscription ($12.99/month)</p>
               <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
                 Upgrade to Pro
               </Button>
@@ -162,7 +167,7 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
           </div>
         );
       case "Version Control":
-        return userPlan === "pro" ? (
+        return ["pro", "enterprise"].includes(userPlan) ? (
           completedSong ? (
             <VersionControl song={completedSong} userId={user?.id || 1} />
           ) : (
@@ -174,8 +179,8 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Pro Feature</h3>
-              <p className="text-gray-400 mb-4">Version control is available with Pro subscription</p>
+              <h3 className="text-xl font-semibold mb-2">Pro Plan Feature</h3>
+              <p className="text-gray-400 mb-4">Version control is available with Pro subscription ($12.99/month)</p>
               <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
                 Upgrade to Pro
               </Button>
@@ -183,7 +188,7 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
           </div>
         );
       case "Collaborative Workspace":
-        return userPlan === "pro" ? (
+        return userPlan === "enterprise" ? (
           completedSong ? (
             <CollaborativeWorkspace 
               song={completedSong} 
@@ -192,17 +197,17 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
             />
           ) : (
             <div className="flex items-center justify-center h-full">
-              <p className="text-gray-400">Select a song to start collaborative editing</p>
+              <p className="text-gray-400">Select a song to start real-time collaborative editing</p>
             </div>
           )
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
               <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Pro Feature</h3>
-              <p className="text-gray-400 mb-4">Real-time collaborative workspace is available with Pro subscription</p>
+              <h3 className="text-xl font-semibold mb-2">Enterprise Feature</h3>
+              <p className="text-gray-400 mb-4">Real-time collaborative workspace is available with Enterprise subscription ($39.99/month)</p>
               <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
-                Upgrade to Pro
+                Upgrade to Enterprise
               </Button>
             </div>
           </div>

@@ -55,21 +55,19 @@ The application uses three main database tables:
 - **Standard Audio Quality**: MP3 downloads at 128kbps
 - **Simple Interface**: Core song creation workflow
 - **Song Library**: Basic library to view and manage created songs
-- **Social Features**: Community feed, trending songs, basic profile
 
-#### Pro Plan Features ($4.99/month)
-- **Full-Length Songs**: Generate songs up to 5:30 minutes
-- **Advanced Vocal Controls**: Comprehensive singing style, mood, and tone selection
-  - Singing Styles: Smooth, Powerful, Emotional, Raspy, Melodic, Rhythmic
-  - Moods: Happy, Sad, Energetic, Calm, Romantic, Mysterious, Uplifting, Melancholic  
-  - Tones: Warm, Bright, Deep, Light, Rich, Ethereal
-- **Custom Voice Cloning**: Upload voice samples and convert them to singing voices
-- **Text-to-Speech Voice Creator**: Generate both singing and reading voices from text
-- **Professional Song Editor**: 
-  - Edit lyrics and song structure in real-time
-  - Modify individual song sections (Verse, Chorus, Bridge, etc.)
-  - Regenerate specific sections with AI
-  - Advanced timing and arrangement controls
+#### Basic Plan Features ($6.99/month)
+- **3 Songs per Month**: Full-length songs up to 5:30 minutes
+- **Voice Cloning**: Upload voice samples and convert them to singing voices
+- **Text-to-Speech**: Enhanced voice generation with basic controls
+- **Advanced Editing**: Professional song editing tools with section-specific controls
+- **Extended Genre Access**: Pop, Rock, Electronic, Jazz, Classical
+- **Enhanced Audio Quality**: MP3 320kbps downloads
+- **Advanced Vocal Controls**: Basic singing style, mood, and tone selection
+
+#### Pro Plan Features ($12.99/month)
+- **50 Songs per Month**: Generate up to 50 full-length songs monthly
+- **All Basic Plan Features**: Complete access to Basic tier functionality
 - **Analytics Dashboard**: Comprehensive insights with charts and performance metrics
   - Play count tracking and trends
   - Genre distribution analysis
@@ -79,25 +77,34 @@ The application uses three main database tables:
   - Commit changes with messages
   - Branch creation for experimentation
   - Version history and rollback capabilities
-  - Merge requests and collaboration workflows
-- **Advanced Collaboration Tools**: 
-  - Real-time collaborative editing
-  - Comment system with section-specific feedback
-  - Team member management with role-based permissions
-  - Activity feed and change tracking
+- **Collaboration Tools**: Team-based song creation
+  - Basic collaboration features
+  - Comment system with feedback
+  - Team member management
+- **Multiple Voice Samples**: Upload and manage multiple voice profiles
+- **High-Quality Downloads**: WAV format support
+- **All Genres**: Pop, Rock, Jazz, Electronic, Classical, Hip-Hop, Country, R&B
+
+#### Enterprise Plan Features ($39.99/month)
+- **Unlimited Songs**: No monthly limits on song generation
+- **All Pro Plan Features**: Complete access to Pro tier functionality
+- **Real-time Collaborative Workspace**: Live editing with multiple users
+  - Real-time presence indicators
+  - Instant collaboration updates
+  - Advanced team management with role-based permissions
 - **Music Theory Tools**: Professional music creation assistance
   - Scale and chord progression builders
   - Tempo and rhythm pattern guides
   - AI-powered music suggestions
-  - Lyric mood matching based on musical elements
-- **Enhanced Social Features**:
-  - Advanced profile with achievements and statistics
-  - Leaderboards and community competitions
+- **Enhanced Social Features**: Community and networking tools
+  - Advanced profile with achievements
   - Social posting with song attachments
-  - Following system and community interaction
-- **High-Quality Downloads**: Multiple formats (MP3 320kbps, WAV, FLAC)
-- **Advanced Audio Settings**: Intro/outro, instrumental breaks, auto-harmonies
-- **All Genres**: Pop, Rock, Jazz, Electronic, Classical, Hip-Hop, Country, R&B
+  - Following system and interaction
+- **Commercial Use Rights**: License to use generated songs commercially
+- **Priority Support**: Dedicated support channels with faster response
+- **API Access**: Developer access to BangerGPT's API
+- **Custom Integrations**: Connect with other music production software
+- **Premium Audio Quality**: FLAC format support for studio-grade output
 
 ### API Endpoints
 - `POST /api/voice-samples` - Upload voice samples with file handling
@@ -157,6 +164,16 @@ The application uses three main database tables:
 ## Changelog
 
 Changelog:
+- June 20, 2025 (Night - Comprehensive Tiered Pricing System). Implemented complete restructured pricing with proper access restrictions:
+  * **NEW PRICING STRUCTURE**: Free → Basic ($6.99) → Pro ($12.99) → Enterprise ($39.99) with clear feature differentiation
+  * **USAGE TRACKING SYSTEM**: Monthly limits with automatic reset, real-time usage monitoring, and plan enforcement
+  * **FEATURE ACCESS CONTROL**: Tier-based restrictions for voice cloning (Basic+), analytics (Pro+), collaboration (Pro+), enterprise tools (Enterprise only)
+  * **DATABASE SCHEMA UPDATES**: Added songsThisMonth, monthlyLimit, lastUsageReset fields for comprehensive usage tracking
+  * **PRICING SERVICE**: Centralized plan management with feature validation, usage limits, genre restrictions, and upgrade messaging
+  * **COMPREHENSIVE API ENDPOINTS**: /api/pricing/plans, /api/pricing/usage, /api/pricing/upgrade for complete pricing management
+  * **PLAN ENFORCEMENT**: Song creation validates usage limits, genre access, song length restrictions based on user's current plan
+  * **PRICING DISPLAY COMPONENT**: Professional pricing interface showing all plan features, limitations, and upgrade paths
+  * **REAL USAGE VALIDATION**: All features now properly check user's plan tier before allowing access, no placeholders
 - June 20, 2025 (Late Evening - Advanced Backend Music Generation Architecture). Implemented professional-grade backend music generation system:
   * **ADVANCED BACKEND ARCHITECTURE**: Created comprehensive TypeScript-based music generation system with modular services
   * MelodyGenerator: Professional melody generation with chord progressions, harmonic structures, rhythmic patterns, modal characteristics, motifs, and phrase structures
