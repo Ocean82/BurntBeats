@@ -119,14 +119,30 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep 
     },
     onError: (error: any) => {
       if (error.message === "Monthly limit reached") {
+        const sassyLimitMessages = [
+          "Hold up there, speed racer!",
+          "What did you expect from the free plan?",
+          "Stop being so cheap!",
+          "I'd love to help you out, but you've got to take me somewhere that doesn't involve a value meal."
+        ];
+        const randomTitle = sassyLimitMessages[Math.floor(Math.random() * sassyLimitMessages.length)];
+        
         toast({
-          title: "Hold up there, speed racer!",
+          title: randomTitle,
           description: "You've burned through all 3 free songs this month. Time to upgrade if you want to keep the party going!",
           variant: "destructive",
         });
       } else if (error.message === "Lyrics quality too low") {
+        const sassyQualityMessages = [
+          "Not happening with these lyrics!",
+          "Maybe you should get your pencil back out and try again?",
+          "This sounds like something my grandma came up with.",
+          "Even auto-generated lyrics have more soul than this."
+        ];
+        const randomTitle = sassyQualityMessages[Math.floor(Math.random() * sassyQualityMessages.length)];
+        
         toast({
-          title: "Not happening with these lyrics!",
+          title: randomTitle,
           description: "I've got standards. Fix up those lyrics and try again.",
           variant: "destructive",
         });

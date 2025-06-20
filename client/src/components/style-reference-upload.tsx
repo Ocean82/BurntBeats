@@ -159,9 +159,9 @@ export default function StyleReferenceUpload({ onStyleExtracted, userPlan }: Sty
         </CardHeader>
         <CardContent className="text-center py-8">
           <Upload className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-300 mb-2">AI Style Matching</h3>
+          <h3 className="text-lg font-medium text-gray-300 mb-2">What did you expect from the free plan?</h3>
           <p className="text-sm text-gray-400 mb-6 max-w-md mx-auto">
-            Upload any song and I'll analyze its style, then create something in the same vibe but totally original.
+            I'd love to analyze your style reference, but you've got to take me somewhere that doesn't involve a value meal first. This AI magic costs more than free!
           </p>
           <Button className="bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange">
             Upgrade to Pro - $4.99/mo

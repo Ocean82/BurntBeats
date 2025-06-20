@@ -177,3 +177,4 @@ Changelog:
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+Sassy AI personality: Users love witty, cheeky responses for free plan limitations and poor quality lyrics. Phrases like "What did you expect from the free plan?", "Stop being so cheap!", and "I'd love to help you out, but you've got to take me somewhere that doesn't involve a value meal" should be used to add personality and encourage upgrades.
