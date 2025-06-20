@@ -11,6 +11,9 @@ import { Switch } from "@/components/ui/switch";
 import VoiceRecorder from "./voice-recorder";
 import UpgradeModal from "./upgrade-modal";
 import TextToSpeech from "./text-to-speech";
+import LyricsQualityChecker from "./lyrics-quality-checker";
+import AILyricsAssistant from "./ai-lyrics-assistant";
+import StyleReferenceUpload from "./style-reference-upload";
 import { insertSongSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +49,8 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep 
     instrumental: false,
     harmonies: true,
   });
+  const [lyricsQuality, setLyricsQuality] = useState<any>(null);
+  const [currentLyrics, setCurrentLyrics] = useState("");
   const { toast } = useToast();
 
   // Fetch user's voice samples
@@ -81,6 +86,10 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep 
         throw new Error("Monthly limit reached");
       }
       
+      if (lyricsQuality?.shouldBlock) {
+        throw new Error("Lyrics quality too low");
+      }
+      
       const response = await apiRequest("POST", "/api/songs", {
         ...data,
         tempo: tempo[0],
@@ -94,23 +103,37 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep 
       return await response.json();
     },
     onSuccess: (song: Song) => {
+      const sassySuccessMessages = [
+        "Alright, let's cook up some fire! Your song is in the oven.",
+        "Time to work my magic. This is gonna be good!",
+        "Your song is being crafted. Get ready for something special.",
+        "Let me turn these lyrics into pure gold. This might take a hot minute."
+      ];
+      const randomMessage = sassySuccessMessages[Math.floor(Math.random() * sassySuccessMessages.length)];
+      
       toast({
         title: "Song generation started",
-        description: "Your song is being generated. This may take a few minutes.",
+        description: randomMessage,
       });
       onSongGenerated(song);
     },
     onError: (error: any) => {
       if (error.message === "Monthly limit reached") {
         toast({
-          title: "Monthly limit reached",
-          description: "You've used all 3 free songs this month. Upgrade to Pro for unlimited songs!",
+          title: "Hold up there, speed racer!",
+          description: "You've burned through all 3 free songs this month. Time to upgrade if you want to keep the party going!",
+          variant: "destructive",
+        });
+      } else if (error.message === "Lyrics quality too low") {
+        toast({
+          title: "Not happening with these lyrics!",
+          description: "I've got standards. Fix up those lyrics and try again.",
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Error",
-          description: "Failed to start song generation. Please try again.",
+          title: "Something went sideways",
+          description: "My creative engine hiccupped. Give it another shot?",
           variant: "destructive",
         });
       }
@@ -189,17 +212,18 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep 
             <div className="bg-dark-card rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-poppins font-semibold">Song Lyrics</h3>
-                <div className="flex items-center space-x-2">
-                  <Button type="button" variant="outline" size="sm" className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600">
-                    <Sparkles className="w-4 h-4 mr-1" />
-                    AI Assist
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" className="bg-gray-700 hover:bg-gray-600 text-white border-gray-600">
-                    <Upload className="w-4 h-4 mr-1" />
-                    Import
-                  </Button>
-                </div>
               </div>
+              
+              {/* AI Lyrics Assistant */}
+              <AILyricsAssistant 
+                onLyricsGenerated={(lyrics) => {
+                  form.setValue("lyrics", lyrics);
+                  setCurrentLyrics(lyrics);
+                }}
+                currentLyrics={currentLyrics}
+                genre={form.watch("genre")}
+                mood={mood}
+              />
               
               <FormField
                 control={form.control}
@@ -209,23 +233,12 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep 
                     <FormControl>
                       <Textarea
                         {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          setCurrentLyrics(e.target.value);
+                        }}
                         className="w-full h-64 bg-gray-800 border-gray-600 text-white placeholder-gray-400 resize-none"
-                        placeholder={`Enter your song lyrics here...
-
-[Verse 1]
-Walking down the street tonight
-Stars are shining bright
-Everything feels so right
-In this moment of pure light
-
-[Chorus]
-We're dancing through the night
-Everything's gonna be alright
-Let the music take control
-Feel it deep within your soul
-
-[Verse 2]
-...`}
+                        placeholder="Enter your song lyrics here... Be creative, I'll let you know if it's any good!"
                       />
                     </FormControl>
                   </FormItem>
@@ -236,6 +249,12 @@ Feel it deep within your soul
                 <span>{wordCount} words</span>
                 <span>{formatDuration(estimatedDuration)}</span>
               </div>
+              
+              {/* Lyrics Quality Checker */}
+              <LyricsQualityChecker 
+                lyrics={currentLyrics}
+                onQualityChecked={setLyricsQuality}
+              />
             </div>
 
             {/* Custom Voice Samples - Pro Only */}
@@ -294,6 +313,31 @@ Feel it deep within your soul
                 <TextToSpeech userId={1} />
               </div>
             )}
+
+            {/* Style Reference Upload */}
+            <StyleReferenceUpload 
+              onStyleExtracted={(styleData) => {
+                // Apply extracted style to form
+                if (styleData.genre) {
+                  const genreMap: { [key: string]: string } = {
+                    "electronic pop": "electronic",
+                    "hip hop": "hip-hop",
+                    "r&b": "rnb"
+                  };
+                  const mappedGenre = genreMap[styleData.genre.toLowerCase()] || styleData.genre.toLowerCase();
+                  form.setValue("genre", mappedGenre);
+                }
+                if (styleData.tempo) setTempo([styleData.tempo]);
+                if (styleData.mood) setMood(styleData.mood.toLowerCase());
+                if (styleData.key) {
+                  toast({
+                    title: "Style extracted!",
+                    description: `Found ${styleData.genre} in ${styleData.key} at ${styleData.tempo} BPM. Let's make something similar but better!`,
+                  });
+                }
+              }}
+              userPlan={userPlan}
+            />
           </div>
 
           {/* Style Controls */}

@@ -164,6 +164,10 @@ Changelog:
   * Advanced Collaboration Tools with real-time editing and team management
   * Music Theory Tools with scale builders, chord progressions, and AI suggestions
   * Social Features with community feed, leaderboards, and user profiles
+  * Sassy AI Personality System with quality checking and witty responses
+  * Competitive Suno features: AI lyrics generation, style reference upload, song continuation
+  * Rebranded to BangerGPT with aggressive $4.99/month pricing
+  * Reduced free plan to 3 songs/month with usage tracking
   * Updated navigation with all new Pro features clearly organized
 - June 19, 2025 (Morning). Implemented comprehensive Pro/Free plan system with advanced vocal controls, voice cloning, text-to-speech, and professional song editing tools
 - June 17, 2025. Added PostgreSQL database with Drizzle ORM, replaced in-memory storage
