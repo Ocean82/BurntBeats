@@ -103,7 +103,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
         "Fresh meat! Let's see what you can create.",
         "A new challenger appears! Ready to cook up some hits?",
         "Welcome aboard! Your musical journey starts now.",
-        "Finally, someone with taste joins BangerGPT!"
+        "Finally, someone with taste joins Burnt Beats!"
       ];
       const randomWelcome = sassyWelcomes[Math.floor(Math.random() * sassyWelcomes.length)];
       
@@ -145,10 +145,10 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
           <div className="flex items-center justify-center mb-4">
             <img 
               src={bangerGptLogo} 
-              alt="BangerGPT Logo" 
+              alt="Burnt Beats Logo" 
               className="w-12 h-12 mr-3 rounded-lg object-cover"
             />
-            <h1 className="text-3xl font-bold text-white">BangerGPT</h1>
+            <h1 className="text-3xl font-bold text-white">Burnt Beats</h1>
           </div>
           <p className="text-gray-400">
             Transform text into fire tracks with AI that's got attitude

@@ -27,11 +27,11 @@ export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: Sideba
         <div className="flex items-center mb-2">
           <img 
             src={bangerGptLogo} 
-            alt="BangerGPT Logo" 
+            alt="Burnt Beats Logo" 
             className="w-10 h-10 mr-3 rounded-lg object-cover"
           />
           <h1 className="text-2xl font-poppins font-bold text-spotify-green">
-            BangerGPT
+            Burnt Beats
           </h1>
         </div>
         <p className="text-gray-400 text-sm">AI Music Creation Platform</p>
