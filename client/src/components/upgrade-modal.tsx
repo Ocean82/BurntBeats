@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface UpgradeModalProps {
   currentPlan: string;
-  onUpgrade?: () => void;
+  onUpgrade: () => void;
   children?: React.ReactNode;
 }
 

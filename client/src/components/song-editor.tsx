@@ -27,6 +27,7 @@ interface SongEditorProps {
   song: Song;
   userPlan: string;
   onSongUpdated: (song: Song) => void;
+  onUpgrade: () => void;
 }
 
 interface SongSection {
@@ -37,7 +38,7 @@ interface SongSection {
   lyrics: string;
 }
 
-export default function SongEditor({ song, userPlan, onSongUpdated }: SongEditorProps) {
+export default function SongEditor({ song, userPlan, onSongUpdated, onUpgrade }: SongEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedSong, setEditedSong] = useState(song);
   const [sections, setSections] = useState<SongSection[]>(
@@ -144,7 +145,7 @@ export default function SongEditor({ song, userPlan, onSongUpdated }: SongEditor
             <p className="text-sm text-gray-400 mb-6 max-w-md mx-auto">
               Edit lyrics, modify song sections, regenerate parts, and fine-tune your song with Pro tools.
             </p>
-            <UpgradeModal currentPlan={userPlan}>
+            <UpgradeModal currentPlan={userPlan} onUpgrade={onUpgrade}>
               <Button className="bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange text-white">
                 <Crown className="w-4 h-4 mr-2" />
                 Upgrade to Pro - $4.99/mo
