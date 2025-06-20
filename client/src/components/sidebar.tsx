@@ -1,18 +1,23 @@
 import { Music, Plus, History, Mic, Download, Crown, Library, BarChart3, GitBranch, Users, BookOpen, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export default function Sidebar() {
+interface SidebarProps {
+  onMenuClick?: (menuItem: string) => void;
+  activeMenu?: string;
+}
+
+export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: SidebarProps) {
   const menuItems = [
-    { icon: Plus, label: "New Song", active: true },
-    { icon: Library, label: "Song Library", active: false },
-    { icon: History, label: "Recent Creations", active: false },
-    { icon: Mic, label: "Voice Samples", active: false },
-    { icon: BarChart3, label: "Analytics", active: false, isPro: true },
-    { icon: GitBranch, label: "Version Control", active: false, isPro: true },
-    { icon: Users, label: "Collaboration", active: false, isPro: true },
-    { icon: BookOpen, label: "Music Theory", active: false, isPro: true },
-    { icon: TrendingUp, label: "Social Hub", active: false },
-    { icon: Download, label: "Downloads", active: false },
+    { icon: Plus, label: "New Song", key: "new-song" },
+    { icon: Library, label: "Song Library", key: "library" },
+    { icon: History, label: "Recent Creations", key: "recent" },
+    { icon: Mic, label: "Voice Samples", key: "voice" },
+    { icon: BarChart3, label: "Analytics", key: "analytics", isPro: true },
+    { icon: GitBranch, label: "Version Control", key: "version", isPro: true },
+    { icon: Users, label: "Collaboration", key: "collaboration", isPro: true },
+    { icon: BookOpen, label: "Music Theory", key: "theory", isPro: true },
+    { icon: TrendingUp, label: "Social Hub", key: "social" },
+    { icon: Download, label: "Downloads", key: "downloads" },
   ];
 
   return (
@@ -29,17 +34,20 @@ export default function Sidebar() {
         <ul className="space-y-3">
           {menuItems.map((item) => (
             <li key={item.label}>
-              <a 
-                href="#" 
-                className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
-                  item.active 
+              <button 
+                onClick={() => onMenuClick?.(item.key)} 
+                className={`flex items-center px-4 py-3 rounded-lg transition-colors w-full text-left ${
+                  activeMenu === item.label 
                     ? 'bg-spotify-green text-white' 
                     : 'text-gray-300 hover:bg-gray-800'
                 }`}
               >
                 <item.icon className="mr-3 w-5 h-5" />
                 {item.label}
-              </a>
+                {item.isPro && (
+                  <Crown className="ml-auto w-4 h-4 text-yellow-400" />
+                )}
+              </button>
             </li>
           ))}
         </ul>
