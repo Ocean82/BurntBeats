@@ -312,7 +312,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
               <div className="mt-3">
                 <Badge className="bg-vibrant-orange/20 text-orange-400">
                   <Crown className="w-3 h-3 mr-1" />
-                  Pro: $4.99/mo for unlimited features
+                  Basic: $6.99/mo for voice cloning & full songs
                 </Badge>
               </div>
             </div>

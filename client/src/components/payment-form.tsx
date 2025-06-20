@@ -39,7 +39,7 @@ export default function PaymentForm({ onUpgradeSuccess, onCancel }: PaymentFormP
       const response = await apiRequest("POST", "/api/payments/upgrade", {
         ...paymentData,
         plan: "pro",
-        amount: 499, // $4.99 in cents
+        amount: 699, // $6.99 in cents
       });
       return await response.json();
     },
@@ -135,7 +135,7 @@ export default function PaymentForm({ onUpgradeSuccess, onCancel }: PaymentFormP
             <CardTitle className="flex items-center text-xl font-bold text-white">
               <Crown className="w-6 h-6 mr-2 text-yellow-500" />
               BangerGPT Pro
-              <Badge className="ml-2 bg-yellow-500/20 text-yellow-400">$4.99/month</Badge>
+              <Badge className="ml-2 bg-yellow-500/20 text-yellow-400">$6.99/month</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -239,7 +239,7 @@ export default function PaymentForm({ onUpgradeSuccess, onCancel }: PaymentFormP
                   {upgradeMutation.isPending ? (
                     "Processing Payment..."
                   ) : (
-                    "Upgrade to Pro - $4.99/month"
+                    "Upgrade to Basic - $6.99/month"
                   )}
                 </Button>
 

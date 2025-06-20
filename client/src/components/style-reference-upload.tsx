@@ -188,7 +188,7 @@ export default function StyleReferenceUpload({ onStyleExtracted, userPlan }: Sty
             I'd love to analyze your style reference, but you've got to take me somewhere that doesn't involve a value meal first. This AI magic costs more than free!
           </p>
           <Button className="bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange">
-            Upgrade to Pro - $4.99/mo
+            Upgrade to Basic - $6.99/mo
           </Button>
         </CardContent>
       </Card>

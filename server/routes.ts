@@ -63,27 +63,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create Stripe payment intent for Pro upgrades
+  // Create Stripe payment intent for subscription upgrades
   app.post("/api/create-payment-intent", async (req, res) => {
     try {
       if (!stripe) {
         return res.status(500).json({ error: "Payment service not configured" });
       }
 
-      const { amount = 499 } = req.body; // $4.99 in cents
+      const { plan = 'basic' } = req.body;
+      
+      // Define pricing for each plan
+      const planPricing = {
+        basic: { amount: 699, name: 'Basic' },      // $6.99
+        pro: { amount: 1299, name: 'Pro' },        // $12.99  
+        enterprise: { amount: 3999, name: 'Enterprise' } // $39.99
+      };
+      
+      const selectedPlan = planPricing[plan as keyof typeof planPricing];
+      if (!selectedPlan) {
+        return res.status(400).json({ error: "Invalid plan selected" });
+      }
       
       const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount,
+        amount: selectedPlan.amount,
         currency: 'usd',
         metadata: {
-          plan: 'pro',
-          service: 'BangerGPT Pro Subscription'
+          plan: plan,
+          service: `Burnt Beats ${selectedPlan.name} Subscription`
         }
       });
 
       res.json({ 
         clientSecret: paymentIntent.client_secret,
-        amount: amount
+        amount: selectedPlan.amount,
+        plan: plan
       });
     } catch (error) {
       console.error('Stripe payment intent creation failed:', error);

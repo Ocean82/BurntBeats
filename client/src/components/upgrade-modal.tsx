@@ -113,7 +113,7 @@ export default function UpgradeModal({ currentPlan, onUpgrade, children }: Upgra
                 </CardTitle>
                 <Badge className="bg-vibrant-orange text-white">Most Popular</Badge>
               </div>
-              <div className="text-3xl font-bold text-white">$4.99/month</div>
+              <div className="text-3xl font-bold text-white">$6.99/month</div>
               <p className="text-sm text-gray-300">Everything in Free, plus:</p>
             </CardHeader>
             <CardContent className="space-y-3">
