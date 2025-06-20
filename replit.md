@@ -163,9 +163,11 @@ Changelog:
   * Fixed duration parsing to handle "0:30" format correctly (was defaulting to 3 minutes)
   * Enhanced audio quality to 192kbps stereo with genre-specific musical arrangements
   * Boosted volume levels by 22+ dB (from -41.5 dB to -19.0 dB) for clearly audible sound
+  * Fixed MP3 file serving with Express static middleware (replaced broken custom route)
   * Songs now complete successfully at 100% with real musical content instead of simple tones
   * Verified 30-second songs generate proper 721KB MP3 files with authentic chord progressions
   * Added dynamic musical effects (tremolo) for engaging audio experience
+  * Complete audio pipeline: generation → storage → serving → browser playback works flawlessly
 - June 20, 2025 (Late Morning). Removed all placeholder content and implemented real functionality:
   * Replaced all mock data with authentic AI processing systems
   * Smart lyrics generation using contextual templates by genre and mood

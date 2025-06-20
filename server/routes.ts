@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertVoiceSampleSchema, insertSongSchema } from "@shared/schema";
@@ -260,22 +261,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Serve audio files
-  app.get("/uploads/:filename", (req, res) => {
-    const fs = require('fs');
-    const path = require('path');
-    
-    const filename = req.params.filename;
-    const filePath = path.join(process.cwd(), 'uploads', filename);
-    
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: "Audio file not found" });
+  // Serve static audio files
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads'), {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.mp3')) {
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'public, max-age=31536000');
+      }
     }
-    
-    res.setHeader('Content-Type', 'audio/mpeg');
-    res.setHeader('Accept-Ranges', 'bytes');
-    res.sendFile(filePath);
-  });
+  }));
 
   // Download route for generated audio
   app.get("/api/download/:songId/:format", async (req, res) => {
