@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import UpgradeModal from "./upgrade-modal";
 import { 
   Edit3, 
   Save, 
@@ -15,7 +16,8 @@ import {
   Music, 
   Volume2,
   Clock,
-  Type
+  Type,
+  Crown
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -142,9 +144,12 @@ export default function SongEditor({ song, userPlan, onSongUpdated }: SongEditor
             <p className="text-sm text-gray-400 mb-6 max-w-md mx-auto">
               Edit lyrics, modify song sections, regenerate parts, and fine-tune your song with Pro tools.
             </p>
-            <Button className="bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange">
-              Upgrade to Pro - $6.99/mo
-            </Button>
+            <UpgradeModal currentPlan={userPlan}>
+              <Button className="bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange text-white">
+                <Crown className="w-4 h-4 mr-2" />
+                Upgrade to Pro - $4.99/mo
+              </Button>
+            </UpgradeModal>
           </div>
         </CardContent>
       </Card>

@@ -2,7 +2,7 @@
 
 ## Overview
 
-SongCraft AI is a comprehensive music creation ecosystem that transforms text into professional-quality songs. The platform features advanced AI-powered song generation, voice cloning, collaborative editing, analytics, version control, and social features. With tiered subscription plans (Free and Pro at $6.99/month), it serves both casual users and professional music creators with industry-standard tools for composition, production, and collaboration.
+SongCraft AI is a comprehensive music creation ecosystem that transforms text into professional-quality songs. The platform features advanced AI-powered song generation, voice cloning, collaborative editing, analytics, version control, and social features. With tiered subscription plans (Free with 3 songs/month and Pro at $4.99/month), it serves both casual users and professional music creators with industry-standard tools for composition, production, and collaboration.
 
 **Status: Ready for Production Deployment**
 
@@ -49,7 +49,7 @@ The application uses three main database tables:
 ### Core Features
 
 #### Free Plan Features
-- **30-Second Song Generation**: Basic text-to-lyrics conversion with standard vocal styles
+- **3 Songs per Month**: 30-second songs with basic text-to-lyrics conversion
 - **Limited Genre Selection**: Access to Pop, Rock, and Electronic genres
 - **Basic Vocal Styles**: Male, Female, and Instrumental options
 - **Standard Audio Quality**: MP3 downloads at 128kbps
@@ -57,7 +57,7 @@ The application uses three main database tables:
 - **Song Library**: Basic library to view and manage created songs
 - **Social Features**: Community feed, trending songs, basic profile
 
-#### Pro Plan Features ($6.99/month)
+#### Pro Plan Features ($4.99/month)
 - **Full-Length Songs**: Generate songs up to 5:30 minutes
 - **Advanced Vocal Controls**: Comprehensive singing style, mood, and tone selection
   - Singing Styles: Smooth, Powerful, Emotional, Raspy, Melodic, Rhythmic
