@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import VoiceRecorder from "./voice-recorder";
-import PlanUpgrade from "./plan-upgrade";
+import UpgradeModal from "./upgrade-modal";
 import TextToSpeech from "./text-to-speech";
 import { insertSongSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -39,6 +39,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep 
   const [mood, setMood] = useState("happy");
   const [tone, setTone] = useState("warm");
   const [userPlan] = useState("free"); // Mock user plan - would come from auth context
+  const [freeUsage] = useState({ songsThisMonth: 2, limit: 3 }); // Mock usage tracking
   const [selectedVoiceSample, setSelectedVoiceSample] = useState<number | null>(null);
   const [advancedSettings, setAdvancedSettings] = useState({
     introOutro: true,
@@ -76,6 +77,10 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep 
 
   const generateSongMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
+      if (userPlan === "free" && freeUsage.songsThisMonth >= freeUsage.limit) {
+        throw new Error("Monthly limit reached");
+      }
+      
       const response = await apiRequest("POST", "/api/songs", {
         ...data,
         tempo: tempo[0],
@@ -95,12 +100,20 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep 
       });
       onSongGenerated(song);
     },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to start song generation. Please try again.",
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      if (error.message === "Monthly limit reached") {
+        toast({
+          title: "Monthly limit reached",
+          description: "You've used all 3 free songs this month. Upgrade to Pro for unlimited songs!",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to start song generation. Please try again.",
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -477,27 +490,65 @@ Feel it deep within your soul
                 </div>
               </div>
             ) : (
-              <PlanUpgrade 
-                currentPlan={userPlan} 
-                onUpgrade={() => toast({
-                  title: "Upgrade to Pro",
-                  description: "Visit your account settings to upgrade your plan.",
-                })}
-              />
+              <UpgradeModal currentPlan={userPlan}>
+                <div className="bg-gradient-to-br from-vibrant-orange/20 to-spotify-green/20 border-vibrant-orange/30 rounded-xl p-6 border">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-poppins font-semibold text-white flex items-center">
+                      <Crown className="mr-2 text-vibrant-orange" />
+                      Unlock Pro Features
+                    </h3>
+                    <span className="text-xl font-bold text-vibrant-orange">$4.99/mo</span>
+                  </div>
+                  <p className="text-gray-300 text-sm mb-4">
+                    Get advanced vocal controls, full-length songs, voice cloning, and professional editing tools.
+                  </p>
+                  <div className="text-center">
+                    <Button className="bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange text-white">
+                      <Crown className="w-4 h-4 mr-2" />
+                      Start 7-Day Free Trial
+                    </Button>
+                  </div>
+                </div>
+              </UpgradeModal>
+            )}
+
+            {/* Usage Indicator for Free Plan */}
+            {userPlan === "free" && (
+              <div className="bg-gray-800 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-300">Monthly Usage</span>
+                  <span className="text-sm text-gray-400">
+                    {freeUsage.songsThisMonth}/{freeUsage.limit} songs used
+                  </span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div 
+                    className="bg-spotify-green h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${(freeUsage.songsThisMonth / freeUsage.limit) * 100}%` }}
+                  />
+                </div>
+                {freeUsage.songsThisMonth >= freeUsage.limit && (
+                  <p className="text-xs text-orange-400 mt-2">
+                    Monthly limit reached. Upgrade to Pro for unlimited songs!
+                  </p>
+                )}
+              </div>
             )}
 
             {/* Generate Button */}
             <Button
               type="submit"
-              disabled={generateSongMutation.isPending}
-              className="w-full bg-gradient-to-r from-spotify-green to-green-600 hover:from-green-600 hover:to-spotify-green text-white py-4 px-6 h-auto font-poppins font-semibold text-lg transition-all duration-200 transform hover:scale-105"
+              disabled={generateSongMutation.isPending || (userPlan === "free" && freeUsage.songsThisMonth >= freeUsage.limit)}
+              className="w-full bg-gradient-to-r from-spotify-green to-green-600 hover:from-green-600 hover:to-spotify-green text-white py-4 px-6 h-auto font-poppins font-semibold text-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
               <Sparkles className="mr-2" />
               {generateSongMutation.isPending 
                 ? "Starting Generation..." 
-                : userPlan === "free" 
-                  ? "Generate 30s Song (Free)" 
-                  : "Generate Song"
+                : userPlan === "free" && freeUsage.songsThisMonth >= freeUsage.limit
+                  ? "Monthly Limit Reached"
+                  : userPlan === "free" 
+                    ? `Generate 30s Song (${freeUsage.limit - freeUsage.songsThisMonth} left)` 
+                    : "Generate Song"
               }
             </Button>
 
