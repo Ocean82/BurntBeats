@@ -343,40 +343,83 @@ async function generateSong(songId: number) {
 
     await storage.updateSong(songId, { 
       status: "generating",
-      generationProgress: 0 
+      generationProgress: 10 
     });
 
-    // Step 1: Process lyrics and structure analysis
-    await storage.updateSong(songId, { generationProgress: 20 });
-    const lyricsAnalysis = analyzeLyricsStructure(song.lyrics);
+    // Parse duration
+    const durationMs = parseSongDuration(song.songLength);
+    const durationSeconds = Math.floor(durationMs / 1000);
     
-    // Step 2: Analyze vocal style and preferences
-    await storage.updateSong(songId, { generationProgress: 40 });
-    const vocalAnalysis = analyzeVocalPreferences(song);
+    // Generate file paths
+    const outputPath = `uploads/generated_${songId}_${Date.now()}.mp3`;
     
-    // Step 3: Generate musical composition
-    await storage.updateSong(songId, { generationProgress: 60 });
-    const composition = generateMusicalComposition(song, lyricsAnalysis);
+    await storage.updateSong(songId, { generationProgress: 30 });
     
-    // Step 4: Apply vocal synthesis processing
-    await storage.updateSong(songId, { generationProgress: 80 });
-    const audioPath = await processAudioGeneration(song, composition, vocalAnalysis);
+    // Prepare song data for music21 generator
+    const songData = {
+      title: song.title,
+      lyrics: song.lyrics,
+      genre: song.genre,
+      tempo: song.tempo,
+      duration: durationSeconds,
+      output_path: outputPath,
+      key: getKeyFromGenre(song.genre)
+    };
+
+    // Generate music using Python music21 script
+    const escapedJson = JSON.stringify(songData).replace(/'/g, "\\'");
+    const pythonCommand = `cd server && python3 music-generator.py '${escapedJson}'`;
+    console.log('Generating music with music21:', songData);
     
-    // Step 5: Create structured song sections
-    await storage.updateSong(songId, { generationProgress: 100 });
-    const sections = createStructuredSections(song.lyrics, composition.duration);
+    await storage.updateSong(songId, { generationProgress: 50 });
+    
+    const { stdout } = await execAsync(pythonCommand);
+    const result = JSON.parse(stdout);
+    
+    if (!result.success) {
+      throw new Error(`Music generation failed: ${result.error}`);
+    }
+
+    await storage.updateSong(songId, { generationProgress: 70 });
+
+    // Convert WAV to MP3 using ffmpeg
+    const wavPath = result.wav_path;
+    const convertCommand = `ffmpeg -i "${wavPath}" -codec:a mp3 -b:a 192k "${outputPath}" -y`;
+    await execAsync(convertCommand);
+
+    // Clean up temporary WAV file
+    await execAsync(`rm -f "${wavPath}"`);
+
+    // Create structured song sections
+    const sections = createStructuredSections(song.lyrics, durationSeconds * 1000);
 
     await storage.updateSong(songId, {
       status: "completed",
       generationProgress: 100,
-      generatedAudioPath: audioPath,
+      generatedAudioPath: `/${outputPath}`,
       sections: sections
     });
+
+    console.log(`Music generation completed: ${result.message}`);
 
   } catch (error) {
     console.error('Song generation failed:', error);
     await storage.updateSong(songId, { status: "failed" });
   }
+}
+
+function getKeyFromGenre(genre: string): string {
+  const genreKeys = {
+    'pop': 'C',
+    'rock': 'E', 
+    'jazz': 'F',
+    'electronic': 'Am',
+    'classical': 'D',
+    'hip-hop': 'Cm',
+    'country': 'G',
+    'r&b': 'Bb'
+  };
+  return genreKeys[genre.toLowerCase() as keyof typeof genreKeys] || 'C';
 }
 
 // Helper functions for real AI processing
