@@ -305,17 +305,17 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
               <h4 className="text-white font-medium mb-2">What you get for free:</h4>
               <ul className="text-sm text-gray-400 space-y-1">
                 <li>• 3 songs per month</li>
-                <li>• 30-second tracks</li>
+                <li>• 30-second tracks only</li>
                 <li>• Basic genres (Pop, Rock, Electronic)</li>
                 <li>• MP3 128kbps quality</li>
               </ul>
               <div className="mt-3 space-y-2">
                 <Badge className="bg-vibrant-orange/20 text-orange-400">
                   <Crown className="w-3 h-3 mr-1" />
-                  Basic: $6.99/mo - Voice cloning & 5:30 tracks
+                  Basic: $6.99/mo - 3 songs, 5:30 length, voice cloning
                 </Badge>
                 <div className="text-xs text-gray-500">
-                  Pro ($12.99/mo) • Enterprise ($39.99/mo)
+                  Pro: $12.99/mo - 50 songs • Enterprise: $39.99/mo - Unlimited
                 </div>
               </div>
             </div>
