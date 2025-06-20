@@ -138,7 +138,7 @@ export default function UpgradeModal({ currentPlan, onUpgrade, children }: Upgra
                   ) : (
                     <>
                       <CreditCard className="w-4 h-4 mr-2" />
-                      Start 7-Day Free Trial
+                      Upgrade to Pro
                     </>
                   )}
                 </Button>
@@ -176,7 +176,7 @@ export default function UpgradeModal({ currentPlan, onUpgrade, children }: Upgra
         </div>
 
         <p className="text-xs text-gray-400 text-center mt-4">
-          Secure payment • Cancel anytime • 7-day free trial • No hidden fees
+          Secure payment • Cancel anytime • No hidden fees
         </p>
       </DialogContent>
     </Dialog>

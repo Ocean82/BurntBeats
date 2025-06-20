@@ -570,7 +570,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
                   <div className="text-center">
                     <Button className="bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange text-white">
                       <Crown className="w-4 h-4 mr-2" />
-                      Start 7-Day Free Trial
+                      Upgrade to Pro
                     </Button>
                   </div>
                 </div>

@@ -6,9 +6,12 @@ import multer from "multer";
 import type { Request as ExpressRequest } from "express";
 import path from "path";
 import fs from "fs";
+import { exec } from "child_process";
+import util from "util";
 import Stripe from "stripe";
 
 const upload = multer({ dest: 'uploads/' });
+const execAsync = util.promisify(exec);
 
 // Initialize Stripe with your live secret key
 const stripe = process.env.STRIPE_SECRET_KEY 
@@ -555,12 +558,6 @@ function generateMusicalComposition(song: any, lyricsAnalysis: any) {
 }
 
 async function processAudioGeneration(song: any, composition: any, vocalAnalysis: any) {
-  const fs = require('fs');
-  const path = require('path');
-  const { exec } = require('child_process');
-  const util = require('util');
-  const execAsync = util.promisify(exec);
-  
   // Create unique filename for generated audio
   const timestamp = Date.now();
   const filename = `generated_${song.id}_${timestamp}.mp3`;
