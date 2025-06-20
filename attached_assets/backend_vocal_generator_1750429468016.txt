@@ -1,0 +1,20 @@
+// backend/vocal-generator.ts
+import { VoiceCloningService } from './voice-cloning-service';
+import { TextToSpeechService } from './text-to-speech-service';
+
+export class VocalGenerator {
+  private voiceCloningService: VoiceCloningService;
+  private textToSpeechService: TextToSpeechService;
+
+  constructor() {
+    this.voiceCloningService = new VoiceCloningService();
+    this.textToSpeechService = new TextToSpeechService();
+  }
+
+  async generateVocals(lyrics: string, userVoiceSample: Blob, melody: any): Promise<any> {
+    const clonedVoice = await this.voiceCloningService.cloneVoice(userVoiceSample);
+    const vocals = await this.textToSpeechService.generateVocals(lyrics, clonedVoice, melody);
+
+    return vocals;
+  }
+}
