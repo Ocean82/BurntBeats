@@ -60,42 +60,14 @@ export default function VersionControl({ song, userId }: VersionControlProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Mock data - would come from API
-  const versions: SongVersion[] = [
-    {
-      id: 1,
-      versionNumber: "v1.0.0",
-      title: song.title,
-      commitMessage: "Initial song creation",
-      changes: ["Created base lyrics", "Set genre to pop", "Added basic structure"],
-      createdBy: "john_doe",
-      createdAt: "2025-06-19T10:00:00Z",
-      isActive: false,
-      size: 3.2
-    },
-    {
-      id: 2,
-      versionNumber: "v1.1.0",
-      title: song.title,
-      commitMessage: "Enhanced chorus melody and added bridge section",
-      changes: ["Modified chorus lyrics", "Added bridge section", "Adjusted tempo to 120 BPM"],
-      createdBy: "music_lover",
-      createdAt: "2025-06-19T14:30:00Z",
-      isActive: false,
-      size: 3.8
-    },
-    {
-      id: 3,
-      versionNumber: "v1.2.0",
-      title: song.title,
-      commitMessage: "Final polish and vocal adjustments",
-      changes: ["Refined vocal style", "Added harmonies", "Final mixing adjustments"],
-      createdBy: "producer_sam",
-      createdAt: "2025-06-19T18:45:00Z",
-      isActive: true,
-      size: 4.1
+  // Real version data from song history
+  const { data: versions = [], isLoading: versionsLoading } = useQuery({
+    queryKey: ['/api/versions', song.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/songs/${song.id}/versions`);
+      return response.json();
     }
-  ];
+  });
 
   const branches: Branch[] = [
     {

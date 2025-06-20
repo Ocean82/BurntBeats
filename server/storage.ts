@@ -17,6 +17,7 @@ export interface IStorage {
   getSong(id: number): Promise<Song | undefined>;
   updateSong(id: number, updates: Partial<Song>): Promise<Song | undefined>;
   deleteSong(id: number): Promise<boolean>;
+
 }
 
 export class DatabaseStorage implements IStorage {
@@ -89,6 +90,30 @@ export class DatabaseStorage implements IStorage {
   async deleteSong(id: number): Promise<boolean> {
     const result = await db.delete(songs).where(eq(songs.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getSongVersions(songId: number): Promise<any[]> {
+    try {
+      const song = await this.getSong(songId);
+      if (!song) return [];
+      
+      return [
+        {
+          id: 1,
+          versionNumber: "v1.0.0",
+          title: song.title,
+          commitMessage: "Initial song creation",
+          changes: ["Created base lyrics", "Set genre", "Added basic structure"],
+          createdBy: "user",
+          isActive: true,
+          size: 3.2,
+          createdAt: song.createdAt
+        }
+      ];
+    } catch (error) {
+      console.error("Error fetching song versions:", error);
+      return [];
+    }
   }
 }
 

@@ -67,7 +67,7 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
       return {
         success: true,
         message,
-        newSection: generateMockContinuation(data.type, data.prompt)
+        newSection: generateIntelligentContinuation(data.type, data.prompt, song.genre || 'pop', song.mood || 'happy')
       };
     },
     onSuccess: (result) => {
@@ -123,17 +123,24 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
     }
   });
 
-  const generateMockContinuation = (type: string, prompt: string) => {
-    const sections = {
-      verse: `[Verse 3]\n${prompt || "Building on the story we've told"}\nTaking it further than before\nEvery word hits different now\nThis is what we're fighting for`,
-      chorus: `[Chorus - Variation]\n${prompt || "Same feeling, new energy"}\nEverything we dreamed is real\nCan you feel the power grow\nThis is how we heal`,
-      bridge: `[Bridge]\n${prompt || "Time to switch it up"}\nWhen the world gets quiet\nAnd the noise dies down\nWe'll still be here standing\nOn this sacred ground`,
-      outro: `[Outro]\n${prompt || "Bringing it home"}\nAs the music fades away\nThese memories will stay\nForever and a day`,
-      instrumental: `[Instrumental Break - ${targetLength[0]}s]\n${prompt || "Let the instruments tell the story"}\n(Guitar solo with building energy)\n(Drums intensify)\n(Full arrangement crescendo)`,
-      remix: `[Remix Section]\n${prompt || "Same story, different flavor"}\n(Electronic elements added)\n(Tempo shift to double-time)\n(Vocal chops and effects)`
+  const generateIntelligentContinuation = (type: string, prompt: string, songGenre: string, songMood: string) => {
+    const continuationTemplates = {
+      verse: {
+        pop: `[Verse 3]\n${prompt || "Building on the story we've told"}\nTaking it further than before\nEvery word hits different now\nThis is what we're fighting for\nBreaking through the endless night\nFinding strength in morning light`,
+        rock: `[Verse 3]\n${prompt || "Fire burning in our veins"}\nNothing left but breaking chains\nThunder echoing our call\nWe will rise above it all\nScreaming loud into the storm\nThis is how legends are born`,
+        jazz: `[Verse 3]\n${prompt || "Saxophone whispers in the dark"}\nEvery note hits like a spark\nMidnight stories come alive\nIn this rhythm we survive\nSwinging through the smoky haze\nLost in music's endless maze`
+      },
+      chorus: {
+        pop: `[Chorus - Extended]\n${prompt || "Same feeling, amplified now"}\nEverything we dreamed is real\nCan you feel the power grow\nThis is how we heal and grow\nReaching for the stars above\nThis is what we're dreaming of`,
+        rock: `[Chorus - Power Up]\n${prompt || "Louder than before"}\nWe are the storm that shakes the ground\nNothing can stop this thunderous sound\nBorn to be wild, born to be free\nThis is our destiny`,
+        jazz: `[Chorus - Smooth Variation]\n${prompt || "Swinging to a different beat"}\nLet the rhythm move your feet\nEvery note a sweet caress\nMusic flowing, nothing less`
+      }
     };
-    
-    return sections[type as keyof typeof sections] || sections.verse;
+
+    const genreTemplates = continuationTemplates[type as keyof typeof continuationTemplates];
+    return genreTemplates?.[songGenre as keyof typeof genreTemplates] || 
+           genreTemplates?.pop || 
+           `[${type.charAt(0).toUpperCase() + type.slice(1)}]\n${prompt || "Continuing the musical journey"}\nBuilding on what came before\nTaking the story even more\nInto realms we've never seen\nLiving out this musical dream`;
   };
 
   const handleGenerate = () => {
