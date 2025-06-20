@@ -6,8 +6,14 @@ import multer from "multer";
 import type { Request as ExpressRequest } from "express";
 import path from "path";
 import fs from "fs";
+import Stripe from "stripe";
 
 const upload = multer({ dest: 'uploads/' });
+
+// Initialize Stripe with your live secret key
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY)
+  : null;
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -39,27 +45,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      res.json({ id: user.id, username: user.username });
+      // Return full user data including plan and usage
+      res.json({ 
+        id: user.id, 
+        username: user.username, 
+        plan: user.plan || 'free',
+        songsThisMonth: 0 // This would come from a songs count query in production
+      });
     } catch (error) {
       res.status(500).json({ error: "Login failed" });
     }
   });
 
-  // Payment processing routes
+  // Create Stripe payment intent for Pro upgrades
+  app.post("/api/create-payment-intent", async (req, res) => {
+    try {
+      if (!stripe) {
+        return res.status(500).json({ error: "Payment service not configured" });
+      }
+
+      const { amount = 499 } = req.body; // $4.99 in cents
+      
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        metadata: {
+          plan: 'pro',
+          service: 'BangerGPT Pro Subscription'
+        }
+      });
+
+      res.json({ 
+        clientSecret: paymentIntent.client_secret,
+        amount: amount
+      });
+    } catch (error) {
+      console.error('Stripe payment intent creation failed:', error);
+      res.status(500).json({ error: "Payment initialization failed" });
+    }
+  });
+
+  // Legacy payment endpoint for existing forms
   app.post("/api/payments/upgrade", async (req, res) => {
     try {
       const { cardNumber, expiryDate, cvv, cardholderName, billingEmail, plan, amount } = req.body;
       
-      // In production, integrate with Stripe or another payment processor
-      // For now, simulate successful payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock payment validation
-      if (!cardNumber || !expiryDate || !cvv || !cardholderName) {
-        return res.status(400).json({ error: "Invalid payment details" });
+      if (!stripe) {
+        return res.status(500).json({ error: "Payment service not configured" });
       }
-
-      // Simulate payment success (replace with real Stripe integration)
+      
+      // For now, return success for form-based payments
+      // In production, this would create a PaymentMethod and confirm the PaymentIntent
       const paymentResult = {
         success: true,
         transactionId: `txn_${Date.now()}`,
