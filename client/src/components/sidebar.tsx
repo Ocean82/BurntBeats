@@ -1,5 +1,6 @@
 import { Music, Plus, History, Mic, Download, Crown, Library, BarChart3, GitBranch, Users, BookOpen, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import bangerGptLogo from "@/assets/bangergpt-logo.jpeg";
 
 interface SidebarProps {
   onMenuClick?: (menuItem: string) => void;
@@ -23,11 +24,17 @@ export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: Sideba
   return (
     <div className="w-64 bg-dark-card p-6 flex flex-col">
       <div className="mb-8">
-        <h1 className="text-2xl font-poppins font-bold text-spotify-green flex items-center">
-          <Music className="mr-2" />
-          BangerGPT
-        </h1>
-        <p className="text-gray-400 text-sm mt-1">AI Music Creation Platform</p>
+        <div className="flex items-center mb-2">
+          <img 
+            src={bangerGptLogo} 
+            alt="BangerGPT Logo" 
+            className="w-10 h-10 mr-3 rounded-lg object-cover"
+          />
+          <h1 className="text-2xl font-poppins font-bold text-spotify-green">
+            BangerGPT
+          </h1>
+        </div>
+        <p className="text-gray-400 text-sm">AI Music Creation Platform</p>
       </div>
       
       <nav className="flex-1">
