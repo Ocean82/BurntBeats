@@ -15,6 +15,7 @@ import SocialFeatures from "@/components/social-features";
 import VoiceRecorder from "@/components/voice-recorder";
 import AdvancedVoiceCloning from "@/components/advanced-voice-cloning";
 import EnhancedTextToSpeech from "@/components/enhanced-text-to-speech";
+import PricingPlans from "@/components/pricing-plans";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Music, HelpCircle, Settings, User, Crown, LogOut } from "lucide-react";
@@ -99,6 +100,9 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
       case "downloads":
         setActiveMenu("Downloads");
         break;
+      case "pricing":
+        setActiveMenu("Pricing");
+        break;
     }
   };
 
@@ -113,6 +117,19 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
     { id: 3, name: "Generate & Edit", active: currentStep === 3 },
   ];
 
+  const renderUpgradePrompt = (title: string, description: string, requiredPlan: string, price: string) => (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-center">
+        <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
+        <h3 className="text-xl font-bold mb-2">{title}</h3>
+        <p className="text-gray-400 mb-4">{description}</p>
+        <Button onClick={onUpgrade} className="bg-yellow-500 hover:bg-yellow-600">
+          Upgrade to {requiredPlan} - {price}
+        </Button>
+      </div>
+    </div>
+  );
+
   const renderMainContent = () => {
     switch (activeMenu) {
       case "Song Library":
@@ -124,268 +141,199 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
       case "Voice Cloning":
         return ["basic", "pro", "enterprise"].includes(userPlan) ? (
           <AdvancedVoiceCloning userId={user?.id || 1} />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Basic Plan Feature</h3>
-              <p className="text-gray-400 mb-4">Voice cloning is available starting with Basic plan ($6.99/month)</p>
-              <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
-                Upgrade to Basic
-              </Button>
-            </div>
-          </div>
+        ) : renderUpgradePrompt(
+          "Voice Cloning - Basic+ Only",
+          "Upload your voice samples and transform them into singing voices with professional quality.",
+          "Basic",
+          "$6.99/month"
         );
       case "Text-to-Speech":
         return ["basic", "pro", "enterprise"].includes(userPlan) ? (
           <EnhancedTextToSpeech userId={user?.id || 1} />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Basic Plan Feature</h3>
-              <p className="text-gray-400 mb-4">Enhanced text-to-speech is available starting with Basic plan ($6.99/month)</p>
-              <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
-                Upgrade to Basic
-              </Button>
-            </div>
-          </div>
+        ) : renderUpgradePrompt(
+          "Enhanced Text-to-Speech - Basic+ Only",
+          "Advanced voice generation with pitch, speed, and tone controls.",
+          "Basic",
+          "$6.99/month"
         );
       case "Analytics":
         return ["pro", "enterprise"].includes(userPlan) ? (
           <AnalyticsDashboard userId={user?.id || 1} />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Pro Plan Feature</h3>
-              <p className="text-gray-400 mb-4">Analytics dashboard is available with Pro subscription ($12.99/month)</p>
-              <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
-                Upgrade to Pro
-              </Button>
-            </div>
-          </div>
+        ) : renderUpgradePrompt(
+          "Analytics Dashboard - Pro Only",
+          "Track performance, view trends, and get insights on your music creations.",
+          "Pro",
+          "$12.99/month"
         );
       case "Version Control":
         return ["pro", "enterprise"].includes(userPlan) ? (
           completedSong ? (
-            <VersionControl song={completedSong} userId={user?.id || 1} />
+            <VersionControl userId={user?.id || 1} song={completedSong} />
           ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-gray-400">Select a song to view version history</p>
-            </div>
+            <div className="text-center text-gray-400">No songs available for version control</div>
           )
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Pro Plan Feature</h3>
-              <p className="text-gray-400 mb-4">Version control is available with Pro subscription ($12.99/month)</p>
-              <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
-                Upgrade to Pro
-              </Button>
-            </div>
-          </div>
+        ) : renderUpgradePrompt(
+          "Version Control - Pro Only",
+          "Git-like versioning for your songs with branching and rollback capabilities.",
+          "Pro",
+          "$12.99/month"
         );
-      case "Collaborative Workspace":
-        return userPlan === "enterprise" ? (
-          completedSong ? (
+      case "Collaboration":
+        return ["pro", "enterprise"].includes(userPlan) ? (
+          completedSong && user?.id && user?.username ? (
             <CollaborativeWorkspace 
               song={completedSong} 
-              currentUser={{ id: user?.id || 1, username: user?.username || "User" }}
-              onSongUpdate={handleSongUpdated}
+              currentUser={{ id: user.id, username: user.username }} 
+              onSongUpdate={handleSongUpdated} 
             />
           ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-gray-400">Select a song to start real-time collaborative editing</p>
-            </div>
+            <div className="text-center text-gray-400">No songs available for collaboration</div>
           )
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Enterprise Feature</h3>
-              <p className="text-gray-400 mb-4">Real-time collaborative workspace is available with Enterprise subscription ($39.99/month)</p>
-              <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
-                Upgrade to Enterprise
-              </Button>
-            </div>
-          </div>
+        ) : renderUpgradePrompt(
+          "Collaborative Workspace - Pro Only",
+          "Real-time collaboration with team members on song projects.",
+          "Pro",
+          "$12.99/month"
         );
       case "Music Theory":
-        return userPlan === "pro" ? (
+        return userPlan === "enterprise" ? (
           <MusicTheoryTools />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Pro Feature</h3>
-              <p className="text-gray-400 mb-4">Music theory tools are available with Pro subscription</p>
-              <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
-                Upgrade to Pro
-              </Button>
-            </div>
-          </div>
+        ) : renderUpgradePrompt(
+          "Music Theory Tools - Enterprise Only",
+          "Advanced music creation with scale builders, chord progressions, and AI suggestions.",
+          "Enterprise",
+          "$39.99/month"
         );
       case "Social Hub":
-        return <SocialFeatures userId={user?.id || 1} currentSong={completedSong} />;
+        return <SocialFeatures userId={user?.id || 1} />;
       case "Downloads":
         return completedSong ? (
           <DownloadOptions song={completedSong} />
         ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-gray-400">Generate a song to access downloads</p>
-          </div>
+          <div className="text-center text-gray-400">No songs available for download</div>
         );
       case "Song Editor":
         return editingSong ? (
-          <SongEditor
-            song={editingSong}
-            userPlan={userPlan}
-            onSongUpdated={handleSongUpdated}
-            onUpgrade={onUpgrade}
-          />
-        ) : null;
+          <SongEditor song={editingSong} onSongUpdated={handleSongUpdated} userPlan={userPlan} onUpgrade={onUpgrade} />
+        ) : (
+          <div className="text-center text-gray-400">No song selected for editing</div>
+        );
+      case "Pricing":
+        return <PricingPlans userId={user?.id || 1} currentPlan={userPlan} onUpgrade={onUpgrade} user={user} />;
       default:
         return (
-          <>
-            {/* Step Indicator */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                {steps.map((step, index) => (
-                  <div key={step.id} className="flex items-center space-x-4">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      step.active ? 'bg-spotify-green' : 'bg-gray-600'
-                    }`}>
-                      {step.id}
+          <div className="flex-1 p-8">
+            <div className="max-w-4xl mx-auto">
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h1 className="text-3xl font-bold text-white">Create Your Next Hit</h1>
+                  <div className="flex items-center space-x-4">
+                    <Badge variant="outline" className="text-yellow-400 border-yellow-400">
+                      {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)} Plan
+                    </Badge>
+                    <Button onClick={onUpgrade} className="bg-gradient-to-r from-yellow-400 to-yellow-600">
+                      <Crown className="w-4 h-4 mr-2" />
+                      Upgrade
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center mb-8">
+                  {steps.map((step, index) => (
+                    <div key={step.id} className="flex items-center">
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          step.active ? 'bg-spotify-green text-white' : 'bg-gray-700 text-gray-400'
+                        }`}
+                      >
+                        {step.id}
+                      </div>
+                      <span className={`ml-3 ${step.active ? 'text-white' : 'text-gray-400'}`}>
+                        {step.name}
+                      </span>
+                      {index < steps.length - 1 && (
+                        <div className="w-16 h-0.5 bg-gray-600 mx-4" />
+                      )}
                     </div>
-                    <span className={`text-sm ${step.active ? 'text-white' : 'text-gray-400'}`}>
-                      {step.name}
-                    </span>
-                    {index < steps.length - 1 && (
-                      <div className="w-16 h-px bg-gray-600"></div>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+
+              {generatingSong ? (
+                <GenerationProgress
+                  song={generatingSong}
+                  onComplete={handleGenerationComplete}
+                />
+              ) : currentStep === 1 ? (
+                <SongForm
+                  onSongGenerated={handleSongGenerated}
+                  currentStep={currentStep}
+                  setCurrentStep={setCurrentStep}
+                  user={user}
+                  onUpgrade={onUpgrade}
+                />
+              ) : currentStep === 3 && completedSong ? (
+                <div className="space-y-6">
+                  <AudioPlayer song={completedSong} />
+                  <SongEditor song={completedSong} onSongUpdated={handleSongUpdated} userPlan={userPlan} onUpgrade={onUpgrade} />
+                  <DownloadOptions song={completedSong} />
+                </div>
+              ) : (
+                <div className="text-center text-gray-400">
+                  <Music className="w-16 h-16 mx-auto mb-4" />
+                  <p>Ready to create your next masterpiece!</p>
+                </div>
+              )}
             </div>
-
-            {/* Main Content Area */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left Column - Song Form */}
-              <div className="lg:col-span-2">
-                {!generatingSong && !completedSong && (
-                  <SongForm
-                    onSongGenerated={handleSongGenerated}
-                    currentStep={currentStep}
-                    setCurrentStep={setCurrentStep}
-                    user={user}
-                    onUpgrade={onUpgrade}
-                  />
-                )}
-
-                {generatingSong && (
-                  <GenerationProgress
-                    song={generatingSong}
-                    onComplete={handleGenerationComplete}
-                  />
-                )}
-
-                {completedSong && (
-                  <SongEditor
-                    song={completedSong}
-                    userPlan={userPlan}
-                    onSongUpdated={handleSongUpdated}
-                    onUpgrade={onUpgrade}
-                  />
-                )}
-              </div>
-
-              {/* Right Column - Audio Player & Downloads */}
-              <div className="lg:col-span-1">
-                {completedSong && (
-                  <div className="space-y-6">
-                    <AudioPlayer song={completedSong} />
-                    <DownloadOptions song={completedSong} />
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
+          </div>
         );
     }
   };
 
   return (
-    <div className="flex h-screen bg-dark-bg text-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex">
       <Sidebar onMenuClick={handleMenuClick} activeMenu={activeMenu} />
+      {renderMainContent()}
       
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-dark-card px-8 py-4 border-b border-gray-800">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-spotify-green to-green-600 rounded-full flex items-center justify-center">
-                <Music className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <h2 className="text-xl font-poppins font-semibold">BangerGPT</h2>
-                <p className="text-sm text-gray-400">Create New Song</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <div className="text-right">
-                  <p className="text-white text-sm font-medium">{user?.username}</p>
-                  <div className="flex items-center space-x-2">
-                    <Badge className={userPlan === "pro" ? "bg-yellow-500/20 text-yellow-400" : "bg-gray-500/20 text-gray-400"}>
-                      {userPlan === "pro" ? (
-                        <>
-                          <Crown className="w-3 h-3 mr-1" />
-                          Pro
-                        </>
-                      ) : (
-                        "Free"
-                      )}
-                    </Badge>
-                    {userPlan === "free" && (
-                      <span className="text-xs text-gray-400">
-                        {user?.songsThisMonth || 0}/3 songs
-                      </span>
-                    )}
-                  </div>
-                </div>
-                
-                {userPlan === "free" && (
-                  <Button
-                    onClick={onUpgrade}
-                    className="bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange text-white px-3 py-1 text-sm"
-                    size="sm"
-                  >
-                    <Crown className="w-3 h-3 mr-1" />
-                    Upgrade
-                  </Button>
-                )}
-                
-                <Button
-                  onClick={onLogout}
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-400 hover:text-white"
-                >
-                  <LogOut className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <div className="flex-1 p-8 overflow-y-auto">
-          <div className="max-w-6xl mx-auto">
-            {renderMainContent()}
-          </div>
-        </div>
+      <div className="w-16 bg-dark-card p-4 flex flex-col items-center space-y-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-gray-400 hover:text-white"
+          onClick={() => setActiveMenu("Pricing")}
+        >
+          <Crown className="w-5 h-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-gray-400 hover:text-white"
+        >
+          <HelpCircle className="w-5 h-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-gray-400 hover:text-white"
+        >
+          <Settings className="w-5 h-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-gray-400 hover:text-white"
+        >
+          <User className="w-5 h-5" />
+        </Button>
+        <div className="flex-1" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-gray-400 hover:text-red-400"
+          onClick={onLogout}
+        >
+          <LogOut className="w-5 h-5" />
+        </Button>
       </div>
     </div>
   );

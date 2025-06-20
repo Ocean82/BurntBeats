@@ -1,8 +1,8 @@
-# BangerGPT - AI Music Creation Platform
+# Burnt Beats - AI Music Creation Platform
 
 ## Overview
 
-BangerGPT is a comprehensive music creation ecosystem that transforms text into professional-quality songs. The platform features advanced AI-powered song generation, voice cloning, collaborative editing, analytics, version control, and social features. With tiered subscription plans (Free with 3 songs/month and Pro at $4.99/month), it serves both casual users and professional music creators with industry-standard tools for composition, production, and collaboration.
+Burnt Beats is a comprehensive music creation ecosystem that transforms text into professional-quality songs. The platform features advanced AI-powered song generation, voice cloning, collaborative editing, analytics, version control, and social features. With tiered subscription plans (Free with 3 songs/month and Pro at $4.99/month), it serves both casual users and professional music creators with industry-standard tools for composition, production, and collaboration.
 
 **Status: Ready for Production Deployment**
 
@@ -164,6 +164,17 @@ The application uses three main database tables:
 ## Changelog
 
 Changelog:
+- June 20, 2025 (Night - Complete Burnt Beats Rebranding & Pricing Integration). Implemented comprehensive rebranding and pricing tier restrictions:
+  * **COMPLETE REBRANDING TO BURNT BEATS**: Updated all brand references from BangerGPT to Burnt Beats across entire application
+  * **COMPREHENSIVE PRICING TIER ENFORCEMENT**: Implemented proper access restrictions for all features based on user plan
+    - Voice Cloning & Text-to-Speech: Basic+ only ($6.99/month)
+    - Analytics & Version Control & Collaboration: Pro+ only ($12.99/month)  
+    - Music Theory Tools: Enterprise only ($39.99/month)
+  * **UPGRADE PROMPTS**: Clear upgrade prompts with specific plan requirements and pricing for restricted features
+  * **COMPONENT INTEGRATION**: Fixed all component prop passing and integration issues for seamless user experience
+  * **PROPER PLAN VALIDATION**: Real-time validation of user plan permissions throughout the application
+  * **LOGO INTEGRATION**: Burnt Beats logo implemented in sidebar, authentication forms, pricing plans, and favicon
+  * **BRAND CONSISTENCY**: Updated HTML meta tags, welcome messages, and all user-facing text for Burnt Beats brand
 - June 20, 2025 (Night - Complete BangerGPT Logo Integration). Implemented comprehensive brand integration across entire application:
   * **COMPLETE LOGO INTEGRATION**: Added BangerGPT logo to all major components including sidebar, authentication forms, pricing plans, and favicon
   * **BRAND CONSISTENCY**: Updated HTML meta tags with logo for social media sharing and browser favicon

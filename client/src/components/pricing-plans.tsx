@@ -12,9 +12,16 @@ interface PricingPlansProps {
   userId: number;
   currentPlan: string;
   onUpgrade: (plan: string) => void;
+  user?: {
+    id?: number;
+    username?: string;
+    plan?: 'free' | 'basic' | 'pro' | 'enterprise';
+    songsThisMonth?: number;
+    monthlyLimit?: number;
+  };
 }
 
-export default function PricingPlans({ userId, currentPlan, onUpgrade }: PricingPlansProps) {
+export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: PricingPlansProps) {
   const { data: plans, isLoading } = useQuery({
     queryKey: ["/api/pricing/plans"],
   });
@@ -74,17 +81,17 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade }: Pricing
         <div className="flex items-center justify-center mb-4">
           <img 
             src={bangerGptLogo} 
-            alt="BangerGPT Logo" 
+            alt="Burnt Beats Logo" 
             className="w-12 h-12 mr-3 rounded-lg object-cover"
           />
           <h2 className="text-3xl font-bold">Choose Your Plan</h2>
         </div>
         <p className="text-gray-400 mb-4">Unlock powerful AI music creation features</p>
-        {usage && (
+        {usage && typeof usage === 'object' && 'songsThisMonth' in usage && (
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 rounded-lg">
             <span className="text-sm text-gray-300">Current usage:</span>
             <span className="font-semibold text-vibrant-orange">
-              {usage.songsThisMonth}/{usage.monthlyLimit === 999999 ? "∞" : usage.monthlyLimit} songs
+              {(usage as any).songsThisMonth}/{(usage as any).monthlyLimit === 999999 ? "∞" : (usage as any).monthlyLimit} songs
             </span>
           </div>
         )}
@@ -92,7 +99,7 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade }: Pricing
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {planOrder.map((planName) => {
-          const plan = plans?.[planName];
+          const plan = plans && typeof plans === 'object' ? (plans as any)[planName] : null;
           if (!plan) return null;
 
           const isCurrentPlan = currentPlan === planName;
