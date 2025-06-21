@@ -1,21 +1,37 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, serial, integer, boolean, timestamp, jsonb, doublePrecision, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Session storage table for Replit Auth
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// User storage table for Replit Auth
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  id: varchar("id").primaryKey().notNull(), // Replit user ID
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
   plan: text("plan").notNull().default("free"), // free, basic, pro, enterprise
   planExpiresAt: timestamp("plan_expires_at"),
   songsThisMonth: integer("songs_this_month").default(0).notNull(),
   monthlyLimit: integer("monthly_limit").default(3).notNull(), // free: 3, basic: 3, pro: 50, enterprise: unlimited
   lastUsageReset: timestamp("last_usage_reset").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const voiceSamples = pgTable("voice_samples", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
+  userId: varchar("user_id").references(() => users.id),
   name: text("name").notNull(),
   filePath: text("file_path").notNull(),
   duration: integer("duration"), // in seconds
@@ -26,7 +42,7 @@ export const voiceSamples = pgTable("voice_samples", {
 
 export const songs = pgTable("songs", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
+  userId: varchar("user_id").references(() => users.id),
   title: text("title").notNull(),
   lyrics: text("lyrics").notNull(),
   genre: text("genre").notNull(),
@@ -63,10 +79,9 @@ export const songVersions = pgTable("song_versions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
+// Replit Auth types
+export type UpsertUser = typeof users.$inferInsert;
+export type User = typeof users.$inferSelect;
 
 export const insertVoiceSampleSchema = createInsertSchema(voiceSamples).omit({
   id: true,
@@ -78,9 +93,6 @@ export const insertSongSchema = createInsertSchema(songs).omit({
   createdAt: true,
   updatedAt: true,
 });
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
 
 export type InsertVoiceSample = z.infer<typeof insertVoiceSampleSchema>;
 export type VoiceSample = typeof voiceSamples.$inferSelect;

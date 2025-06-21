@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Music, Sparkles, Crown, User, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertUserSchema } from "@shared/schema";
+// Removed insertUserSchema as we're using Replit Auth
 import { z } from "zod";
 import bangerGptLogo from "@/assets/bangergpt-logo.jpeg";
 
@@ -20,12 +20,7 @@ const loginSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-const signupSchema = insertUserSchema.extend({
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+// Using Replit Auth - no signup schema needed
 
 interface AuthFormProps {
   onAuthSuccess: (user: any) => void;
