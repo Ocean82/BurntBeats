@@ -19,10 +19,12 @@ interface AudioPlayerProps {
 }
 
 export default function AudioPlayer({ song }: AudioPlayerProps) {
-  const [volume, setVolume] = useState([70]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [volume, setVolumeState] = useState(1);
+  const [volume, setVolume] = useState([70]);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
@@ -193,7 +195,7 @@ export default function AudioPlayer({ song }: AudioPlayerProps) {
         {/* Section Editor */}
         <div className="mt-6 space-y-4">
           <h4 className="font-medium text-gray-300">Song Sections</h4>
-          
+
           {sections.map((section, index) => (
             <div 
               key={section.id}
