@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Music, Sparkles, Crown, User, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertUserSchema } from "@shared/schema";
+// Removed insertUserSchema as we're using Replit Auth
 import { z } from "zod";
 import bangerGptLogo from "@/assets/bangergpt-logo.jpeg";
 
@@ -20,12 +20,7 @@ const loginSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-const signupSchema = insertUserSchema.extend({
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+// Using Replit Auth - no signup schema needed
 
 interface AuthFormProps {
   onAuthSuccess: (user: any) => void;
@@ -305,15 +300,18 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
               <h4 className="text-white font-medium mb-2">What you get for free:</h4>
               <ul className="text-sm text-gray-400 space-y-1">
                 <li>• 3 songs per month</li>
-                <li>• 30-second tracks</li>
-                <li>• Basic vocal styles</li>
-                <li>• Standard quality downloads</li>
+                <li>• 30-second tracks only</li>
+                <li>• Basic genres (Pop, Rock, Electronic)</li>
+                <li>• MP3 128kbps quality</li>
               </ul>
-              <div className="mt-3">
+              <div className="mt-3 space-y-2">
                 <Badge className="bg-vibrant-orange/20 text-orange-400">
                   <Crown className="w-3 h-3 mr-1" />
-                  Basic: $6.99/mo for voice cloning & full songs
+                  Basic: $6.99/mo - 3 songs, 5:30 length, voice cloning
                 </Badge>
+                <div className="text-xs text-gray-500">
+                  Pro: $12.99/mo - 50 songs • Enterprise: $39.99/mo - Unlimited
+                </div>
               </div>
             </div>
           </CardContent>

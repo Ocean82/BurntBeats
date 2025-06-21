@@ -6,12 +6,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import SongGenerator from "@/pages/song-generator";
 import NotFound from "@/pages/not-found";
-import AuthForm from "@/components/auth-form";
+import LandingPage from "@/components/landing-page";
 import PaymentForm from "@/components/payment-form";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/useAuth";
 
 function Router() {
-  const { user, login, logout, updateUser, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [showPayment, setShowPayment] = useState(false);
 
   if (isLoading) {
@@ -26,8 +26,8 @@ function Router() {
     return (
       <PaymentForm
         onUpgradeSuccess={() => {
-          updateUser({ plan: "pro" });
           setShowPayment(false);
+          window.location.reload(); // Reload to get updated user data
         }}
         onCancel={() => setShowPayment(false)}
       />
@@ -35,7 +35,7 @@ function Router() {
   }
 
   if (!isAuthenticated) {
-    return <AuthForm onAuthSuccess={login} />;
+    return <LandingPage />;
   }
 
   return (
@@ -44,7 +44,7 @@ function Router() {
         <SongGenerator 
           user={user}
           onUpgrade={() => setShowPayment(true)}
-          onLogout={logout}
+          onLogout={() => window.location.href = "/api/logout"}
         />
       </Route>
       <Route component={NotFound} />

@@ -4,6 +4,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { pricingService } from "./pricing-service";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertVoiceSampleSchema, insertSongSchema } from "@shared/schema";
 import multer from "multer";
 import type { Request as ExpressRequest } from "express";
@@ -22,44 +23,18 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
-  // Authentication routes
-  app.post("/api/auth/signup", async (req, res) => {
+  // Auth middleware
+  await setupAuth(app);
+
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userData = req.body;
-      
-      // Check if user already exists
-      const existingUser = await storage.getUserByUsername(userData.username);
-      if (existingUser) {
-        return res.status(400).json({ error: "Username already exists" });
-      }
-
-      // Create new user
-      const newUser = await storage.createUser(userData);
-      res.json({ id: newUser.id, username: newUser.username });
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
     } catch (error) {
-      res.status(500).json({ error: "Failed to create user" });
-    }
-  });
-
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const { username, password } = req.body;
-      
-      const user = await storage.getUserByUsername(username);
-      if (!user || user.password !== password) {
-        return res.status(401).json({ error: "Invalid credentials" });
-      }
-
-      // Return full user data including plan and usage
-      res.json({ 
-        id: user.id, 
-        username: user.username, 
-        plan: user.plan || 'free',
-        songsThisMonth: 0 // This would come from a songs count query in production
-      });
-    } catch (error) {
-      res.status(500).json({ error: "Login failed" });
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
     }
   });
 
