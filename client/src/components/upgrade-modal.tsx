@@ -78,7 +78,7 @@ export default function UpgradeModal({ currentPlan, onUpgrade, children }: Upgra
         <DialogHeader>
           <DialogTitle className="text-2xl font-poppins font-bold text-center">
             <Crown className="w-6 h-6 inline mr-2 text-vibrant-orange" />
-            Upgrade to BangerGPT Pro
+            Upgrade to Burnt Beats Pro
           </DialogTitle>
         </DialogHeader>
         

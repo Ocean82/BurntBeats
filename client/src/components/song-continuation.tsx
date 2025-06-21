@@ -315,7 +315,7 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
         <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 rounded-lg p-3 border border-green-500/30">
           <p className="text-sm text-green-300">
             <Wand2 className="w-4 h-4 inline mr-1" />
-            <strong>BangerGPT Tip:</strong> Higher creativity = more surprises. Lower creativity = stays true to your original vibe. 
+            <strong>Burnt Beats Tip:</strong> Higher creativity = more surprises. Lower creativity = stays true to your original vibe. 
             Most bangers live around 6-7 on the creativity scale.
           </p>
         </div>
