@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import http from 'http'; // Import http module
 
 const app = express();
 app.use(express.json());
@@ -66,5 +67,27 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+  });
+
+  // Add error handling for server
+  server.on('error', (error) => {
+    console.error('Server error:', error);
+  });
+
+  // Graceful shutdown handling
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  });
+
+  process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down gracefully');
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
   });
 })();

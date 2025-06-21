@@ -61,10 +61,23 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
     enabled: userPlan === "pro",
   });
 
+  const songLengths = userPlan === "free" 
+    ? ["0:30"]
+    : [
+        "3:00 - 3:30",
+        "3:30 - 4:00", 
+        "4:00 - 4:30",
+        "4:30 - 5:00",
+        "5:00 - 5:30"
+      ];
+
+  // Ensure free users default to 30 seconds
+  const defaultSongLength = userPlan === "free" ? "0:30" : "3:00 - 3:30";
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      userId: 1, // Mock user ID
+      userId: "1", // Test user ID as string
       title: "",
       lyrics: "",
       genre: "pop",
@@ -73,7 +86,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
       mood: "happy", 
       tone: "warm",
       tempo: 120,
-      songLength: userPlan === "free" ? "0:30" : "3:00 - 3:30",
+      songLength: defaultSongLength,
       voiceSampleId: null,
       status: "pending",
       generationProgress: 0,
@@ -87,11 +100,11 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
       if (userPlan === "free" && freeUsage.songsThisMonth >= freeUsage.limit) {
         throw new Error("Monthly limit reached");
       }
-      
+
       if (lyricsQuality?.shouldBlock) {
         throw new Error("Lyrics quality too low");
       }
-      
+
       const response = await apiRequest("POST", "/api/songs", {
         ...data,
         tempo: tempo[0],
@@ -115,7 +128,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
         "I don't feel like it right now... just kidding, making magic!"
       ];
       const randomMessage = sassySuccessMessages[Math.floor(Math.random() * sassySuccessMessages.length)];
-      
+
       toast({
         title: "Song generation started",
         description: randomMessage,
@@ -131,7 +144,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
           "I'd love to help you out, but you've got to take me somewhere that doesn't involve a value meal."
         ];
         const randomTitle = sassyLimitMessages[Math.floor(Math.random() * sassyLimitMessages.length)];
-        
+
         toast({
           title: randomTitle,
           description: "You've burned through all 3 free songs this month. Time to upgrade if you want to keep the party going!",
@@ -145,7 +158,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
           "Even auto-generated lyrics have more soul than this."
         ];
         const randomTitle = sassyQualityMessages[Math.floor(Math.random() * sassyQualityMessages.length)];
-        
+
         toast({
           title: randomTitle,
           description: "I've got standards. Fix up those lyrics and try again.",
@@ -206,16 +219,6 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
     { value: "ethereal", label: "Ethereal", description: "Dreamy and floating" },
   ];
 
-  const songLengths = userPlan === "free" 
-    ? ["0:30"] 
-    : [
-        "3:00 - 3:30",
-        "3:30 - 4:00", 
-        "4:00 - 4:30",
-        "4:30 - 5:00",
-        "5:00 - 5:30"
-      ];
-
   const wordCount = form.watch("lyrics")?.split(/\s+/).filter(word => word.length > 0).length || 0;
   const estimatedDuration = Math.max(180, wordCount * 3); // Rough estimate
   const formatDuration = (seconds: number) => {
@@ -234,7 +237,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-poppins font-semibold">Song Lyrics</h3>
               </div>
-              
+
               {/* AI Lyrics Assistant */}
               <AILyricsAssistant 
                 onLyricsGenerated={(lyrics) => {
@@ -245,7 +248,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
                 genre={form.watch("genre")}
                 mood={mood}
               />
-              
+
               <FormField
                 control={form.control}
                 name="lyrics"
@@ -265,12 +268,12 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
                   </FormItem>
                 )}
               />
-              
+
               <div className="flex items-center justify-between mt-4 text-sm text-gray-400">
                 <span>{wordCount} words</span>
                 <span>{formatDuration(estimatedDuration)}</span>
               </div>
-              
+
               {/* Lyrics Quality Checker */}
               <LyricsQualityChecker 
                 lyrics={currentLyrics}
@@ -285,7 +288,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
                   <Crown className="mr-2 text-vibrant-orange" />
                   Custom Voice Samples
                 </h3>
-                
+
                 {voiceSamples.length > 0 && (
                   <div className="mb-4">
                     <FormLabel className="text-sm font-medium text-gray-300 mb-2 block">
@@ -315,7 +318,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
                     </div>
                   </div>
                 )}
-                
+
                 <VoiceRecorder userId={1} />
                 <TextToSpeech userId={1} />
               </div>
@@ -366,7 +369,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
             {/* Music Style */}
             <div className="bg-dark-card rounded-xl p-6">
               <h3 className="text-lg font-poppins font-semibold mb-4">Music Style</h3>
-              
+
               <div className="space-y-4">
                 <FormField
                   control={form.control}
@@ -521,7 +524,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
             {userPlan === "pro" ? (
               <div className="bg-dark-card rounded-xl p-6">
                 <h3 className="text-lg font-poppins font-semibold mb-4">Advanced Options</h3>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-300">Add Intro/Outro</span>
@@ -532,7 +535,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
                       }
                     />
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-300">Instrumental Breaks</span>
                     <Switch
@@ -542,7 +545,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
                       }
                     />
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-300">Auto-Harmonies</span>
                     <Switch

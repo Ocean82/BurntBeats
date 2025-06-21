@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 interface SimpleAudioTestProps {
@@ -6,16 +6,18 @@ interface SimpleAudioTestProps {
 }
 
 export default function SimpleAudioTest({ audioUrl }: SimpleAudioTestProps) {
-  const [audio] = useState(() => new Audio(audioUrl));
+  const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
   const handlePlay = async () => {
+    if (!audioRef.current) return;
+    
     try {
       if (isPlaying) {
-        audio.pause();
+        audioRef.current.pause();
         setIsPlaying(false);
       } else {
-        await audio.play();
+        await audioRef.current.play();
         setIsPlaying(true);
       }
     } catch (error) {
@@ -30,7 +32,13 @@ export default function SimpleAudioTest({ audioUrl }: SimpleAudioTestProps) {
       <Button onClick={handlePlay}>
         {isPlaying ? 'Pause' : 'Play'} Test Audio
       </Button>
-      <audio controls className="w-full mt-4" src={audioUrl}>
+      <audio 
+        ref={audioRef}
+        controls 
+        className="w-full mt-4" 
+        src={audioUrl}
+        onEnded={() => setIsPlaying(false)}
+      >
         Your browser does not support the audio element.
       </audio>
     </div>
