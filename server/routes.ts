@@ -212,21 +212,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const song = insertSongSchema.parse(req.body);
       
-      // For test user, bypass usage limits and use default plan
+      // For test user, use basic plan with 1 minute songs
       const testUserId = "1";
       const testUser = {
         id: "1",
-        plan: "free",
+        plan: "basic",
         songsThisMonth: 0,
         monthlyLimit: 3
       };
 
-      // Apply basic restrictions for test user
+      // Apply plan restrictions - Basic plan allows 1:00, Free allows 0:30
       const restrictedSong = {
         ...song,
         userId: testUserId,
-        planRestricted: testUser.plan === "free",
-        songLength: testUser.plan === "free" ? "0:30" : song.songLength,
+        planRestricted: false,
+        songLength: "1:00", // Basic plan gets 1:00 minute songs
       };
 
       const created = await storage.createSong(restrictedSong);
@@ -352,14 +352,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/pricing/usage/:userId", async (req, res) => {
     try {
-      const userId = parseInt(req.params.userId);
+      const userId = req.params.userId;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
 
       const planLimits = pricingService.getPlanLimits(user.plan);
-      const usageCheck = await pricingService.checkUsageLimit(userId);
+      const usageCheck = await pricingService.checkUsageLimit(parseInt(userId));
 
       res.json({
         plan: user.plan,
@@ -377,7 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/pricing/upgrade", async (req, res) => {
     try {
       const { userId, newPlan } = req.body;
-      const user = await storage.getUser(userId);
+      const user = await storage.getUser(userId.toString());
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -387,7 +387,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid plan" });
       }
 
-      await storage.updateUser(userId, {
+      await storage.updateUser(userId.toString(), {
         plan: newPlan,
         monthlyLimit: planLimits.songsPerMonth === -1 ? 999999 : planLimits.songsPerMonth,
         planExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
@@ -971,8 +971,8 @@ async function generateSong(songId: number) {
       generationProgress: 10 
     });
 
-    // Parse duration - parseSongDuration now returns seconds directly
-    const durationSeconds = parseSongDuration(song.songLength);
+    // Parse duration - ensure Basic plan gets 60 seconds
+    const durationSeconds = song.songLength === "1:00" ? 60 : parseSongDuration(song.songLength);
     
     // Generate file paths
     const outputPath = `uploads/generated_${songId}_${Date.now()}.mp3`;
@@ -1011,7 +1011,7 @@ async function generateSong(songId: number) {
       sections: sections
     });
 
-    console.log(`Music generation completed: ${result.message}`);
+    console.log(`Music generation completed successfully for: ${song.title}`);
 
   } catch (error) {
     console.error('Song generation failed:', error);

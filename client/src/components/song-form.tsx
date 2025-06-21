@@ -71,8 +71,8 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
         "5:00 - 5:30"
       ];
 
-  // Ensure free users default to 30 seconds
-  const defaultSongLength = userPlan === "free" ? "0:30" : "3:00 - 3:30";
+  // Set default song length based on plan
+  const defaultSongLength = userPlan === "free" ? "0:30" : userPlan === "basic" ? "1:00" : "3:00 - 3:30";
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -86,7 +86,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
       mood: "happy", 
       tone: "warm",
       tempo: 120,
-      songLength: defaultSongLength,
+      songLength: userPlan === "basic" ? "1:00" : defaultSongLength,
       voiceSampleId: null,
       status: "pending",
       generationProgress: 0,
