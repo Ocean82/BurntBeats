@@ -62,7 +62,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({
       name: 'Burnt Beats',
       description: 'AI Music Creation Platform',
-      website: 'https://text-music-maker-sammyjernigan.replit.app',
+      website: 'https://burnt-beats-sammyjernigan.replit.app',
       contact: 'support@burnt-beats.com'
     });
   });
