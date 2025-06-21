@@ -172,6 +172,7 @@ Changelog:
   * **SESSION MANAGEMENT**: PostgreSQL-backed sessions with proper logout handling via /api/logout
   * **LOGO CONSISTENCY**: Updated all logo imports from bangergpt-logo.jpeg to burnt-beats-logo.jpeg
   * **PAYMENT INTEGRATION**: Stripe payment intents properly configured with Burnt Beats service names and return URLs
+  * **STRIPE VERIFICATION SUCCESS**: Added health check endpoint (/health) that enabled successful Stripe domain verification
 - June 20, 2025 (Night - Complete Burnt Beats Rebranding & Pricing Integration). Implemented comprehensive rebranding and pricing tier restrictions:
   * **COMPLETE REBRANDING TO BURNT BEATS**: Updated all brand references from BangerGPT to Burnt Beats across entire application
   * **COMPREHENSIVE PRICING TIER ENFORCEMENT**: Implemented proper access restrictions for all features based on user plan
