@@ -77,7 +77,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      userId: 1, // Mock user ID
+      userId: "1", // Test user ID as string
       title: "",
       lyrics: "",
       genre: "pop",
