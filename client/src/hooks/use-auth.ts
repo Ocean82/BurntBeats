@@ -13,7 +13,7 @@ export function useAuth() {
 
   useEffect(() => {
     // Check for stored user on mount
-    const storedUser = localStorage.getItem("bangergpt_user");
+    const storedUser = localStorage.getItem("burnt_beats_user");
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
@@ -22,19 +22,19 @@ export function useAuth() {
 
   const login = (userData: User) => {
     setUser(userData);
-    localStorage.setItem("bangergpt_user", JSON.stringify(userData));
+    localStorage.setItem("burnt_beats_user", JSON.stringify(userData));
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("bangergpt_user");
+    localStorage.removeItem("burnt_beats_user");
   };
 
   const updateUser = (updates: Partial<User>) => {
     if (user) {
       const updatedUser = { ...user, ...updates };
       setUser(updatedUser);
-      localStorage.setItem("bangergpt_user", JSON.stringify(updatedUser));
+      localStorage.setItem("burnt_beats_user", JSON.stringify(updatedUser));
     }
   };
 
