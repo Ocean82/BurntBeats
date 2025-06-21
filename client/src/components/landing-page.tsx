@@ -81,7 +81,7 @@ export default function LandingPage() {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-4 gap-6">
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
               <CardTitle className="text-white text-center">Free</CardTitle>
@@ -94,11 +94,89 @@ export default function LandingPage() {
               <ul className="space-y-2 text-gray-300">
                 <li>• 3 songs per month</li>
                 <li>• 30-second tracks</li>
-                <li>• Basic vocal styles</li>
-                <li>• Standard quality downloads</li>
+                <li>• Basic genres only</li>
+                <li>• MP3 128kbps quality</li>
               </ul>
               <Button onClick={handleLogin} variant="outline" className="w-full">
                 Get Started
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-800 border-gray-700 relative">
+            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+              <Badge variant="secondary">Most Popular</Badge>
+            </div>
+            <CardHeader>
+              <CardTitle className="text-white text-center">Basic</CardTitle>
+              <div className="text-center">
+                <span className="text-3xl font-bold text-white">$6.99</span>
+                <span className="text-gray-400">/month</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="space-y-2 text-gray-300">
+                <li>• 3 songs per month</li>
+                <li>• 5:30 max length</li>
+                <li>• Voice cloning + TTS</li>
+                <li>• MP3 320kbps quality</li>
+                <li>• 5 genres available</li>
+              </ul>
+              <Button onClick={handleLogin} className="w-full bg-vibrant-orange hover:bg-orange-600">
+                Start Basic
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-800 border-gray-700 relative">
+            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+              <Badge className="bg-gradient-to-r from-vibrant-orange to-orange-600 text-white">Best Value</Badge>
+            </div>
+            <CardHeader>
+              <CardTitle className="text-white text-center">Pro</CardTitle>
+              <div className="text-center">
+                <span className="text-3xl font-bold text-white">$12.99</span>
+                <span className="text-gray-400">/month</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="space-y-2 text-gray-300">
+                <li>• 50 songs per month</li>
+                <li>• 5:30 max length</li>
+                <li>• Analytics & collaboration</li>
+                <li>• WAV quality available</li>
+                <li>• 8 genres available</li>
+              </ul>
+              <Button onClick={handleLogin} className="w-full bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange">
+                Start Pro
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-800 border-yellow-400/50 relative">
+            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+              <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black">Professional</Badge>
+            </div>
+            <CardHeader>
+              <CardTitle className="text-white text-center flex items-center justify-center gap-2">
+                <Crown className="w-5 h-5 text-yellow-400" />
+                Enterprise
+              </CardTitle>
+              <div className="text-center">
+                <span className="text-3xl font-bold text-white">$39.99</span>
+                <span className="text-gray-400">/month</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="space-y-2 text-gray-300">
+                <li>• Unlimited songs</li>
+                <li>• 5:30 max length</li>
+                <li>• All features included</li>
+                <li>• FLAC quality available</li>
+                <li>• Commercial use license</li>
+              </ul>
+              <Button onClick={handleLogin} className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-black hover:from-yellow-500 hover:to-yellow-700">
+                Start Enterprise
               </Button>
             </CardContent>
           </Card>
