@@ -48,6 +48,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.redirect('/');
   });
 
+  // Health check endpoint for Stripe verification
+  app.get('/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      service: 'Burnt Beats',
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  // Business info endpoint for verification
+  app.get('/api/business-info', (req, res) => {
+    res.json({
+      name: 'Burnt Beats',
+      description: 'AI Music Creation Platform',
+      website: 'https://burnt-beats-sammyjernigan.replit.app',
+      contact: 'support@burnt-beats.com'
+    });
+  });
+
   // Create Stripe payment intent for subscription upgrades
   app.post("/api/create-payment-intent", async (req, res) => {
     try {
