@@ -63,7 +63,10 @@ export default function CollaborativeWorkspace({
   // WebSocket connection
   useEffect(() => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    // For Replit, use the current host (which handles port forwarding automatically)
+    // Remove any undefined ports and ensure clean URL
+    const host = window.location.host.replace(':undefined', '');
+    const wsUrl = `${protocol}//${host}/ws`;
     
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
