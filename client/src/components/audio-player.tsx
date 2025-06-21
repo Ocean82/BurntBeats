@@ -23,9 +23,7 @@ export default function AudioPlayer({ song }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolumeState] = useState(1);
   const [volume, setVolume] = useState([70]);
-  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     const audioElement = audioRef.current;
