@@ -164,6 +164,14 @@ The application uses three main database tables:
 ## Changelog
 
 Changelog:
+- June 21, 2025 (Complete Replit Auth & Burnt Beats Domain Integration). Integrated Replit authentication system and finalized Burnt Beats branding for Stripe compatibility:
+  * **REPLIT AUTH INTEGRATION**: Complete OpenID Connect authentication system with session management
+  * **BURNT BEATS DOMAIN CONSISTENCY**: All app references updated to "Burnt Beats" for https://burnt-beats-sammyjernigan.replit.app
+  * **STRIPE COMPATIBILITY**: Payment metadata and branding aligned with "Burnt Beats" for proper Stripe account setup
+  * **AUTHENTICATION FLOW**: Landing page → Replit OAuth → Main app with automatic test user for development
+  * **SESSION MANAGEMENT**: PostgreSQL-backed sessions with proper logout handling via /api/logout
+  * **LOGO CONSISTENCY**: Updated all logo imports from bangergpt-logo.jpeg to burnt-beats-logo.jpeg
+  * **PAYMENT INTEGRATION**: Stripe payment intents properly configured with Burnt Beats service names and return URLs
 - June 20, 2025 (Night - Complete Burnt Beats Rebranding & Pricing Integration). Implemented comprehensive rebranding and pricing tier restrictions:
   * **COMPLETE REBRANDING TO BURNT BEATS**: Updated all brand references from BangerGPT to Burnt Beats across entire application
   * **COMPREHENSIVE PRICING TIER ENFORCEMENT**: Implemented proper access restrictions for all features based on user plan

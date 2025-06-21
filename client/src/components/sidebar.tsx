@@ -1,6 +1,6 @@
 import { Music, Plus, History, Mic, Download, Crown, Library, BarChart3, GitBranch, Users, BookOpen, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import bangerGptLogo from "@/assets/bangergpt-logo.jpeg";
+const burntBeatsLogo = "/burnt-beats-logo.jpeg";
 
 interface SidebarProps {
   onMenuClick?: (menuItem: string) => void;
@@ -26,7 +26,7 @@ export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: Sideba
       <div className="mb-8">
         <div className="flex items-center mb-2">
           <img 
-            src={bangerGptLogo} 
+            src={burntBeatsLogo} 
             alt="Burnt Beats Logo" 
             className="w-10 h-10 mr-3 rounded-lg object-cover"
           />

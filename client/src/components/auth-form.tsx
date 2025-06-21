@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 // Removed insertUserSchema as we're using Replit Auth
 import { z } from "zod";
-import bangerGptLogo from "@/assets/bangergpt-logo.jpeg";
+const burntBeatsLogo = "/burnt-beats-logo.jpeg";
 
 const loginSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -147,7 +147,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <img 
-              src={bangerGptLogo} 
+              src={burntBeatsLogo} 
               alt="Burnt Beats Logo" 
               className="w-12 h-12 mr-3 rounded-lg object-cover"
             />
