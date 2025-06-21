@@ -75,7 +75,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: {
           plan: plan,
           service: `Burnt Beats ${selectedPlan.name} Subscription`
-        }
+        },
+        automatic_payment_methods: {
+          enabled: true,
+        },
+        return_url: 'https://burnt-beats-sammyjernigan.replit.app/success'
       });
 
       res.json({ 

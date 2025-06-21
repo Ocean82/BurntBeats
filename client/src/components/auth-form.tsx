@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 // Removed insertUserSchema as we're using Replit Auth
 import { z } from "zod";
-import bangerGptLogo from "@/assets/bangergpt-logo.jpeg";
+const burntBeatsLogo = "/burnt-beats-logo.jpeg";
 
 const loginSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -21,6 +21,14 @@ const loginSchema = z.object({
 });
 
 // Using Replit Auth - no signup schema needed
+const signupSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"], // path of error
+});
 
 interface AuthFormProps {
   onAuthSuccess: (user: any) => void;
@@ -61,7 +69,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
         "I don't feel like it right now... just kidding, welcome back!"
       ];
       const randomWelcome = sassyWelcomes[Math.floor(Math.random() * sassyWelcomes.length)];
-      
+
       toast({
         title: randomWelcome,
         description: "Time to create some fire tracks!",
@@ -77,7 +85,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
         "Sir, this is a music app, not a guessing game"
       ];
       const randomError = sassyErrors[Math.floor(Math.random() * sassyErrors.length)];
-      
+
       toast({
         title: randomError,
         description: "Check your username and password and try again.",
@@ -101,7 +109,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
         "Finally, someone with taste joins Burnt Beats!"
       ];
       const randomWelcome = sassyWelcomes[Math.floor(Math.random() * sassyWelcomes.length)];
-      
+
       toast({
         title: randomWelcome,
         description: "You get 3 free songs to start. Make them count!",
@@ -116,7 +124,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
         "That username is already someone else's vibe"
       ];
       const randomError = sassyErrors[Math.floor(Math.random() * sassyErrors.length)];
-      
+
       toast({
         title: randomError,
         description: "Try a different username or check your details.",
@@ -139,7 +147,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <img 
-              src={bangerGptLogo} 
+              src={burntBeatsLogo} 
               alt="Burnt Beats Logo" 
               className="w-12 h-12 mr-3 rounded-lg object-cover"
             />
@@ -304,18 +312,48 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
                 <li>• Basic genres (Pop, Rock, Electronic)</li>
                 <li>• MP3 128kbps quality</li>
               </ul>
-              <div className="mt-3 space-y-2">
-                <Badge className="bg-vibrant-orange/20 text-orange-400">
-                  <Crown className="w-3 h-3 mr-1" />
-                  Basic: $6.99/mo - Voice cloning, 5:30 length
-                </Badge>
-                <Badge className="bg-blue-500/20 text-blue-400">
-                  Pro: $12.99/mo - 50 songs, analytics, collaboration
-                </Badge>
-                <Badge className="bg-yellow-500/20 text-yellow-400">
-                  Enterprise: $39.99/mo - Unlimited, all features
-                </Badge>
-              </div>
+              {/* Quick Plan Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-gray-800 rounded-lg p-4 text-center">
+            <h3 className="font-semibold text-white mb-2">Free</h3>
+            <p className="text-2xl font-bold text-white mb-2">$0</p>
+            <ul className="text-sm text-gray-300 space-y-1">
+              <li>3 songs/month</li>
+              <li>30-second tracks</li>
+              <li>Basic quality</li>
+            </ul>
+          </div>
+
+          <div className="bg-gradient-to-br from-vibrant-orange/20 to-orange-600/20 border border-vibrant-orange rounded-lg p-4 text-center">
+            <h3 className="font-semibold text-white mb-2">Basic</h3>
+            <p className="text-2xl font-bold text-white mb-2">$6.99</p>
+            <ul className="text-sm text-gray-300 space-y-1">
+              <li>3 full songs/month</li>
+              <li>Voice cloning</li>
+              <li>Premium quality</li>
+            </ul>
+          </div>
+
+          <div className="bg-gray-800 rounded-lg p-4 text-center">
+            <h3 className="font-semibold text-white mb-2">Pro</h3>
+            <p className="text-2xl font-bold text-white mb-2">$12.99</p>
+            <ul className="text-sm text-gray-300 space-y-1">
+              <li>50 songs/month</li>
+              <li>Advanced tools</li>
+              <li>Collaboration</li>
+            </ul>
+          </div>
+
+          <div className="bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 border border-yellow-400 rounded-lg p-4 text-center">
+            <h3 className="font-semibold text-white mb-2">Enterprise</h3>
+            <p className="text-2xl font-bold text-white mb-2">$39.99</p>
+            <ul className="text-sm text-gray-300 space-y-1">
+              <li>Unlimited songs</li>
+              <li>Commercial license</li>
+              <li>Priority support</li>
+            </ul>
+          </div>
+        </div>
             </div>
           </CardContent>
         </Card>

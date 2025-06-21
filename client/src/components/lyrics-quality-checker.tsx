@@ -255,7 +255,7 @@ export default function LyricsQualityChecker({ lyrics, onQualityChecked }: Lyric
           <div className="bg-gray-800 rounded-lg p-3">
             <p className="text-sm text-gray-300">
               <Sparkles className="w-4 h-4 inline mr-1 text-purple-400" />
-              <strong>BangerGPT says:</strong> {qualityResult.aiComment}
+              <strong>Burnt Beats says:</strong> {qualityResult.aiComment}
             </p>
           </div>
 

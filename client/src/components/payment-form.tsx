@@ -134,7 +134,7 @@ export default function PaymentForm({ onUpgradeSuccess, onCancel }: PaymentFormP
           <CardHeader>
             <CardTitle className="flex items-center text-xl font-bold text-white">
               <Crown className="w-6 h-6 mr-2 text-yellow-500" />
-              BangerGPT Pro
+              Burnt Beats Pro
               <Badge className="ml-2 bg-yellow-500/20 text-yellow-400">$6.99/month</Badge>
             </CardTitle>
           </CardHeader>

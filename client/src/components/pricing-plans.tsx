@@ -8,7 +8,7 @@ import { Crown, Check, X, Music, Mic, BarChart3, GitBranch, Users, Settings, Sta
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
 import StripeCheckout from "./stripe-checkout";
-import bangerGptLogo from "@/assets/bangergpt-logo.jpeg";
+
 
 interface PricingPlansProps {
   userId: number;

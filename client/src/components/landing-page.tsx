@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Music, Sparkles, Crown, ArrowRight, Star, Users, Zap } from "lucide-react";
-import bangerGptLogo from "@/assets/bangergpt-logo.jpeg";
+const burntBeatsLogo = "/burnt-beats-logo.jpeg";
 
 export default function LandingPage() {
   const handleLogin = () => {
@@ -16,7 +16,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center">
             <img 
-              src={bangerGptLogo} 
+              src={burntBeatsLogo} 
               alt="Burnt Beats Logo" 
               className="w-10 h-10 mr-3 rounded-lg object-cover"
             />

@@ -177,14 +177,14 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
       <Card className="bg-dark-card border-gray-800">
         <CardHeader>
           <CardTitle className="text-lg font-medium text-white">
-            Song Continuation (Pro Feature)
+            Song Continuation (Basic Feature)
           </CardTitle>
         </CardHeader>
         <CardContent className="text-center py-8">
           <Plus className="w-12 h-12 text-gray-500 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-300 mb-2">Stop being so cheap!</h3>
           <p className="text-sm text-gray-400 mb-6 max-w-md mx-auto">
-            You want me to extend your song? What did you expect from the free plan? I can't work miracles on a budget menu.
+            You want me to extend your song? What did you expect from the free plan? I can't work miracles on a budget menu. Song continuation is available starting with Basic plan.
           </p>
           <Button className="bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange">
             Upgrade to Basic - $6.99/mo
@@ -315,7 +315,7 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
         <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 rounded-lg p-3 border border-green-500/30">
           <p className="text-sm text-green-300">
             <Wand2 className="w-4 h-4 inline mr-1" />
-            <strong>BangerGPT Tip:</strong> Higher creativity = more surprises. Lower creativity = stays true to your original vibe. 
+            <strong>Burnt Beats Tip:</strong> Higher creativity = more surprises. Lower creativity = stays true to your original vibe. 
             Most bangers live around 6-7 on the creativity scale.
           </p>
         </div>
