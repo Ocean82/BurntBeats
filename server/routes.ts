@@ -998,9 +998,8 @@ async function generateSong(songId: number) {
       generationProgress: 10 
     });
 
-    // Parse duration
-    const durationMs = parseSongDuration(song.songLength);
-    const durationSeconds = Math.floor(durationMs / 1000);
+    // Parse duration - parseSongDuration now returns seconds directly
+    const durationSeconds = parseSongDuration(song.songLength);
     
     // Generate file paths
     const outputPath = `uploads/generated_${songId}_${Date.now()}.mp3`;
@@ -1043,7 +1042,7 @@ async function generateSong(songId: number) {
     await execAsync(`rm -f "${wavPath}"`);
 
     // Create structured song sections
-    const sections = createStructuredSections(song.lyrics, durationSeconds * 1000);
+    const sections = createStructuredSections(song.lyrics, durationSeconds);
 
     await storage.updateSong(songId, {
       status: "completed",
@@ -1134,24 +1133,24 @@ function getVocalProcessingParams(song: any) {
   return moodSettings[song.mood as keyof typeof moodSettings] || moodSettings.happy;
 }
 
-function parseSongDuration(songLength: string) {
+function parseSongDuration(songLength: string): number {
   // Handle time format like "0:30", "1:00", "2:30", etc.
   if (songLength.includes(':')) {
     const [minutes, seconds] = songLength.split(':').map(Number);
-    return (minutes * 60 + seconds) * 1000;
+    return (minutes * 60 + seconds);
   }
   
   // Handle legacy formats
   const durations = {
-    '30sec': 30000,
-    '1min': 60000,
-    '2min': 120000,
-    '3min': 180000,
-    '4min': 240000,
-    '5min30sec': 330000
+    '30sec': 30,
+    '1min': 60,
+    '2min': 120,
+    '3min': 180,
+    '4min': 240,
+    '5min30sec': 330
   };
   
-  return durations[songLength as keyof typeof durations] || 30000; // Default to 30 seconds
+  return durations[songLength as keyof typeof durations] || 30; // Default to 30 seconds
 }
 
 function generateSongStructure(detectedStructure: any[], durationMs: number) {
@@ -1242,13 +1241,13 @@ function analyzeVocalPreferences(song: any) {
 }
 
 function generateMusicalComposition(song: any, lyricsAnalysis: any) {
-  const durationMs = parseSongDuration(song.songLength);
+  const durationSeconds = parseSongDuration(song.songLength);
   
   return {
-    duration: durationMs,
+    duration: durationSeconds,
     tempo: song.tempo,
     genre: song.genre,
-    structure: generateSongStructure(lyricsAnalysis.detectedStructure, durationMs),
+    structure: generateSongStructure(lyricsAnalysis.detectedStructure, durationSeconds),
     arrangement: getGenreArrangement(song.genre),
     instrumentalBreaks: calculateInstrumentalSections(durationMs)
   };
@@ -1267,7 +1266,7 @@ async function processAudioGeneration(song: any, composition: any, vocalAnalysis
   }
   
   try {
-    const duration = composition.duration / 1000; // Convert to seconds
+    const duration = composition.duration; // Already in seconds
     const tempo = composition.tempo || 120;
     const genre = composition.genre || 'pop';
     
@@ -1419,11 +1418,11 @@ function getRhythmPattern(genre: string, tempo: number): string {
   return patterns[genre as keyof typeof patterns] || '4/4';
 }
 
-function createStructuredSections(lyrics: string, durationMs: number) {
+function createStructuredSections(lyrics: string, durationSeconds: number) {
   const lines = lyrics.split('\n').filter(line => line.trim());
   const sections = [];
-  const totalSections = Math.max(4, Math.min(8, Math.ceil(lines.length / 3)));
-  const sectionDuration = durationMs / totalSections;
+  const totalSections = Math.max(2, Math.min(4, Math.ceil(lines.length / 2))); // Fewer sections for short songs
+  const sectionDuration = durationSeconds / totalSections;
   
   let currentTime = 0;
   let lineIndex = 0;
@@ -1438,8 +1437,8 @@ function createStructuredSections(lyrics: string, durationMs: number) {
     sections.push({
       id: i + 1,
       type: sectionType,
-      startTime: Math.round(currentTime / 1000),
-      endTime: Math.round((currentTime + sectionDuration) / 1000),
+      startTime: Math.round(currentTime),
+      endTime: Math.round(currentTime + sectionDuration),
       lyrics: sectionLyrics || `${sectionType} lyrics`
     });
     
