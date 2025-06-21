@@ -307,11 +307,14 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
               <div className="mt-3 space-y-2">
                 <Badge className="bg-vibrant-orange/20 text-orange-400">
                   <Crown className="w-3 h-3 mr-1" />
-                  Basic: $6.99/mo - 3 songs, 5:30 length, voice cloning
+                  Basic: $6.99/mo - Voice cloning, 5:30 length
                 </Badge>
-                <div className="text-xs text-gray-500">
-                  Pro: $12.99/mo - 50 songs • Enterprise: $39.99/mo - Unlimited
-                </div>
+                <Badge className="bg-blue-500/20 text-blue-400">
+                  Pro: $12.99/mo - 50 songs, analytics, collaboration
+                </Badge>
+                <Badge className="bg-yellow-500/20 text-yellow-400">
+                  Enterprise: $39.99/mo - Unlimited, all features
+                </Badge>
               </div>
             </div>
           </CardContent>

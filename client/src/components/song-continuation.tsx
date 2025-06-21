@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { 
   Play, 
-  Plus, 
+  Plus,
+  Crown,
   ArrowRight,
   Music2,
   Wand2,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Song } from "@shared/schema";
+import UpgradeModal from "./upgrade-modal";
 
 interface SongContinuationProps {
   song: Song;
@@ -46,13 +48,13 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
       if (data.prompt && data.prompt.length > 200) {
         throw new Error("too_complex");
       }
-      
+
       if (data.creativity >= 9 && data.length >= 100) {
         throw new Error("unrealistic_expectations");
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, 3000));
-      
+
       const sassyMessages = [
         "Alright, extending your banger with some fresh material...",
         "Time to take this song to the next level. Hold tight!",
@@ -63,7 +65,7 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
       ];
 
       const message = sassyMessages[Math.floor(Math.random() * sassyMessages.length)];
-      
+
       return {
         success: true,
         message,
@@ -92,7 +94,7 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
           "Houston, we have a problem... and it's your expectations"
         ];
         const randomResponse = complexityResponses[Math.floor(Math.random() * complexityResponses.length)];
-        
+
         toast({
           title: randomResponse,
           description: "Keep your requests simple and I'll keep making bangers.",
@@ -103,11 +105,12 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
           "Whoa there, tiger",
           "I'm good, but I'm not magic",
           "You're asking for the impossible here",
+          "You're asking for the impossible here",
           "These aren't the droids you're looking for",
           "I find your lack of realistic expectations disturbing"
         ];
         const randomResponse = expectationResponses[Math.floor(Math.random() * expectationResponses.length)];
-        
+
         toast({
           title: randomResponse,
           description: "Dial it back a notch and let's make something achievable.",
@@ -152,7 +155,7 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
         "You want more? Pay for more!"
       ];
       const randomMessage = sassyMessages[Math.floor(Math.random() * sassyMessages.length)];
-      
+
       toast({
         title: randomMessage,
         description: "Song continuation is for Pro users. Want to unlock the full creative toolkit?",
@@ -200,7 +203,7 @@ export default function SongContinuation({ song, onContinuationGenerated, userPl
           <Badge className="ml-2 bg-green-500/20 text-green-400">Extend & Enhance</Badge>
         </CardTitle>
       </CardHeader>
-      
+
       <CardContent className="space-y-6">
         {/* Current Song Info */}
         <div className="bg-gray-800 rounded-lg p-4">

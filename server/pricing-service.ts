@@ -254,13 +254,16 @@ export class PricingService {
 
     // Special cases for specific features
     if (requiredFeature === "voiceCloning" || requiredFeature === "textToSpeech") {
-      return "Voice features are available starting with Basic plan ($6.99/month)";
+      return "Voice features are available starting with Basic plan ($6.99/month) - includes voice cloning and text-to-speech";
     }
     if (requiredFeature === "analytics" || requiredFeature === "versionControl" || requiredFeature === "collaboration") {
-      return "Advanced tools are available with Pro plan ($12.99/month)";
+      return "Advanced tools are available with Pro plan ($12.99/month) - includes analytics, version control, and collaboration";
     }
     if (requiredFeature === "realTimeCollaboration" || requiredFeature === "musicTheoryTools" || requiredFeature === "socialFeatures") {
-      return "Professional features are available with Enterprise plan ($39.99/month)";
+      return "Professional features are available with Enterprise plan ($39.99/month) - includes real-time collaboration, music theory tools, and social features";
+    }
+    if (requiredFeature === "commercialUse" || requiredFeature === "prioritySupport" || requiredFeature === "apiAccess") {
+      return "Business features are available with Enterprise plan ($39.99/month) - includes commercial use license, priority support, and API access";
     }
 
     return messages[currentPlan] || "Upgrade required for this feature";
