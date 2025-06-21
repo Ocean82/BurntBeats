@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useErrorHandler } from '@/hooks/use-error-handler';
@@ -16,6 +16,19 @@ export const useSongGeneration = ({
   onGenerationStart,
   userId 
 }: UseSongGenerationProps) => {
+  // Global error handler for unhandled promise rejections
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.error('Unhandled promise rejection:', event.reason);
+      event.preventDefault();
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
   const [generatingSong, setGeneratingSong] = useState<Song | null>(null);
   const [generationProgress, setGenerationProgress] = useState(0);
   const { toast } = useToast();
@@ -44,7 +57,7 @@ export const useSongGeneration = ({
         createdAt: new Date(),
         updatedAt: new Date()
       } as Song;
-      
+
       setGeneratingSong(tempSong);
       setGenerationProgress(0);
       onGenerationStart?.(tempSong);
@@ -53,12 +66,12 @@ export const useSongGeneration = ({
       setGeneratingSong(song);
       // Start polling for progress
       startProgressPolling(song.id);
-      
+
       toast({
         title: "Song Generation Started",
         description: "Your song is being generated with real musical compositions",
       });
-      
+
       // Invalidate songs cache
       queryClient.invalidateQueries({ queryKey: ["/api/songs", userId] });
     },
@@ -75,30 +88,30 @@ export const useSongGeneration = ({
       try {
         const response = await apiRequest("GET", `/api/songs/single/${songId}`);
         const updatedSong = await response.json() as Song;
-        
+
         setGeneratingSong(updatedSong);
         setGenerationProgress(updatedSong.generationProgress || 0);
-        
+
         if (updatedSong.status === "completed") {
           clearInterval(pollInterval);
           setGeneratingSong(null);
           setGenerationProgress(0);
-          
+
           onGenerationComplete?.(updatedSong);
-          
+
           toast({
             title: "Song Generated Successfully",
             description: "Your song with authentic musical composition is ready to play!",
           });
-          
+
           // Invalidate cache
           queryClient.invalidateQueries({ queryKey: ["/api/songs", userId] });
-          
+
         } else if (updatedSong.status === "failed") {
           clearInterval(pollInterval);
           setGeneratingSong(null);
           setGenerationProgress(0);
-          
+
           handleError(new Error("Song generation failed. Please try again."));
         }
       } catch (error) {
