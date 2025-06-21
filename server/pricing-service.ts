@@ -67,7 +67,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
   },
   basic: {
     songsPerMonth: 3,
-    maxSongLength: "5:30",
+    maxSongLength: "1:00",
     features: {
       voiceCloning: true,
       textToSpeech: true,

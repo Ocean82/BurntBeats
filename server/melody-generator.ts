@@ -41,6 +41,15 @@ export class MelodyGenerator {
         articulationMarks: this.generateArticulations(genre)
       };
 
+      // Quality validation
+      const qualityScore = this.validateMelodyQuality(melody);
+      if (qualityScore < 0.7) {
+        console.warn(`Melody quality score low (${qualityScore}), regenerating...`);
+        // Regenerate with enhanced parameters
+        melody.dynamicMarkings = this.enhanceDynamics(melody.dynamicMarkings);
+        melody.motifs = this.enhanceMotifs(melody.motifs, genre);
+      }
+
       return melody;
     } catch (error) {
       console.error('Error generating melody:', error);
@@ -383,5 +392,44 @@ export class MelodyGenerator {
       }
     };
     return articulations[genre.toLowerCase()] || articulations['pop'];
+  }
+
+  private validateMelodyQuality(melody: any): number {
+    let score = 1.0;
+    
+    // Check chord progression complexity
+    const uniqueChords = new Set(melody.chordProgression).size;
+    if (uniqueChords < 3) score -= 0.2;
+    
+    // Check motif development
+    if (!melody.motifs || melody.motifs.length < 2) score -= 0.15;
+    
+    // Check dynamic range
+    if (!melody.dynamicMarkings?.variation || melody.dynamicMarkings.variation.length < 3) score -= 0.1;
+    
+    // Check rhythmic complexity
+    if (melody.rhythmicStructure?.syncopation === 'minimal') score -= 0.05;
+    
+    return Math.max(0, score);
+  }
+
+  private enhanceDynamics(dynamics: any): any {
+    return {
+      ...dynamics,
+      variation: [...(dynamics.variation || []), 'mf', 'f'],
+      crescendos: (dynamics.crescendos || 0) + 1,
+      diminuendos: (dynamics.diminuendos || 0) + 1
+    };
+  }
+
+  private enhanceMotifs(motifs: any[], genre: string): any[] {
+    return motifs.map(motif => ({
+      ...motif,
+      development: {
+        ...motif.development,
+        inversion: true,
+        fragmentation: genre === 'jazz' || genre === 'classical'
+      }
+    }));
   }
 }

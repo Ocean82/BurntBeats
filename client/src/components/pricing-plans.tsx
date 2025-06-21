@@ -165,7 +165,7 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
                       {plan.songsPerMonth === -1 ? "Unlimited" : plan.songsPerMonth}
                     </span>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Max song length</span>
                     <span className="font-semibold">{plan.maxSongLength}</span>
@@ -175,7 +175,7 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
 
                   <div className="space-y-2">
                     <h4 className="font-semibold text-sm">Features</h4>
-                    
+
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         {plan.features.voiceCloning ? 
@@ -184,7 +184,7 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
                         }
                         <span className="text-sm">Voice Cloning</span>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         {plan.features.textToSpeech ? 
                           <Check className="w-4 h-4 text-green-400" /> : 
@@ -192,7 +192,7 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
                         }
                         <span className="text-sm">Text-to-Speech</span>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         {plan.features.analytics ? 
                           <Check className="w-4 h-4 text-green-400" /> : 
@@ -200,7 +200,7 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
                         }
                         <span className="text-sm">Analytics Dashboard</span>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         {plan.features.versionControl ? 
                           <Check className="w-4 h-4 text-green-400" /> : 
@@ -208,7 +208,7 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
                         }
                         <span className="text-sm">Version Control</span>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         {plan.features.collaboration ? 
                           <Check className="w-4 h-4 text-green-400" /> : 
@@ -216,7 +216,7 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
                         }
                         <span className="text-sm">Collaboration Tools</span>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         {plan.features.realTimeCollaboration ? 
                           <Check className="w-4 h-4 text-green-400" /> : 
@@ -224,7 +224,7 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
                         }
                         <span className="text-sm">Real-time Collaboration</span>
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         {plan.features.musicTheoryTools ? 
                           <Check className="w-4 h-4 text-green-400" /> : 
