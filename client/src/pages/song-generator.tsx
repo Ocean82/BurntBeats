@@ -222,7 +222,7 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
         return <PricingPlans userId={user?.id || 1} currentPlan={userPlan} onUpgrade={onUpgrade} user={user} />;
       default:
         return (
-          <div className="flex-1 p-8">
+          <div className="h-full p-8 overflow-auto">
             <div className="max-w-4xl mx-auto">
               <div className="mb-8">
                 <div className="flex items-center justify-between mb-6">
@@ -291,49 +291,58 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex">
+    <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex">
       <Sidebar onMenuClick={handleMenuClick} activeMenu={activeMenu} />
-      {renderMainContent()}
+      <div className="flex-1 overflow-auto">
+        {renderMainContent()}
+      </div>
       
-      <div className="w-16 bg-dark-card p-4 flex flex-col items-center space-y-4">
+      <div className="w-20 bg-dark-card border-l border-gray-700 p-3 flex flex-col items-center space-y-3">
         <Button
           variant="ghost"
           size="icon"
-          className="text-gray-400 hover:text-white"
+          className="w-12 h-12 text-gray-400 hover:text-yellow-400 hover:bg-yellow-400/10 transition-all duration-200 rounded-lg"
           onClick={() => setActiveMenu("Pricing")}
+          title="Upgrade Plan"
         >
-          <Crown className="w-5 h-5" />
+          <Crown className="w-6 h-6" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="text-gray-400 hover:text-white"
+          className="w-12 h-12 text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 transition-all duration-200 rounded-lg"
+          title="Help & Support"
         >
-          <HelpCircle className="w-5 h-5" />
+          <HelpCircle className="w-6 h-6" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="text-gray-400 hover:text-white"
+          className="w-12 h-12 text-gray-400 hover:text-gray-200 hover:bg-gray-700 transition-all duration-200 rounded-lg"
+          title="Settings"
         >
-          <Settings className="w-5 h-5" />
+          <Settings className="w-6 h-6" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="text-gray-400 hover:text-white"
+          className="w-12 h-12 text-gray-400 hover:text-green-400 hover:bg-green-400/10 transition-all duration-200 rounded-lg"
+          title="Profile"
         >
-          <User className="w-5 h-5" />
+          <User className="w-6 h-6" />
         </Button>
         <div className="flex-1" />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-gray-400 hover:text-red-400"
-          onClick={onLogout}
-        >
-          <LogOut className="w-5 h-5" />
-        </Button>
+        <div className="border-t border-gray-700 pt-3 w-full flex justify-center">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-12 h-12 text-gray-400 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200 rounded-lg"
+            onClick={onLogout}
+            title="Logout"
+          >
+            <LogOut className="w-6 h-6" />
+          </Button>
+        </div>
       </div>
     </div>
   );

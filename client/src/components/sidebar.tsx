@@ -22,7 +22,7 @@ export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: Sideba
   ];
 
   return (
-    <div className="w-64 bg-dark-card p-6 flex flex-col">
+    <div className="w-64 bg-dark-card border-r border-gray-700 p-6 flex flex-col h-full">
       <div className="mb-8">
         <div className="flex items-center mb-2">
           <img 
