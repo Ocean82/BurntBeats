@@ -38,7 +38,7 @@ export interface PlanLimits {
 export const PLAN_LIMITS: Record<string, PlanLimits> = {
   free: {
     songsPerMonth: 2,
-    maxSongLength: "5:30", // Full length songs
+    maxSongLength: "5:30", // Full length songs  
     storage: 0, // No storage
     features: {
       voiceCloning: false,

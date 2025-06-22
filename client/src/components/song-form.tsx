@@ -44,7 +44,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
   const [mood, setMood] = useState("happy");
   const [tone, setTone] = useState("warm");
   const userPlan = user?.plan || "free";
-  const freeUsage = { songsThisMonth: user?.songsThisMonth || 0, limit: 3 };
+  const freeUsage = { songsThisMonth: user?.songsThisMonth || 0, limit: 2 };
   const [selectedVoiceSample, setSelectedVoiceSample] = useState<number | null>(null);
   const [advancedSettings, setAdvancedSettings] = useState({
     introOutro: true,
@@ -61,18 +61,16 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
     enabled: userPlan === "pro",
   });
 
-  const songLengths = userPlan === "free" 
-    ? ["0:30"]
-    : [
-        "3:00 - 3:30",
-        "3:30 - 4:00", 
-        "4:00 - 4:30",
-        "4:30 - 5:00",
-        "5:00 - 5:30"
-      ];
+  const songLengths = [
+    "3:00 - 3:30",
+    "3:30 - 4:00", 
+    "4:00 - 4:30",
+    "4:30 - 5:00",
+    "5:00 - 5:30"
+  ];
 
-  // Set default song length based on plan
-  const defaultSongLength = userPlan === "free" ? "0:30" : userPlan === "basic" ? "1:00" : "3:00 - 3:30";
+  // Set default song length for all plans
+  const defaultSongLength = "3:00 - 3:30";
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -86,7 +84,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
       mood: "happy", 
       tone: "warm",
       tempo: 120,
-      songLength: userPlan === "basic" ? "1:00" : defaultSongLength,
+      songLength: defaultSongLength,
       voiceSampleId: null,
       status: "pending",
       generationProgress: 0,
@@ -610,7 +608,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
                 : userPlan === "free" && freeUsage.songsThisMonth >= freeUsage.limit
                   ? "Monthly Limit Reached"
                   : userPlan === "free" 
-                    ? `Generate 30s Song (${freeUsage.limit - freeUsage.songsThisMonth} left)` 
+                    ? `Generate Full Song (${freeUsage.limit - freeUsage.songsThisMonth} left)` 
                     : "Generate Song"
               }
             </Button>
@@ -618,9 +616,9 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
             {userPlan === "free" && (
               <div className="mt-2 text-center">
                 <p className="text-xs text-gray-400">
-                  Free plan creates 30-second songs. 
+                  Free plan: 2 full-length songs per month, no storage or editing. 
                   <span className="text-vibrant-orange cursor-pointer hover:underline ml-1">
-                    Upgrade to Pro for full-length songs
+                    Upgrade to Basic for voice cloning & storage
                   </span>
                 </p>
               </div>

@@ -100,7 +100,7 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
       <div className="text-center">
         <div className="flex items-center justify-center mb-4">
           <img 
-            src={bangerGptLogo} 
+            src="/burnt-beats-logo.jpeg" 
             alt="Burnt Beats Logo" 
             className="w-12 h-12 mr-3 rounded-lg object-cover"
           />

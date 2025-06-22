@@ -112,7 +112,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
 
       toast({
         title: randomWelcome,
-        description: "You get 3 free songs to start. Make them count!",
+        description: "You get 2 free full-length songs to start. Make them count!",
       });
       onAuthSuccess({ ...user, plan: "free", songsThisMonth: 0 });
     },

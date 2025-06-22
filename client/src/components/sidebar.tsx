@@ -67,12 +67,12 @@ export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: Sideba
             <span className="text-sm font-medium">Free Plan</span>
           </div>
           <div className="space-y-1 mb-3">
-            <p className="text-xs text-gray-400">• 30-second songs only</p>
-            <p className="text-xs text-gray-400">• Basic vocal styles</p>
-            <p className="text-xs text-gray-400">• Limited genres</p>
+            <p className="text-xs text-gray-400">• 2 full songs/month</p>
+            <p className="text-xs text-gray-400">• No voice cloning</p>
+            <p className="text-xs text-gray-400">• No storage/editing</p>
           </div>
           <Button size="sm" className="w-full bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange text-white font-medium">
-            Upgrade to Pro $6.99/mo
+            Upgrade to Basic $6.99/mo
           </Button>
         </div>
       </div>
