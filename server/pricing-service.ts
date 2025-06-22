@@ -1,3 +1,4 @@
+
 import { storage } from "./storage";
 import type { User } from "@shared/schema";
 
@@ -19,6 +20,10 @@ export interface PlanLimits {
     prioritySupport: boolean;
     apiAccess: boolean;
     customIntegrations: boolean;
+    basicEditing: boolean;
+    songLibrary: boolean;
+    audioPlayer: boolean;
+    downloadOptions: boolean;
   };
   audioQuality: {
     mp3_128: boolean;
@@ -27,6 +32,14 @@ export interface PlanLimits {
     flac: boolean;
   };
   genres: string[];
+  storage: {
+    maxSongs: number;
+    unlimited: boolean;
+  };
+  voiceCloning: {
+    maxSamples: number;
+    advanced: boolean;
+  };
   pricing: {
     monthly: number;
     displayPrice: string;
@@ -35,8 +48,8 @@ export interface PlanLimits {
 
 export const PLAN_LIMITS: Record<string, PlanLimits> = {
   free: {
-    songsPerMonth: 3,
-    maxSongLength: "0:30",
+    songsPerMonth: 2,
+    maxSongLength: "5:30", // Full length songs
     features: {
       voiceCloning: false,
       textToSpeech: false,
@@ -52,6 +65,10 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
       prioritySupport: false,
       apiAccess: false,
       customIntegrations: false,
+      basicEditing: false,
+      songLibrary: false,
+      audioPlayer: true, // Basic audio player included
+      downloadOptions: false,
     },
     audioQuality: {
       mp3_128: true,
@@ -60,14 +77,22 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
       flac: false,
     },
     genres: ["Pop", "Rock", "Electronic"],
+    storage: {
+      maxSongs: 0, // No storage
+      unlimited: false,
+    },
+    voiceCloning: {
+      maxSamples: 0,
+      advanced: false,
+    },
     pricing: {
       monthly: 0,
       displayPrice: "Free",
     },
   },
   basic: {
-    songsPerMonth: 3,
-    maxSongLength: "1:00",
+    songsPerMonth: 4,
+    maxSongLength: "5:30",
     features: {
       voiceCloning: true,
       textToSpeech: true,
@@ -77,12 +102,16 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
       realTimeCollaboration: false,
       musicTheoryTools: false,
       socialFeatures: false,
-      advancedEditing: true,
+      advancedEditing: false,
       multipleVoiceSamples: false,
       commercialUse: false,
       prioritySupport: false,
       apiAccess: false,
       customIntegrations: false,
+      basicEditing: true,
+      songLibrary: true,
+      audioPlayer: true,
+      downloadOptions: false,
     },
     audioQuality: {
       mp3_128: true,
@@ -91,13 +120,21 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
       flac: false,
     },
     genres: ["Pop", "Rock", "Electronic", "Jazz", "Classical"],
+    storage: {
+      maxSongs: 5,
+      unlimited: false,
+    },
+    voiceCloning: {
+      maxSamples: 1,
+      advanced: false,
+    },
     pricing: {
       monthly: 6.99,
       displayPrice: "$6.99/month",
     },
   },
   pro: {
-    songsPerMonth: 50,
+    songsPerMonth: -1, // Unlimited
     maxSongLength: "5:30",
     features: {
       voiceCloning: true,
@@ -114,6 +151,10 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
       prioritySupport: false,
       apiAccess: false,
       customIntegrations: false,
+      basicEditing: true,
+      songLibrary: true,
+      audioPlayer: true,
+      downloadOptions: true,
     },
     audioQuality: {
       mp3_128: true,
@@ -122,13 +163,21 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
       flac: false,
     },
     genres: ["Pop", "Rock", "Electronic", "Jazz", "Classical", "Hip-Hop", "Country", "R&B"],
+    storage: {
+      maxSongs: 50,
+      unlimited: false,
+    },
+    voiceCloning: {
+      maxSamples: 5,
+      advanced: true,
+    },
     pricing: {
       monthly: 12.99,
       displayPrice: "$12.99/month",
     },
   },
   enterprise: {
-    songsPerMonth: -1, // unlimited
+    songsPerMonth: -1, // Unlimited
     maxSongLength: "5:30",
     features: {
       voiceCloning: true,
@@ -145,6 +194,10 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
       prioritySupport: true,
       apiAccess: true,
       customIntegrations: true,
+      basicEditing: true,
+      songLibrary: true,
+      audioPlayer: true,
+      downloadOptions: true,
     },
     audioQuality: {
       mp3_128: true,
@@ -153,6 +206,14 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
       flac: true,
     },
     genres: ["Pop", "Rock", "Electronic", "Jazz", "Classical", "Hip-Hop", "Country", "R&B"],
+    storage: {
+      maxSongs: -1, // Unlimited
+      unlimited: true,
+    },
+    voiceCloning: {
+      maxSamples: -1, // Unlimited
+      advanced: true,
+    },
     pricing: {
       monthly: 39.99,
       displayPrice: "$39.99/month",
@@ -175,7 +236,7 @@ export class PricingService {
     // Reset monthly usage if it's a new month
     await this.resetMonthlyUsageIfNeeded(user);
 
-    // Check if unlimited (enterprise)
+    // Check if unlimited (pro/enterprise)
     if (planLimits.songsPerMonth === -1) {
       return { canCreate: true };
     }
@@ -225,7 +286,17 @@ export class PricingService {
 
   getMaxSongLength(userPlan: string): string {
     const planLimits = PLAN_LIMITS[userPlan];
-    return planLimits?.maxSongLength || "0:30";
+    return planLimits?.maxSongLength || "5:30";
+  }
+
+  getStorageLimit(userPlan: string): { maxSongs: number; unlimited: boolean } {
+    const planLimits = PLAN_LIMITS[userPlan];
+    return planLimits?.storage || { maxSongs: 0, unlimited: false };
+  }
+
+  getVoiceCloningLimits(userPlan: string): { maxSamples: number; advanced: boolean } {
+    const planLimits = PLAN_LIMITS[userPlan];
+    return planLimits?.voiceCloning || { maxSamples: 0, advanced: false };
   }
 
   getAudioQualityOptions(userPlan: string): string[] {
@@ -253,11 +324,11 @@ export class PricingService {
     };
 
     // Special cases for specific features
-    if (requiredFeature === "voiceCloning" || requiredFeature === "textToSpeech") {
-      return "Voice features are available starting with Basic plan ($6.99/month) - includes voice cloning and text-to-speech";
+    if (requiredFeature === "voiceCloning" || requiredFeature === "textToSpeech" || requiredFeature === "basicEditing") {
+      return "Basic features are available starting with Basic plan ($6.99/month) - includes voice cloning, text-to-speech, and editing tools";
     }
-    if (requiredFeature === "analytics" || requiredFeature === "versionControl" || requiredFeature === "collaboration") {
-      return "Advanced tools are available with Pro plan ($12.99/month) - includes analytics, version control, and collaboration";
+    if (requiredFeature === "analytics" || requiredFeature === "versionControl" || requiredFeature === "collaboration" || requiredFeature === "advancedEditing") {
+      return "Advanced tools are available with Pro plan ($12.99/month) - includes unlimited songs, analytics, version control, and advanced editing";
     }
     if (requiredFeature === "realTimeCollaboration" || requiredFeature === "musicTheoryTools" || requiredFeature === "socialFeatures") {
       return "Professional features are available with Enterprise plan ($39.99/month) - includes real-time collaboration, music theory tools, and social features";
