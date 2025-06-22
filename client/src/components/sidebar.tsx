@@ -1,4 +1,3 @@
-
 import { Music, Plus, History, Mic, Download, Crown, Library, BarChart3, GitBranch, Users, BookOpen, TrendingUp, X, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -25,7 +24,7 @@ export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: Sideba
     const handleClickOutside = (event: MouseEvent) => {
       const sidebar = document.getElementById('sidebar');
       const toggleButton = document.getElementById('sidebar-toggle');
-      
+
       if (
         isOpen && 
         sidebar && 
@@ -84,7 +83,7 @@ export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: Sideba
           onClick={() => setIsOpen(false)}
         />
       )}
-      
+
       {/* Sidebar */}
       <div 
         id="sidebar"
@@ -111,7 +110,7 @@ export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: Sideba
                 </h1>
               )}
             </div>
-            
+
             {/* Controls */}
             <div className="flex items-center gap-2">
               {!isMobile && (
@@ -124,7 +123,7 @@ export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: Sideba
                   <Menu className="w-4 h-4" />
                 </Button>
               )}
-              
+
               {isMobile && (
                 <Button
                   onClick={() => setIsOpen(false)}
@@ -137,7 +136,7 @@ export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: Sideba
               )}
             </div>
           </div>
-          
+
           {(!isMinimized || isMobile) && (
             <p className="text-gray-400 text-sm">AI Music Creation Platform</p>
           )}

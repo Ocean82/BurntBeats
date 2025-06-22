@@ -20,6 +20,8 @@ export const useSongGeneration = ({
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       console.error('Unhandled promise rejection:', event.reason);
+      setGeneratingSong(null);
+      setGenerationProgress(0);
       event.preventDefault();
     };
 
