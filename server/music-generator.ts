@@ -544,7 +544,7 @@ function calculateRhythmicDensity(melody: any): number {
 
 function parseSongDuration(songLength: string): number {
   const parts = songLength.split(':');
-  const minutes = parseInt(parts[0]) || 0;
+  const minutes = parseInt(parts[0]) || 3;
   const seconds = parseInt(parts[1]) || 30;
   return minutes * 60 + seconds;
 }

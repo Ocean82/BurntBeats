@@ -99,7 +99,7 @@ def create_bass_line(song_key, progression, bars=8):
     
     return bass_stream
 
-def generate_song(title, lyrics, genre, tempo_bpm, song_key='C', duration_seconds=30):
+def generate_song(title, lyrics, genre, tempo_bpm, song_key='C', duration_seconds=210):
     """Generate a complete song with melody, chords, and bass"""
     
     # Calculate number of bars based on duration and tempo

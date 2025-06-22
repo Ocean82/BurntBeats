@@ -36,7 +36,7 @@ export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: Sideba
         </div>
         <p className="text-gray-400 text-sm">AI Music Creation Platform</p>
       </div>
-      
+
       <nav className="flex-1">
         <ul className="space-y-3">
           {menuItems.map((item) => (
@@ -59,7 +59,7 @@ export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: Sideba
           ))}
         </ul>
       </nav>
-      
+
       <div className="mt-auto">
         <div className="bg-gray-800 rounded-lg p-4">
           <div className="flex items-center mb-2">
