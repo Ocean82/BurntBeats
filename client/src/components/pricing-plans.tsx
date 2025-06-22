@@ -167,47 +167,30 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Song length</span>
-                    <span className="font-semibold">Full length</span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Storage</span>
-                    <span className="font-semibold">
-                      {plan.storage?.unlimited ? "Unlimited" : 
-                       plan.storage?.maxSongs === 0 ? "No storage" : 
-                       `${plan.storage?.maxSongs} songs`}
-                    </span>
+                    <span className="text-sm">Max song length</span>
+                    <span className="font-semibold">{plan.maxSongLength}</span>
                   </div>
 
                   <Separator />
 
                   <div className="space-y-2">
-                    <h4 className="font-semibold text-sm">Core Features</h4>
+                    <h4 className="font-semibold text-sm">Features</h4>
 
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        {plan.features.audioPlayer ? 
+                        {plan.features.voiceCloning ? 
                           <Check className="w-4 h-4 text-green-400" /> : 
                           <X className="w-4 h-4 text-gray-500" />
                         }
-                        <span className="text-sm">Audio Player</span>
+                        <span className="text-sm">Voice Cloning</span>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        {plan.features.songLibrary ? 
+                        {plan.features.textToSpeech ? 
                           <Check className="w-4 h-4 text-green-400" /> : 
                           <X className="w-4 h-4 text-gray-500" />
                         }
-                        <span className="text-sm">Song Library</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {plan.features.basicEditing ? 
-                          <Check className="w-4 h-4 text-green-400" /> : 
-                          <X className="w-4 h-4 text-gray-500" />
-                        }
-                        <span className="text-sm">Basic Editing</span>
+                        <span className="text-sm">Text-to-Speech</span>
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -217,45 +200,7 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
                         }
                         <span className="text-sm">Advanced Editing</span>
                       </div>
-                    </div>
-                  </div>
 
-                  <Separator />
-
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm">Voice Features</h4>
-
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        {plan.features.voiceCloning ? 
-                          <Check className="w-4 h-4 text-green-400" /> : 
-                          <X className="w-4 h-4 text-gray-500" />
-                        }
-                        <span className="text-sm">
-                          Voice Cloning {plan.voiceCloning?.maxSamples > 0 ? 
-                            `(${plan.voiceCloning.maxSamples === -1 ? "unlimited" : plan.voiceCloning.maxSamples} sample${plan.voiceCloning.maxSamples !== 1 ? "s" : ""})` : 
-                            ""}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {plan.features.textToSpeech ? 
-                          <Check className="w-4 h-4 text-green-400" /> : 
-                          <X className="w-4 h-4 text-gray-500" />
-                        }
-                        <span className="text-sm">
-                          Text-to-Speech {plan.voiceCloning?.advanced ? "(Advanced)" : "(Basic)"}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm">Professional Tools</h4>
-
-                    <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         {plan.features.analytics ? 
                           <Check className="w-4 h-4 text-green-400" /> : 
@@ -277,47 +222,15 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
                           <Check className="w-4 h-4 text-green-400" /> : 
                           <X className="w-4 h-4 text-gray-500" />
                         }
-                        <span className="text-sm">Collaboration</span>
+                        <span className="text-sm">Collaboration Tools</span>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        {plan.features.downloadOptions ? 
+                        {plan.features.realTimeCollaboration ? 
                           <Check className="w-4 h-4 text-green-400" /> : 
                           <X className="w-4 h-4 text-gray-500" />
                         }
-                        <span className="text-sm">Download Options</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm">Enterprise Features</h4>
-
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        {plan.features.commercialUse ? 
-                          <Check className="w-4 h-4 text-green-400" /> : 
-                          <X className="w-4 h-4 text-gray-500" />
-                        }
-                        <span className="text-sm">Commercial Use</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {plan.features.prioritySupport ? 
-                          <Check className="w-4 h-4 text-green-400" /> : 
-                          <X className="w-4 h-4 text-gray-500" />
-                        }
-                        <span className="text-sm">Priority Support</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {plan.features.apiAccess ? 
-                          <Check className="w-4 h-4 text-green-400" /> : 
-                          <X className="w-4 h-4 text-gray-500" />
-                        }
-                        <span className="text-sm">API Access</span>
+                        <span className="text-sm">Real-time Collaboration</span>
                       </div>
 
                       <div className="flex items-center gap-2">

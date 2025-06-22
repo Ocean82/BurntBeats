@@ -227,6 +227,8 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
     return `~${mins}:${secs.toString().padStart(2, '0')} minutes`;
   };
 
+  const usage = user?.usage;
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -580,25 +582,18 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
               </UpgradeModal>
             )}
 
-            {/* Usage Indicator for Free Plan */}
-            {userPlan === "free" && (
-              <div className="bg-gray-800 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-300">Monthly Usage</span>
-                  <span className="text-sm text-gray-400">
-                    {freeUsage.songsThisMonth}/{freeUsage.limit} songs used
+            {usage && typeof usage === 'object' && 'songsThisMonth' in usage && (
+              <div className="mb-6 p-4 bg-gray-800 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">Monthly Usage:</span>
+                  <span className="text-sm font-semibold text-vibrant-orange">
+                    {(usage as any).songsThisMonth}/{(usage as any).monthlyLimit === -1 ? "∞" : (usage as any).monthlyLimit} songs
                   </span>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div 
-                    className="bg-spotify-green h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(freeUsage.songsThisMonth / freeUsage.limit) * 100}%` }}
-                  />
-                </div>
-                {freeUsage.songsThisMonth >= freeUsage.limit && (
-                  <p className="text-xs text-orange-400 mt-2">
-                    Monthly limit reached. Upgrade to Pro for unlimited songs!
-                  </p>
+                {user?.plan === 'free' && (
+                  <div className="mt-2 text-xs text-gray-400">
+                    Free plan: Full-length songs, no storage
+                  </div>
                 )}
               </div>
             )}
