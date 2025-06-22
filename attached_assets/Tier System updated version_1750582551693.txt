@@ -1,0 +1,63 @@
+Free Plan
+2 free full length song generation per month
+No voice Clone
+no storage
+no editiing tools
+no TTS funtaionality 
+
+
+
+Basic Plan: $6.99/month
+Best Suited for:
+		Casual users who want to experiment with AI-generated music.
+
+Features:
+
+Song Generation: Limited to 4 songs per month.
+Basic Editing: Simple editing tools for lyrics and melody adjustments.
+Voice Cloning: Access to basic voice cloning with one voice sample.
+Text-to-Speech: Basic TTS functionality for lyrics reading.
+Storage: Limited storage for generated songs (e.g., 5 songs).
+Song Library: Access to a library of previously generated songs.
+Audio Player: Basic audio playback functionality.
+
+
+Pro Plan: $12.99/month
+Best for: 
+		Serious hobbyists and professional musicians who need more advanced tools and unlimited access.
+
+Features:
+
+All Basic Plan Features
+Unlimited Song Generation: No limits on the number of songs generated per month.
+Advanced Editing: Full access to advanced editing tools, including section-specific editing and detailed audio manipulation.
+Voice Cloning: Enhanced voice cloning with multiple voice samples and more customization options.
+Text-to-Speech: Advanced TTS with multiple voice styles and emotional expression.
+Analytics: Access to analytics dashboard for tracking song performance and user engagement.
+Version Control: Ability to track changes and revert to previous versions of songs.
+Collaboration: Basic collaboration tools for working with others on songs.
+Increased Storage: More storage space for songs (e.g., 50 songs).
+Download Options: Multiple download formats and quality settings.
+
+
+Enterprise Plan: $39.99/month
+For Professional Use: 
+		Studios, music production companies, and educational institutions that require professional-grade tools and support.
+
+Features:
+
+All Pro Plan Features
+Priority Support: Faster response times and dedicated support channels.
+Custom Integrations: Ability to integrate with other music production software or platforms.
+API Access: Access to BangerGPT's API for developers to build custom applications.
+Advanced Collaboration: Real-time collaborative workspace with multiple users.
+Music Theory Tools: Advanced tools for music theory analysis and composition assistance.
+Social Features: Enhanced social features for sharing and collaborating on songs within the platform.
+Unlimited Storage: Unlimited storage for all generated songs.
+Commercial Use: Rights to use generated songs for commercial purposes.
+Rationale:
+Basic Plan: This tier is designed for users who want to try out the service without a significant investment. It includes essential features but with limitations to encourage upgrades.
+
+Pro Plan: This tier is for users who will use the service frequently and need more advanced tools. It removes limitations on song generation and adds valuable features like analytics and advanced editing.
+
+Enterprise Plan: This tier is tailored for professional use cases, offering priority support, custom integrations, and advanced collaboration tools. It also includes unlimited storage and commercial use rights, which are crucial for studios and production companies.
