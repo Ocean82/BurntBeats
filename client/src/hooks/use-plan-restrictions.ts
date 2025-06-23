@@ -1,6 +1,6 @@
 
 import { useMemo } from 'react';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/useAuth';
 
 type PlanType = 'free' | 'basic' | 'pro' | 'enterprise';
 
@@ -97,12 +97,14 @@ export const usePlanRestrictions = () => {
 
   const canCreateSong = useMemo(() => {
     if (!user) return false;
-    return user.songsThisMonth < limits.songsPerMonth;
+    const currentUsage = (user.songsThisMonth ?? user.songsGenerated ?? 0);
+    return currentUsage < limits.songsPerMonth;
   }, [user, limits]);
 
   const remainingSongs = useMemo(() => {
     if (!user) return 0;
-    return Math.max(0, limits.songsPerMonth - user.songsThisMonth);
+    const currentUsage = (user.songsThisMonth ?? user.songsGenerated ?? 0);
+    return Math.max(0, limits.songsPerMonth - currentUsage);
   }, [user, limits]);
 
   const getUpgradeRequirement = (feature: keyof typeof canUseFeature) => {

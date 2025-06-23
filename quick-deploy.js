@@ -87,13 +87,17 @@ function buildServer() {
     execSync(esbuildCommand, { stdio: 'inherit' });
     console.log('Server build completed');
     
-    // Create production package.json
+    // Create production package.json with your required build scripts
     const prodPackage = {
       "name": "burnt-beats",
       "version": "1.0.0",
       "type": "module",
       "engines": { "node": ">=20.0.0" },
-      "scripts": { "start": "node index.js" },
+      "scripts": { 
+        "build:client": "node build-client.js",
+        "build:server": "node build-server.js",
+        "start": "NODE_ENV=production tsx server/index.ts"
+      },
       "dependencies": {
         "express": "^4.21.2",
         "express-session": "^1.18.1",

@@ -4,11 +4,12 @@ import { apiRequest } from '@/lib/queryClient';
 interface User {
   id: number;
   username: string;
-  email: string;
+  email?: string;
   plan: string;
-  songsGenerated: number;
-  maxSongs: number;
-  features: {
+  songsGenerated?: number;
+  songsThisMonth?: number;
+  maxSongs?: number;
+  features?: {
     voiceCloning: boolean;
     advancedEditing: boolean;
     collaboration: boolean;
@@ -63,12 +64,20 @@ export const useAuth = () => {
     window.location.href = '/api/logout';
   };
 
+  const updateUser = (updates: Partial<User>) => {
+    if (user) {
+      const updatedUser = { ...user, ...updates };
+      setUser(updatedUser);
+    }
+  };
+
   return { 
     user, 
     isAuthenticated, 
     isLoading,
     login,
     logout,
+    updateUser,
     setUser
   };
 };
