@@ -1,33 +1,36 @@
-
-import { QueryClient } from '@tanstack/react-query';
+import React, { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
-import { ReactElement, ReactNode } from 'react';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// Create a custom render function that includes providers
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-      cacheTime: 0,
+// Create a new QueryClient for each test
+export function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 0,
+        gcTime: 0, // Updated from cacheTime
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
     },
-    mutations: {
-      retry: false,
-    },
-  },
-});
+  });
+}
 
+// Custom render function with providers
 interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   queryClient?: QueryClient;
 }
 
 export function renderWithProviders(
   ui: ReactElement,
-  options: CustomRenderOptions = {}
+  {
+    queryClient = createTestQueryClient(),
+    ...renderOptions
+  }: CustomRenderOptions = {}
 ) {
-  const { queryClient = createTestQueryClient(), ...renderOptions } = options;
-
-  function Wrapper({ children }: { children: ReactNode }) {
+  function Wrapper({ children }: { children: React.ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
         {children}
@@ -35,8 +38,30 @@ export function renderWithProviders(
     );
   }
 
-  return { ...render(ui, { wrapper: Wrapper, ...renderOptions }), queryClient };
+  return {
+    ...render(ui, { wrapper: Wrapper, ...renderOptions }),
+    queryClient,
+  };
 }
+
+// Mock fetch for tests
+export function mockFetch(response: any, ok = true) {
+  global.fetch = jest.fn(() =>
+    Promise.resolve({
+      ok,
+      json: () => Promise.resolve(response),
+      text: () => Promise.resolve(JSON.stringify(response)),
+    })
+  ) as jest.Mock;
+}
+
+// Clean up after each test
+export function cleanupTests() {
+  jest.restoreAllMocks();
+}
+
+// Re-export everything from React Testing Library
+export * from '@testing-library/react';
 
 // Mock audio utilities
 export const mockAudioUtils = {
