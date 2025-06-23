@@ -1,232 +1,248 @@
-import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
-import { 
-  Play, 
-  Pause, 
-  SkipBack, 
-  SkipForward, 
-  Volume2, 
-  RotateCcw, 
-  Edit3,
-  Play as PlaySection
-} from "lucide-react";
-import type { Song } from "@shared/schema";
+
+"use client"
+
+import { useState, useRef, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Slider } from "@/components/ui/slider"
+import { Badge } from "@/components/ui/badge"
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  RotateCcw,
+  AudioWaveformIcon as Waveform,
+  Music,
+} from "lucide-react"
+import type { Song } from "@shared/schema"
 
 interface AudioPlayerProps {
-  song: Song;
+  song: Song
 }
 
 export default function AudioPlayer({ song }: AudioPlayerProps) {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState([70]);
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const [volume, setVolume] = useState([70])
+  const [currentSection, setCurrentSection] = useState(0)
+  const audioRef = useRef<HTMLAudioElement>(null)
+
+  // Generate sections based on song structure
+  const sections = [
+    { id: 1, type: "Intro", startTime: 0, endTime: 15, lyrics: "Instrumental opening..." },
+    { id: 2, type: "Verse 1", startTime: 15, endTime: 45, lyrics: song.lyrics?.split("\n")[0] || "First verse..." },
+    { id: 3, type: "Chorus", startTime: 45, endTime: 75, lyrics: song.lyrics?.split("\n")[1] || "Main chorus..." },
+    { id: 4, type: "Verse 2", startTime: 75, endTime: 105, lyrics: song.lyrics?.split("\n")[2] || "Second verse..." },
+    { id: 5, type: "Outro", startTime: 105, endTime: 120, lyrics: "Instrumental ending..." },
+  ]
 
   useEffect(() => {
-    const audioElement = audioRef.current;
+    const audioElement = audioRef.current
     if (audioElement) {
       if (isPlaying) {
-        audioElement.play();
+        audioElement.play().catch(() => {
+          setIsPlaying(false)
+        })
       } else {
-        audioElement.pause();
+        audioElement.pause()
       }
     }
-  }, [isPlaying]);
+  }, [isPlaying])
 
   useEffect(() => {
-    const audioElement = audioRef.current;
+    const audioElement = audioRef.current
     if (audioElement) {
-      audioElement.volume = volume[0] / 100;
+      audioElement.volume = volume[0] / 100
     }
-  }, [volume]);
+  }, [volume])
 
   const togglePlayback = () => {
-    setIsPlaying(!isPlaying);
-  };
-
-  const handleTimeUpdate = () => {
-    const audioElement = audioRef.current;
-    if (audioElement) {
-      setCurrentTime(audioElement.currentTime);
-    }
-  };
-
-  const handleSeek = (value: number[]) => {
-    const audioElement = audioRef.current;
-    if (audioElement) {
-      audioElement.currentTime = value[0];
-    }
-  };
-
-  const sections = song.sections as any[] || [
-    { 
-      id: 1, 
-      type: "Verse 1", 
-      startTime: 0, 
-      endTime: 45, 
-      lyrics: "Walking down the street tonight, Stars are shining bright..." 
-    },
-    { 
-      id: 2, 
-      type: "Chorus", 
-      startTime: 45, 
-      endTime: 90, 
-      lyrics: "We're dancing through the night, Everything's gonna be alright..." 
-    },
-  ];
+    setIsPlaying(!isPlaying)
+  }
 
   const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
+    const minutes = Math.floor(time / 60)
+    const seconds = Math.floor(time % 60)
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`
+  }
+
+  const handleTimeUpdate = () => {
+    const audioElement = audioRef.current
+    if (audioElement) {
+      setCurrentTime(audioElement.currentTime)
+
+      // Update current section
+      const section = sections.find(
+        (s) => audioElement.currentTime >= s.startTime && audioElement.currentTime < s.endTime,
+      )
+      if (section) {
+        setCurrentSection(section.id - 1)
+      }
+    }
+  }
+
+  const handleSeek = (value: number[]) => {
+    const audioElement = audioRef.current
+    if (audioElement) {
+      audioElement.currentTime = value[0]
+      setCurrentTime(value[0])
+    }
+  }
+
+  const jumpToSection = (section: any) => {
+    const audioElement = audioRef.current
+    if (audioElement) {
+      audioElement.currentTime = section.startTime
+      setCurrentTime(section.startTime)
+    }
+  }
+
+  const handleLoadedMetadata = () => {
+    const audioElement = audioRef.current
+    if (audioElement) {
+      setDuration(audioElement.duration)
+    }
+  }
+
+  const handleError = () => {
+    console.error("Audio loading error")
+    setIsPlaying(false)
+  }
 
   return (
-    <Card className="bg-dark-card border-gray-800 mt-8">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-poppins font-semibold text-white">
-            Preview & Edit
-          </CardTitle>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" size="sm">
-              <RotateCcw className="w-4 h-4 mr-1" />
-              Regenerate Section
-            </Button>
-            <Button variant="outline" size="sm" className="bg-vibrant-orange hover:bg-orange-600 border-vibrant-orange">
-              <Edit3 className="w-4 h-4 mr-1" />
-              Edit Lyrics
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {/* Audio Player Interface */}
-        <div className="bg-gray-800 rounded-lg p-6">
-          <div className="flex items-center space-x-4 mb-4">
-            <img 
-              src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=80&h=80" 
-              alt="Generated song artwork" 
-              className="w-20 h-20 rounded-lg object-cover" 
-            />
-            <div className="flex-1">
-              <h4 className="font-poppins font-semibold text-white">
+    <div className="space-y-6">
+      {/* Main Player Card */}
+      <Card className="bg-white/5 border-white/10 backdrop-blur-lg">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-white flex items-center">
+                <Music className="w-5 h-5 mr-2 text-purple-400" />
                 {song.title}
-              </h4>
-              <p className="text-gray-400 text-sm">
-                {song.genre} • {formatTime(duration)} • {song.tempo} BPM
-              </p>
+              </CardTitle>
               <div className="flex items-center space-x-2 mt-2">
-                <span className="text-xs bg-spotify-green px-2 py-1 rounded-full">
-                  AI Generated
-                </span>
-                <span className="text-xs bg-gray-700 px-2 py-1 rounded-full">
-                  High Quality
-                </span>
+                <Badge variant="secondary">{song.genre}</Badge>
+                <Badge variant="outline" className="text-gray-300">
+                  {song.mood}
+                </Badge>
+                <Badge variant="outline" className="text-gray-300">
+                  {song.tempo} BPM
+                </Badge>
               </div>
             </div>
-          </div>
-
-          {/* Playback Controls */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-center space-x-6">
-              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                <SkipBack className="w-5 h-5" />
-              </Button>
-              <Button
-                onClick={togglePlayback}
-                className="w-12 h-12 bg-spotify-green hover:bg-green-600 rounded-full"
-              >
-                {isPlaying ? (
-                  <Pause className="w-5 h-5" />
-                ) : (
-                  <Play className="w-5 h-5" />
-                )}
-              </Button>
-              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                <SkipForward className="w-5 h-5" />
-              </Button>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="flex items-center space-x-3">
-              <span className="text-xs text-gray-400">{formatTime(currentTime)}</span>
-              <Slider
-                value={[currentTime]}
-                max={duration || 100}
-                step={1}
-                className="flex-1"
-                onValueChange={handleSeek}
-              />
-              <span className="text-xs text-gray-400">{formatTime(duration)}</span>
-            </div>
-
-            {/* Volume Control */}
-            <div className="flex items-center space-x-3">
-              <Volume2 className="w-4 h-4 text-gray-400" />
-              <Slider
-                value={volume}
-                onValueChange={setVolume}
-                max={100}
-                step={1}
-                className="flex-1"
-              />
+            <div className="text-right">
+              <p className="text-gray-400 text-sm">Generated Song</p>
+              <p className="text-white font-medium">{formatTime(duration)}</p>
             </div>
           </div>
-        </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Waveform Visualization */}
+          <div className="bg-white/5 rounded-lg p-4">
+            <div className="flex items-center justify-center h-20 space-x-1">
+              {Array.from({ length: 50 }, (_, i) => (
+                <div
+                  key={i}
+                  className={`w-1 bg-gradient-to-t from-purple-500 to-blue-500 rounded-full transition-all ${
+                    i < (currentTime / duration) * 50 ? "opacity-100" : "opacity-30"
+                  }`}
+                  style={{ height: `${Math.random() * 60 + 20}px` }}
+                />
+              ))}
+            </div>
+          </div>
 
-        {/* HTML5 Audio Element */}
-        <audio 
-          ref={audioRef}
-          src={song.generatedAudioPath || undefined}
-          onTimeUpdate={handleTimeUpdate}
-          onLoadedMetadata={(e) => {
-            const audioElement = e.currentTarget;
-            setDuration(audioElement.duration);
-          }}
-          onEnded={() => setIsPlaying(false)}
-        />
+          {/* Progress Bar */}
+          <div className="space-y-2">
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-400 w-12">{formatTime(currentTime)}</span>
+              <Slider 
+                value={[currentTime]} 
+                max={duration || 1} 
+                step={1} 
+                onValueChange={handleSeek} 
+                className="flex-1" 
+              />
+              <span className="text-sm text-gray-400 w-12">{formatTime(duration)}</span>
+            </div>
+          </div>
 
-        {/* Section Editor */}
-        <div className="mt-6 space-y-4">
-          <h4 className="font-medium text-gray-300">Song Sections</h4>
-
-          {sections.map((section, index) => (
-            <div 
-              key={section.id}
-              className={`bg-gray-800 rounded-lg p-4 border-l-4 ${
-                index === 0 ? 'border-spotify-green' : 'border-vibrant-orange'
-              }`}
+          {/* Controls */}
+          <div className="flex items-center justify-center space-x-4">
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+              <SkipBack className="w-5 h-5" />
+            </Button>
+            <Button
+              onClick={togglePlayback}
+              size="lg"
+              className="w-14 h-14 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm font-medium text-white">
-                    {section.type}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {formatTime(section.startTime)} - {formatTime(section.endTime)}
-                  </span>
+              {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" />}
+            </Button>
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+              <SkipForward className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+              <RotateCcw className="w-5 h-5" />
+            </Button>
+          </div>
+
+          {/* Volume Control */}
+          <div className="flex items-center space-x-3">
+            <Volume2 className="w-5 h-5 text-gray-400" />
+            <Slider value={volume} onValueChange={setVolume} max={100} step={1} className="flex-1 max-w-32" />
+            <span className="text-sm text-gray-400 w-8">{volume[0]}%</span>
+          </div>
+
+          {/* Hidden Audio Element */}
+          <audio
+            ref={audioRef}
+            src={song.audioUrl}
+            onTimeUpdate={handleTimeUpdate}
+            onLoadedMetadata={handleLoadedMetadata}
+            onError={handleError}
+            preload="metadata"
+          />
+        </CardContent>
+      </Card>
+
+      {/* Song Sections */}
+      <Card className="bg-white/5 border-white/10 backdrop-blur-lg">
+        <CardHeader>
+          <CardTitle className="text-white">Song Structure</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {sections.map((section, index) => (
+              <div
+                key={section.id}
+                className={`p-4 rounded-lg border transition-all cursor-pointer ${
+                  currentSection === index
+                    ? "bg-purple-500/20 border-purple-500/50"
+                    : "bg-white/5 border-white/10 hover:bg-white/10"
+                }`}
+                onClick={() => jumpToSection(section)}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-3">
+                    <Badge variant={currentSection === index ? "default" : "secondary"}>
+                      {section.type}
+                    </Badge>
+                    <span className="text-sm text-gray-400">
+                      {formatTime(section.startTime)} - {formatTime(section.endTime)}
+                    </span>
+                  </div>
+                  {currentSection === index && <Waveform className="w-4 h-4 text-purple-400" />}
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                    <PlaySection className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                    <Edit3 className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-gray-400 hover:text-vibrant-orange">
-                    <RotateCcw className="w-4 h-4" />
-                  </Button>
-                </div>
+                <p className="text-gray-300 text-sm">{section.lyrics}</p>
               </div>
-              <p className="text-sm text-gray-300">{section.lyrics}</p>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
 }

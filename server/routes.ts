@@ -1652,7 +1652,7 @@ function broadcastToSession(songId: number, message: any, excludeUserId?: number
   const messageStr = JSON.stringify(message);
   session.participants.forEach((participant, clientId) => {
     if (excludeUserId && participant.userId === excludeUserId) return;
-    if(participant.ws.readyState === WebSocket.OPEN) {
+        if(participant.ws.readyState === WebSocket.OPEN) {
       participant.ws.send(messageStr);
     }
   });
