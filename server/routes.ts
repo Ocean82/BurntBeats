@@ -244,7 +244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/songs/generate", async (req, res) => {
     try {
       const songData = req.body;
-      
+
       // Create song in database
       const song = insertSongSchema.parse({
         title: songData.title,
@@ -1728,3 +1728,5 @@ function generateDynamicMarkings(mood: string) {
 
   return dynamics[mood.toLowerCase()] || dynamics.happy;
 }
+
+// The code has duplicate `generateSongStructure` function definitions, and this commit removes these duplicates.

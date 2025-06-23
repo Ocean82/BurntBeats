@@ -113,13 +113,19 @@ export default function SongForm({ onSongGenerated, user, onUpgrade }: SongFormP
     e.preventDefault()
 
     const songData = {
-      ...formData,
+      title: formData.title,
+      lyrics: formData.lyrics,
+      genre: formData.genre,
+      mood: formData.mood,
       tempo: formData.tempo[0],
       duration: formData.duration[0],
-      creativity: formData.creativity[0],
+      vocals: formData.vocals,
       energy: formData.energy[0],
+      creativity: formData.creativity[0],
       userId: user?.id || 1,
-      createdAt: new Date().toISOString(),
+      songLength: formatDuration(formData.duration[0]),
+      status: "pending" as const,
+      generationProgress: 0,
     }
 
     generateSongMutation.mutate(songData)

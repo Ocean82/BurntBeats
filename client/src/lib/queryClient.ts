@@ -8,19 +8,36 @@ async function throwIfResNotOk(res: Response) {
 }
 
 export async function apiRequest(
-  method: string,
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
   url: string,
-  data?: unknown | undefined,
+  data?: any
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const config: RequestInit = {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-  });
+    headers: {
+      "Content-Type": "application/json",
+    },
+  };
 
-  await throwIfResNotOk(res);
-  return res;
+  if (data) {
+    config.body = JSON.stringify(data);
+  }
+
+  try {
+    const response = await fetch(url, config);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: `HTTP ${response.status}` }));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    return response;
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error - please check your connection');
+    }
+    throw error;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

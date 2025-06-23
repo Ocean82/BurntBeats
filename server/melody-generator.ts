@@ -374,3 +374,6 @@ export class MelodyGenerator {
     return new MelodyGenerator();
   }
 }
+
+// Export default instance
+export const melodyGenerator = new MelodyGenerator();
