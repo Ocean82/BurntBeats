@@ -16,6 +16,7 @@ import VoiceRecorder from "@/components/voice-recorder";
 import AdvancedVoiceCloning from "@/components/advanced-voice-cloning";
 import EnhancedTextToSpeech from "@/components/enhanced-text-to-speech";
 import PricingPlans from "@/components/pricing-plans";
+import SizeBasedCheckout from "@/components/size-based-checkout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Music, HelpCircle, Settings, User, Crown, LogOut } from "lucide-react";
@@ -42,6 +43,7 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
   const [completedSong, setCompletedSong] = useState<Song | null>(null);
   const [activeMenu, setActiveMenu] = useState("New Song");
   const [editingSong, setEditingSong] = useState<Song | null>(null);
+  const [showCheckout, setShowCheckout] = useState(false);
   const userPlan = user?.plan || "free";
 
   const handleSongGenerated = (song: Song) => {
@@ -139,76 +141,54 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
       case "Voice Samples":
         return <VoiceRecorder userId={user?.id || 1} />;
       case "Voice Cloning":
-        return ["basic", "pro", "enterprise"].includes(userPlan || "free") ? (
-          <AdvancedVoiceCloning userId={user?.id || 1} />
-        ) : renderUpgradePrompt(
-          "Voice Cloning - Basic+ Only",
-          "Upload your voice samples and transform them into singing voices with professional quality.",
-          "Basic",
-          "$6.99/month"
-        );
+        return <AdvancedVoiceCloning userId={user?.id || 1} />;
       case "Text-to-Speech":
-        return ["basic", "pro", "enterprise"].includes(userPlan || "free") ? (
-          <EnhancedTextToSpeech userId={user?.id || 1} />
-        ) : renderUpgradePrompt(
-          "Enhanced Text-to-Speech - Basic+ Only",
-          "Advanced voice generation with pitch, speed, and tone controls.",
-          "Basic",
-          "$6.99/month"
-        );
+        return <EnhancedTextToSpeech userId={user?.id || 1} />;
       case "Analytics":
-        return ["pro", "enterprise"].includes(userPlan || "free") ? (
-          <AnalyticsDashboard userId={user?.id || 1} />
-        ) : renderUpgradePrompt(
-          "Analytics Dashboard - Pro Only",
-          "Track performance, view trends, and get insights on your music creations.",
-          "Pro",
-          "$12.99/month"
-        );
+        return <AnalyticsDashboard userPlan={userPlan} onUpgrade={onUpgrade} />;
       case "Version Control":
-        return ["pro", "enterprise"].includes(userPlan || "free") ? (
-          completedSong ? (
-            <VersionControl userId={user?.id || 1} song={completedSong} />
-          ) : (
-            <div className="text-center text-gray-400">No songs available for version control</div>
-          )
-        ) : renderUpgradePrompt(
-          "Version Control - Pro Only",
-          "Git-like versioning for your songs with branching and rollback capabilities.",
-          "Pro",
-          "$12.99/month"
+        return completedSong ? (
+          <VersionControl song={completedSong} userPlan={userPlan} onUpgrade={onUpgrade} />
+        ) : (
+          <div className="text-center text-gray-400">No songs available for version control</div>
         );
       case "Collaboration":
-        return ["pro", "enterprise"].includes(userPlan || "free") ? (
-          completedSong && user?.id && user?.username ? (
-            <CollaborativeWorkspace 
-              song={completedSong} 
-              currentUser={{ id: user.id, username: user.username }} 
-              onSongUpdate={handleSongUpdated} 
-            />
-          ) : (
-            <div className="text-center text-gray-400">No songs available for collaboration</div>
-          )
-        ) : renderUpgradePrompt(
-          "Collaborative Workspace - Pro Only",
-          "Real-time collaboration with team members on song projects.",
-          "Pro",
-          "$12.99/month"
+        return completedSong && user?.id && user?.username ? (
+          <CollaborativeWorkspace 
+            song={completedSong} 
+            currentUser={{ id: user.id, username: user.username }} 
+            onSongUpdate={handleSongUpdated} 
+          />
+        ) : (
+          <div className="text-center text-gray-400">No songs available for collaboration</div>
         );
       case "Music Theory":
-        return (userPlan || "free") === "enterprise" ? (
-          <MusicTheoryTools />
-        ) : renderUpgradePrompt(
-          "Music Theory Tools - Enterprise Only",
-          "Advanced music creation with scale builders, chord progressions, and AI suggestions.",
-          "Enterprise",
-          "$39.99/month"
-        );
+        return <MusicTheoryTools />;
       case "Social Hub":
         return <SocialFeatures userId={user?.id || 1} />;
       case "Downloads":
         return completedSong ? (
-          <DownloadOptions song={completedSong} />
+          showCheckout ? (
+            <SizeBasedCheckout 
+              song={completedSong}
+              onCancel={() => setShowCheckout(false)}
+              onSuccess={(downloadUrl) => {
+                setShowCheckout(false);
+                window.open(downloadUrl, '_blank');
+              }}
+            />
+          ) : (
+            <div className="text-center p-8">
+              <h3 className="text-2xl font-bold text-white mb-4">Ready to Download?</h3>
+              <p className="text-gray-300 mb-6">Pay only for what you download - $0.05 per MB</p>
+              <Button 
+                onClick={() => setShowCheckout(true)}
+                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+              >
+                Choose Download Options
+              </Button>
+            </div>
+          )
         ) : (
           <div className="text-center text-gray-400">No songs available for download</div>
         );
