@@ -53,7 +53,14 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
   });
   const [lyricsQuality, setLyricsQuality] = useState<any>(null);
   const [currentLyrics, setCurrentLyrics] = useState("");
+  const [songDuration, setSongDuration] = useState([120]); // Default 2 minutes
   const { toast } = useToast();
+
+  const formatDurationFromSeconds = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Fetch user's voice samples
   const { data: voiceSamples = [] } = useQuery<VoiceSample[]>({
@@ -84,13 +91,26 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
       mood: "happy", 
       tone: "warm",
       tempo: 120,
-      songLength: defaultSongLength,
+      songLength: "2:00",
       voiceSampleId: null,
       status: "pending",
       generationProgress: 0,
       planRestricted: userPlan === "free",
       settings: {},
     },
+  });
+
+  const generateMelodyMutation = useMutation({
+    mutationFn: async (data: { genre: string; mood: string; tempo: number; duration: number }) => {
+      const response = await apiRequest("POST", "/api/generate-melody", data);
+      return await response.json();
+    },
+    onSuccess: (melody) => {
+      toast({
+        title: "Melody Generated!",
+        description: "Your musical composition is ready. Preview it before creating the full song!",
+      });
+    }
   });
 
   const generateSongMutation = useMutation({
@@ -499,21 +519,37 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
                   name="songLength"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-300">Song Length</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-gray-800 border-gray-600">
-                            <SelectValue placeholder="Select song length" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {songLengths.map((length) => (
-                            <SelectItem key={length} value={length}>
-                              {length}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel className="text-sm font-medium text-gray-300 mb-2 block">
+                        Song Length: {formatDurationFromSeconds(songDuration[0])}
+                      </FormLabel>
+                      <div className="space-y-2">
+                        <Slider
+                          value={songDuration}
+                          onValueChange={(value) => {
+                            setSongDuration(value);
+                            const minutes = Math.floor(value[0] / 60);
+                            const seconds = value[0] % 60;
+                            const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                            field.onChange(timeString);
+                          }}
+                          min={userPlan === "free" ? 30 : 30}
+                          max={userPlan === "free" ? 120 : 330}
+                          step={15}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-400">
+                          <span>0:30</span>
+                          <span className="text-spotify-green font-medium">
+                            {formatDurationFromSeconds(songDuration[0])}
+                          </span>
+                          <span>{userPlan === "free" ? "2:00" : "5:30"}</span>
+                        </div>
+                        {userPlan === "free" && (
+                          <p className="text-xs text-orange-400">
+                            Free plan: Up to 2 minutes. Upgrade for full-length songs up to 5:30.
+                          </p>
+                        )}
+                      </div>
                     </FormItem>
                   )}
                 />
@@ -611,21 +647,39 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
                     : !form.watch("lyrics")?.trim()
                       ? "Write Some Lyrics First!"
                       : userPlan === "free" 
-                        ? `🚀 Generate Full Song (${freeUsage.limit - freeUsage.songsThisMonth} left)` 
+                        ? `🚀 Generate Song (${freeUsage.limit - freeUsage.songsThisMonth} left)` 
                         : "🚀 Generate Amazing Song"
                 }
               </Button>
               
-              {/* Quick Generate Button for faster access */}
-              {form.watch("lyrics")?.trim() && !generateSongMutation.isPending && (
+              {/* Melody Preview Button */}
+              {form.watch("genre") && !generateSongMutation.isPending && (
                 <div className="text-center">
                   <Button
-                    type="submit"
+                    type="button"
                     variant="outline"
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-none py-3 px-6 font-semibold"
+                    onClick={() => generateMelodyMutation.mutate({
+                      genre: form.watch("genre"),
+                      mood: mood,
+                      tempo: tempo[0],
+                      duration: songDuration[0]
+                    })}
+                    disabled={generateMelodyMutation.isPending}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none py-3 px-6 font-semibold mr-4"
                   >
-                    ⚡ Quick Generate
+                    {generateMelodyMutation.isPending ? "🎼 Creating..." : "🎼 Preview Melody"}
                   </Button>
+                  
+                  {/* Quick Generate Button for faster access */}
+                  {form.watch("lyrics")?.trim() && (
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-none py-3 px-6 font-semibold"
+                    >
+                      ⚡ Quick Generate
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

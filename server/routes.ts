@@ -845,7 +845,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/voice-analysis/embedding", async (req, res) => {
     try {
       const { userId } = req.body;
-      
+
       const embedding = {
         id: `embedding_${userId}_${Date.now()}`,
         features: {
@@ -866,9 +866,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/voice-analysis/similarity", async (req, res) => {
     try {
       const { embedding, targetGenre, userId } = req.body;
-      
+
       const similarity = 0.7 + Math.random() * 0.25; // 70-95% similarity
-      
+
       res.json({ similarity });
     } catch (error) {
       res.status(500).json({ error: "Failed to analyze similarity" });
@@ -878,7 +878,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/voice-processing/spectral-transfer", async (req, res) => {
     try {
       const { embedding, targetStyle, userId } = req.body;
-      
+
       const spectralData = {
         transferredEmbedding: embedding,
         styleAdaptation: {
@@ -897,7 +897,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/voice-processing/timbre-preservation", async (req, res) => {
     try {
       const { spectralData, userId } = req.body;
-      
+
       const preserved = {
         ...spectralData,
         timbreCharacteristics: {
@@ -917,7 +917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/voice-processing/pitch-formant", async (req, res) => {
     try {
       const { voiceData, genre, style, userId } = req.body;
-      
+
       const manipulated = {
         ...voiceData,
         pitchAdjustment: {
@@ -941,7 +941,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/voice-clone/generate", async (req, res) => {
     try {
       const { voiceData, genre, style, userId } = req.body;
-      
+
       const result = {
         audioUrl: `/uploads/cloned_voice_${userId}_${Date.now()}.mp3`,
         voiceProfile: {
@@ -1652,8 +1652,67 @@ function broadcastToSession(songId: number, message: any, excludeUserId?: number
   const messageStr = JSON.stringify(message);
   session.participants.forEach((participant, clientId) => {
     if (excludeUserId && participant.userId === excludeUserId) return;
-    if (participant.ws.readyState === WebSocket.OPEN) {
+    if(participant.ws.readyState === WebSocket.OPEN) {
       participant.ws.send(messageStr);
     }
   });
+}
+
+function generateSongStructure(durationSeconds: number) {
+  const sections = ['intro', 'verse', 'chorus', 'verse', 'chorus', 'bridge', 'chorus', 'outro'];
+  const sectionDuration = durationSeconds / sections.length;
+
+  return sections.map((type, index) => ({
+    type,
+    startTime: index * sectionDuration,
+    endTime: (index + 1) * sectionDuration,
+    duration: sectionDuration
+  }));
+}
+
+function generateHarmonies(genre: string, mood: string) {
+  const harmonies = {
+    pop: { intervals: [3, 5, 7], density: 'moderate' },
+    rock: { intervals: [3, 5], density: 'heavy' },
+    jazz: { intervals: [3, 5, 7, 9, 11], density: 'complex' },
+    electronic: { intervals: [3, 5, 7], density: 'synthetic' }
+  };
+
+  return harmonies[genre.toLowerCase()] || harmonies.pop;
+}
+
+function generateRhythmPattern(genre: string, tempo: number) {
+  const patterns = {
+    pop: { beats: [1, 0, 1, 0], subdivision: 'quarter', swing: false },
+    rock: { beats: [1, 0, 1, 1], subdivision: 'eighth', swing: false },
+    jazz: { beats: [1, 0, 1, 0], subdivision: 'triplet', swing: true },
+    electronic: { beats: [1, 0, 0, 1], subdivision: 'sixteenth', swing: false }
+  };
+
+  const pattern = patterns[genre.toLowerCase()] || patterns.pop;
+  return { ...pattern, tempo, timesPerMinute: tempo };
+}
+
+function generateDynamicMarkings(mood: string) {
+  const dynamics = {
+    happy: { overall: 'mf', peaks: ['f'], valleys: ['mp'] },
+    sad: { overall: 'mp', peaks: ['mf'], valleys: ['pp'] },
+    energetic: { overall: 'f', peaks: ['ff'], valleys: ['mf'] },
+    calm: { overall: 'mp', peaks: ['mf'], valleys: ['p'] }
+  };
+
+  return dynamics[mood.toLowerCase()] || dynamics.happy;
+}
+
+function generateSongStructure(lyricsAnalysis: any, durationSeconds: number) {
+  const durationMs = durationSeconds * 1000;
+  const totalSections = sections.length || 4;
+  const sectionDuration = durationMs / totalSections;
+
+  return sections.map((section, index) => ({
+    type: section.type,
+    startMs: index * sectionDuration,
+    endMs: (index + 1) * sectionDuration,
+    lines: section.lines
+  }));
 }
