@@ -10,6 +10,10 @@ import { MusicAPI } from "./api/music-api";
 import { VoiceAPI } from "./api/voice-api";
 import { PricingAPI } from "./api/pricing-api";
 import { HealthAPI } from "./api/health-api";
+import { VocalGenerator } from "./vocal-generator";
+import { VoiceCloningService } from "./voice-cloning-service";
+import { TextToSpeechService } from "./text-to-speech-service";
+import { EnhancedVoicePipeline } from "./enhanced-voice-pipeline";
 
 const app = express();
 
@@ -165,6 +169,99 @@ export function registerRoutes(app: express.Application): http.Server {
 
     res.json(routes);
   });
+
+  const voiceCloningService = new VoiceCloningService();
+  const textToSpeechService = new TextToSpeechService();
+  const enhancedVoicePipeline = new EnhancedVoicePipeline();
+
+  // Enhanced Voice Pipeline endpoints
+  app.post("/api/voice/generate-enhanced", authenticateOptional, async (req, res) => {
+    try {
+      const { lyrics, voiceSample, melody, options } = req.body;
+
+      const enhancedVoice = await enhancedVoicePipeline.generateVoiceWithPipeline(
+        lyrics,
+        voiceSample,
+        melody,
+        {
+          quality: options.quality || 'high',
+          realTimeProcessing: options.realTimeProcessing || false,
+          neuralEnhancement: options.neuralEnhancement || true,
+          spectralCorrection: options.spectralCorrection || true,
+          adaptiveFiltering: options.adaptiveFiltering || true,
+          ...options
+        }
+      );
+
+      res.json({
+        success: true,
+        voice: enhancedVoice,
+        message: "Enhanced voice generation completed successfully"
+      });
+    } catch (error: any) {
+      console.error("Enhanced voice generation error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  // Voice quality analysis endpoint
+  app.post("/api/voice/analyze-quality", authenticateOptional, async (req, res) => {
+    try {
+      const { voiceSample } = req.body;
+
+      // Create pipeline instance for analysis
+      const pipeline = new EnhancedVoicePipeline();
+      const analysis = await (pipeline as any).analyzeVoiceInput(voiceSample, {});
+
+      res.json({
+        success: true,
+        analysis,
+        message: "Voice quality analysis completed"
+      });
+    } catch (error: any) {
+      console.error("Voice analysis error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  // Real-time voice processing endpoint
+  app.post("/api/voice/process-realtime", authenticateOptional, async (req, res) => {
+    try {
+      const { audioChunk, processingOptions } = req.body;
+
+      // Process audio chunk in real-time
+      const pipeline = new EnhancedVoicePipeline();
+      const processed = await (pipeline as any).applyRealTimeEnhancements(audioChunk, processingOptions);
+
+      res.json({
+        success: true,
+        processedAudio: processed,
+        message: "Real-time processing completed"
+      });
+    } catch (error: any) {
+      console.error("Real-time processing error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  // Voice cloning endpoints
+  app.post("/api/voice-clone/generate", authenticateOptional, async (req, res) => {
+    // Implementation for voice cloning
+    res.status(501).json({ error: "Not implemented" });
+  });
+
+  const authenticateOptional = (req: Request, res: Response, next: any) => {
+    next();
+  };
 
   // Create HTTP server
   const server = http.createServer(app);
