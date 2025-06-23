@@ -174,7 +174,7 @@ def create_lyrics_informed_melody(genre, key_sig, tempo_bpm, measures, lyric_ana
     return melody
 
 def create_melodic_phrase_from_lyrics(scale_notes, genre, phrase_data, tempo_bpm):
-    """Create a melodic phrase based on lyric analysis"""
+    """Create a melodic phrase based on lyric analysis with advanced rhythm"""
     phrase = []
     
     # Base patterns influenced by lyrics
@@ -192,36 +192,314 @@ def create_melodic_phrase_from_lyrics(scale_notes, genre, phrase_data, tempo_bpm
     elif emotion < -0.5:  # Very negative
         pattern = [p - 1 if p > 1 else p for p in pattern]  # Shift lower
     
-    # Generate notes
+    # Generate advanced rhythmic patterns based on genre and lyrics
+    rhythm_pattern = create_advanced_rhythm_pattern(genre, phrase_data, tempo_bpm)
+    
+    # Generate notes with sophisticated rhythm
     for i, degree in enumerate(pattern):
-        if degree <= len(scale_notes):
+        if degree <= len(scale_notes) and i < len(rhythm_pattern):
             note_pitch = scale_notes[degree - 1]
+            rhythm_info = rhythm_pattern[i]
             
-            # Rhythm based on syllable complexity
-            if phrase_data['suggested_rhythm'] == 'complex':
-                note_length = 0.25 if i % 3 == 0 else 0.5
-            elif phrase_data['suggested_rhythm'] == 'simple':
-                note_length = 1.0
-            else:
-                note_length = 0.5
+            # Use rhythm from pattern
+            note_length = rhythm_info['duration']
             
-            # Add expressive rests
-            if random.random() < 0.15:  # 15% chance of rest
+            # Add syncopation and swing based on genre
+            if rhythm_info['syncopated'] and genre.lower() in ['jazz', 'r&b', 'hip-hop']:
+                note_length = apply_swing_feel(note_length, genre)
+            
+            # Add expressive rests based on rhythm pattern
+            if rhythm_info['is_rest']:
                 phrase.append(note.Rest(quarterLength=note_length))
             else:
                 note_obj = note.Note(note_pitch, quarterLength=note_length)
                 
-                # Dynamic markings based on emotion
+                # Dynamic markings based on emotion and rhythm
                 if emotion > 0.3:
-                    note_obj.volume.velocity = 90  # Forte
+                    note_obj.volume.velocity = min(127, 90 + rhythm_info['accent'] * 20)
                 elif emotion < -0.3:
-                    note_obj.volume.velocity = 60  # Piano
+                    note_obj.volume.velocity = max(30, 60 - rhythm_info['accent'] * 10)
                 else:
-                    note_obj.volume.velocity = 75  # Mezzo
+                    note_obj.volume.velocity = 75 + rhythm_info['accent'] * 15
+                
+                # Add articulation based on rhythm
+                if rhythm_info['staccato']:
+                    note_obj.quarterLength *= 0.8  # Slightly shorter for staccato effect
                 
                 phrase.append(note_obj)
     
     return phrase
+
+def create_advanced_rhythm_pattern(genre, phrase_data, tempo_bpm):
+    """Create sophisticated rhythm patterns using music21 concepts"""
+    syllable_count = phrase_data['syllables']
+    emotion = phrase_data['emotion']
+    
+    # Base rhythm patterns by genre
+    genre_rhythms = {
+        'pop': create_pop_rhythm_pattern(syllable_count, tempo_bpm),
+        'rock': create_rock_rhythm_pattern(syllable_count, tempo_bpm),
+        'jazz': create_jazz_rhythm_pattern(syllable_count, tempo_bpm),
+        'electronic': create_electronic_rhythm_pattern(syllable_count, tempo_bpm),
+        'hip-hop': create_hiphop_rhythm_pattern(syllable_count, tempo_bpm),
+        'r&b': create_rnb_rhythm_pattern(syllable_count, tempo_bpm),
+        'classical': create_classical_rhythm_pattern(syllable_count, tempo_bpm),
+        'country': create_country_rhythm_pattern(syllable_count, tempo_bpm)
+    }
+    
+    base_pattern = genre_rhythms.get(genre.lower(), genre_rhythms['pop'])
+    
+    # Modify pattern based on emotion
+    if emotion > 0.5:  # Happy - more energetic rhythm
+        base_pattern = add_rhythmic_energy(base_pattern)
+    elif emotion < -0.5:  # Sad - more contemplative rhythm
+        base_pattern = add_rhythmic_contemplation(base_pattern)
+    
+    return base_pattern
+
+def create_pop_rhythm_pattern(syllable_count, tempo_bpm):
+    """Create pop-style rhythm with steady beat and occasional syncopation"""
+    pattern = []
+    remaining_beats = 4.0  # One measure
+    
+    while remaining_beats > 0 and len(pattern) < syllable_count:
+        if random.random() < 0.7:  # 70% straight rhythm
+            duration = 0.5 if remaining_beats >= 0.5 else remaining_beats
+        else:  # 30% syncopated
+            duration = 0.75 if remaining_beats >= 0.75 else remaining_beats
+        
+        pattern.append({
+            'duration': duration,
+            'syncopated': duration == 0.75,
+            'accent': random.choice([0, 1, 2]) if duration >= 0.5 else 0,
+            'staccato': random.random() < 0.2,
+            'is_rest': random.random() < 0.1
+        })
+        
+        remaining_beats -= duration
+    
+    return pattern[:8]  # Limit to 8 notes per phrase
+
+def create_jazz_rhythm_pattern(syllable_count, tempo_bpm):
+    """Create jazz-style swing rhythm with complex syncopation"""
+    pattern = []
+    remaining_beats = 4.0
+    
+    while remaining_beats > 0 and len(pattern) < syllable_count:
+        # Jazz rhythms favor triplets and swing
+        if random.random() < 0.4:  # Triplet feel
+            duration = 1.0/3 if remaining_beats >= 1.0/3 else remaining_beats
+        elif random.random() < 0.6:  # Syncopated eighths
+            duration = 0.25 if remaining_beats >= 0.25 else remaining_beats
+        else:  # Quarter notes
+            duration = 1.0 if remaining_beats >= 1.0 else remaining_beats
+        
+        pattern.append({
+            'duration': duration,
+            'syncopated': True,  # Jazz is inherently syncopated
+            'accent': random.choice([0, 1, 2, 3]),
+            'staccato': random.random() < 0.3,
+            'is_rest': random.random() < 0.15
+        })
+        
+        remaining_beats -= duration
+    
+    return pattern[:8]
+
+def create_electronic_rhythm_pattern(syllable_count, tempo_bpm):
+    """Create electronic-style rhythm with quantized feel"""
+    pattern = []
+    remaining_beats = 4.0
+    
+    # Electronic music often uses sixteenth note subdivisions
+    sixteenth_grid = [0.25, 0.25, 0.25, 0.25] * 4  # 16 sixteenth notes
+    
+    for i in range(min(syllable_count, 8)):
+        if i < len(sixteenth_grid):
+            # Combine consecutive sixteenths occasionally
+            if random.random() < 0.3 and i < len(sixteenth_grid) - 1:
+                duration = sixteenth_grid[i] + sixteenth_grid[i + 1]
+                i += 1  # Skip next iteration
+            else:
+                duration = sixteenth_grid[i]
+            
+            pattern.append({
+                'duration': duration,
+                'syncopated': random.random() < 0.4,
+                'accent': 2 if i % 4 == 0 else (1 if i % 2 == 0 else 0),  # Strong beats
+                'staccato': random.random() < 0.5,  # Electronic often has sharp attacks
+                'is_rest': random.random() < 0.05
+            })
+    
+    return pattern
+
+def create_rock_rhythm_pattern(syllable_count, tempo_bpm):
+    """Create rock-style rhythm with driving beat"""
+    pattern = []
+    remaining_beats = 4.0
+    
+    while remaining_beats > 0 and len(pattern) < syllable_count:
+        # Rock favors eighth and quarter notes
+        if random.random() < 0.6:
+            duration = 0.5  # Eighth note
+        else:
+            duration = 1.0  # Quarter note
+        
+        if duration > remaining_beats:
+            duration = remaining_beats
+        
+        pattern.append({
+            'duration': duration,
+            'syncopated': random.random() < 0.2,
+            'accent': 2 if len(pattern) % 4 == 0 else 1,  # Strong on beats 1 and 3
+            'staccato': random.random() < 0.4,
+            'is_rest': random.random() < 0.05
+        })
+        
+        remaining_beats -= duration
+    
+    return pattern
+
+def create_hiphop_rhythm_pattern(syllable_count, tempo_bpm):
+    """Create hip-hop style rhythm with emphasis on flow"""
+    pattern = []
+    remaining_beats = 4.0
+    
+    # Hip-hop often has complex subdivision patterns
+    while remaining_beats > 0 and len(pattern) < syllable_count:
+        if random.random() < 0.5:  # Triplet subdivisions
+            duration = 1.0/3 if remaining_beats >= 1.0/3 else remaining_beats
+        elif random.random() < 0.7:  # Sixteenth notes
+            duration = 0.25 if remaining_beats >= 0.25 else remaining_beats
+        else:  # Eighth notes
+            duration = 0.5 if remaining_beats >= 0.5 else remaining_beats
+        
+        pattern.append({
+            'duration': duration,
+            'syncopated': random.random() < 0.6,  # High syncopation
+            'accent': random.choice([0, 1, 2]),
+            'staccato': random.random() < 0.6,  # Crisp delivery
+            'is_rest': random.random() < 0.2  # More rests for flow
+        })
+        
+        remaining_beats -= duration
+    
+    return pattern
+
+def create_rnb_rhythm_pattern(syllable_count, tempo_bpm):
+    """Create R&B style rhythm with groove and swing"""
+    pattern = []
+    remaining_beats = 4.0
+    
+    while remaining_beats > 0 and len(pattern) < syllable_count:
+        # R&B favors syncopated patterns
+        if random.random() < 0.4:  # Dotted rhythms
+            duration = 0.75 if remaining_beats >= 0.75 else remaining_beats
+        elif random.random() < 0.6:  # Eighth notes
+            duration = 0.5 if remaining_beats >= 0.5 else remaining_beats
+        else:  # Quarter notes
+            duration = 1.0 if remaining_beats >= 1.0 else remaining_beats
+        
+        pattern.append({
+            'duration': duration,
+            'syncopated': random.random() < 0.7,
+            'accent': random.choice([0, 1, 2, 3]),
+            'staccato': random.random() < 0.3,
+            'is_rest': random.random() < 0.12
+        })
+        
+        remaining_beats -= duration
+    
+    return pattern
+
+def create_classical_rhythm_pattern(syllable_count, tempo_bpm):
+    """Create classical style rhythm with traditional patterns"""
+    pattern = []
+    remaining_beats = 4.0
+    
+    # Classical music often uses traditional note values
+    while remaining_beats > 0 and len(pattern) < syllable_count:
+        if random.random() < 0.4:  # Quarter notes
+            duration = 1.0 if remaining_beats >= 1.0 else remaining_beats
+        elif random.random() < 0.7:  # Eighth notes
+            duration = 0.5 if remaining_beats >= 0.5 else remaining_beats
+        else:  # Half notes
+            duration = 2.0 if remaining_beats >= 2.0 else remaining_beats
+        
+        pattern.append({
+            'duration': duration,
+            'syncopated': random.random() < 0.1,  # Less syncopation
+            'accent': 2 if len(pattern) % 4 == 0 else 0,  # Strong beats
+            'staccato': random.random() < 0.25,
+            'is_rest': random.random() < 0.08
+        })
+        
+        remaining_beats -= duration
+    
+    return pattern
+
+def create_country_rhythm_pattern(syllable_count, tempo_bpm):
+    """Create country style rhythm with shuffle feel"""
+    pattern = []
+    remaining_beats = 4.0
+    
+    while remaining_beats > 0 and len(pattern) < syllable_count):
+        # Country often has a shuffle or swing feel
+        if random.random() < 0.6:  # Eighth note patterns
+            duration = 0.5 if remaining_beats >= 0.5 else remaining_beats
+        else:  # Quarter notes
+            duration = 1.0 if remaining_beats >= 1.0 else remaining_beats
+        
+        pattern.append({
+            'duration': duration,
+            'syncopated': random.random() < 0.3,
+            'accent': 1 if len(pattern) % 2 == 0 else 0,
+            'staccato': random.random() < 0.35,
+            'is_rest': random.random() < 0.1
+        })
+        
+        remaining_beats -= duration
+    
+    return pattern
+
+def apply_swing_feel(note_length, genre):
+    """Apply swing feel to note durations"""
+    if genre.lower() in ['jazz', 'blues']:
+        # Jazz swing: eighth notes become long-short pattern
+        if note_length == 0.5:  # Eighth note
+            return random.choice([0.67, 0.33])  # Swing ratio
+    elif genre.lower() in ['r&b', 'hip-hop']:
+        # Subtle swing for groove
+        if note_length == 0.5:
+            return note_length + random.uniform(-0.05, 0.05)
+    
+    return note_length
+
+def add_rhythmic_energy(pattern):
+    """Increase rhythmic energy for positive emotions"""
+    for item in pattern:
+        # Shorter note values for energy
+        if item['duration'] > 0.5:
+            item['duration'] *= 0.75
+        # More accents
+        item['accent'] = min(3, item['accent'] + 1)
+        # Less rests
+        if item['is_rest']:
+            item['is_rest'] = random.random() < 0.05
+    return pattern
+
+def add_rhythmic_contemplation(pattern):
+    """Add contemplative rhythm for sad emotions"""
+    for item in pattern:
+        # Longer note values for contemplation
+        if item['duration'] < 1.0:
+            item['duration'] *= 1.25
+        # Softer accents
+        item['accent'] = max(0, item['accent'] - 1)
+        # More rests for breathing
+        if not item['is_rest'] and random.random() < 0.15:
+            item['is_rest'] = True
+    return pattern
 
 def create_enhanced_harmony(genre, key_sig, measures, emotion_arc):
     """Create harmony that responds to emotional arc"""
