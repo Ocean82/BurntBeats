@@ -174,7 +174,7 @@ def create_lyrics_informed_melody(genre, key_sig, tempo_bpm, measures, lyric_ana
     return melody
 
 def create_melodic_phrase_from_lyrics(scale_notes, genre, phrase_data, tempo_bpm):
-    """Create a melodic phrase based on lyric analysis with advanced rhythm"""
+    """Create a melodic phrase based on lyric analysis with proper music21 objects"""
     phrase = []
     
     # Base patterns influenced by lyrics
@@ -195,24 +195,39 @@ def create_melodic_phrase_from_lyrics(scale_notes, genre, phrase_data, tempo_bpm
     # Generate advanced rhythmic patterns based on genre and lyrics
     rhythm_pattern = create_advanced_rhythm_pattern(genre, phrase_data, tempo_bpm)
     
-    # Generate notes with sophisticated rhythm
+    # Generate notes with sophisticated rhythm using proper music21 objects
     for i, degree in enumerate(pattern):
         if degree <= len(scale_notes) and i < len(rhythm_pattern):
-            note_pitch = scale_notes[degree - 1]
             rhythm_info = rhythm_pattern[i]
             
-            # Use rhythm from pattern
-            note_length = rhythm_info['duration']
+            # Create proper Duration object
+            note_duration = duration.Duration(quarterLength=rhythm_info['duration'])
             
             # Add syncopation and swing based on genre
             if rhythm_info['syncopated'] and genre.lower() in ['jazz', 'r&b', 'hip-hop']:
-                note_length = apply_swing_feel(note_length, genre)
+                swing_length = apply_swing_feel(rhythm_info['duration'], genre)
+                note_duration = duration.Duration(quarterLength=swing_length)
             
-            # Add expressive rests based on rhythm pattern
+            # Add expressive rests using Rest objects with proper Duration
             if rhythm_info['is_rest']:
-                phrase.append(note.Rest(quarterLength=note_length))
+                rest_obj = note.Rest(quarterLength=note_duration.quarterLength)
+                phrase.append(rest_obj)
             else:
-                note_obj = note.Note(note_pitch, quarterLength=note_length)
+                # Create Pitch object for precise pitch control
+                note_pitch = pitch.Pitch(scale_notes[degree - 1])
+                
+                # Adjust octave based on emotion and genre
+                if genre.lower() == 'electronic' and emotion > 0.3:
+                    note_pitch.octave = 5  # Higher for electronic happy
+                elif genre.lower() == 'jazz':
+                    note_pitch.octave = 4  # Standard jazz range
+                elif emotion < -0.3:
+                    note_pitch.octave = 3  # Lower for sad emotions
+                else:
+                    note_pitch.octave = 4  # Standard range
+                
+                # Create Note object with proper Duration and Pitch
+                note_obj = note.Note(note_pitch, quarterLength=note_duration.quarterLength)
                 
                 # Dynamic markings based on emotion and rhythm
                 if emotion > 0.3:
@@ -222,11 +237,19 @@ def create_melodic_phrase_from_lyrics(scale_notes, genre, phrase_data, tempo_bpm
                 else:
                     note_obj.volume.velocity = 75 + rhythm_info['accent'] * 15
                 
-                # Add articulation based on rhythm
+                # Add articulation using Duration modification for staccato
                 if rhythm_info['staccato']:
-                    note_obj.quarterLength *= 0.8  # Slightly shorter for staccato effect
-                
-                phrase.append(note_obj)
+                    # Create shorter duration for staccato effect
+                    staccato_duration = duration.Duration(quarterLength=note_duration.quarterLength * 0.7)
+                    note_obj.duration = staccato_duration
+                    
+                    # Add a rest after the staccato note
+                    rest_duration = duration.Duration(quarterLength=note_duration.quarterLength * 0.3)
+                    staccato_rest = note.Rest(quarterLength=rest_duration.quarterLength)
+                    phrase.append(note_obj)
+                    phrase.append(staccato_rest)
+                else:
+                    phrase.append(note_obj)
     
     return phrase
 
@@ -443,7 +466,7 @@ def create_country_rhythm_pattern(syllable_count, tempo_bpm):
     pattern = []
     remaining_beats = 4.0
     
-    while remaining_beats > 0 and len(pattern) < syllable_count):
+    while remaining_beats > 0 and len(pattern) < syllable_count:
         # Country often has a shuffle or swing feel
         if random.random() < 0.6:  # Eighth note patterns
             duration = 0.5 if remaining_beats >= 0.5 else remaining_beats
@@ -557,38 +580,81 @@ def get_enhanced_progressions(genre):
     return progressions.get(genre.lower(), progressions['pop'])
 
 def create_emotional_chord(chord_symbol, key_sig, emotion, genre):
-    """Create chord with emotional coloring"""
+    """Create chord with emotional coloring using proper music21 Chord objects"""
     key_obj = key.Key(key_sig)
     root = key_obj.tonic
     
-    # Basic triad
-    chord_tones = [root, root.transpose('M3'), root.transpose('P5')]
+    # Create Duration object for chord timing
+    chord_duration = duration.Duration(quarterLength=4.0)
     
-    # Add emotional extensions
-    if emotion > 0.3:  # Happy - add major 7th or 9th
+    # Basic triad using Pitch objects
+    root_pitch = pitch.Pitch(root)
+    third_pitch = pitch.Pitch(root.transpose('M3'))
+    fifth_pitch = pitch.Pitch(root.transpose('P5'))
+    chord_tones = [root_pitch, third_pitch, fifth_pitch]
+    
+    # Add emotional extensions with proper Pitch objects
+    if emotion > 0.3:  # Happy - add major extensions
         if random.random() > 0.5:
-            chord_tones.append(root.transpose('M7'))
+            chord_tones.append(pitch.Pitch(root.transpose('M7')))  # Major 7th
+        if random.random() > 0.7 and genre.lower() in ['jazz', 'r&b']:
+            chord_tones.append(pitch.Pitch(root.transpose('M9')))  # Add 9th
     elif emotion < -0.3:  # Sad - add minor colors
-        chord_tones[1] = root.transpose('m3')  # Make it minor
+        chord_tones[1] = pitch.Pitch(root.transpose('m3'))  # Make it minor
         if random.random() > 0.5:
-            chord_tones.append(root.transpose('m7'))
+            chord_tones.append(pitch.Pitch(root.transpose('m7')))  # Minor 7th
+        if random.random() > 0.6:
+            chord_tones.append(pitch.Pitch(root.transpose('m6')))  # Add 6th for melancholy
     
-    # Genre-specific voicings
+    # Genre-specific voicings with proper octave placement
     if genre.lower() == 'jazz':
-        chord_tones.append(root.transpose('m7'))  # Always add 7th in jazz
+        # Jazz voicing with extended harmonies
+        chord_tones.append(pitch.Pitch(root.transpose('m7')))  # Dominant 7th
         if random.random() > 0.3:
-            chord_tones.append(root.transpose('M9'))  # Add 9th
+            chord_tones.append(pitch.Pitch(root.transpose('M9')))  # Add 9th
+        if random.random() > 0.5:
+            chord_tones.append(pitch.Pitch(root.transpose('P11')))  # Add 11th
+            
     elif genre.lower() == 'electronic':
-        # Wider voicing for electronic
+        # Wide spread voicing for electronic with specific octaves
+        bass_pitch = pitch.Pitch(root)
+        bass_pitch.octave = 2  # Low bass
+        
+        mid_root = pitch.Pitch(root)
+        mid_root.octave = 4
+        
+        high_root = pitch.Pitch(root)
+        high_root.octave = 6  # High octave
+        
         chord_tones = [
-            root.transpose(-12),  # Bass note
-            root,
-            root.transpose('M3'),
-            root.transpose('P5'),
-            root.transpose(12)    # High octave
+            bass_pitch,
+            mid_root,
+            pitch.Pitch(root.transpose('M3')).transpose(12),  # Third up an octave
+            pitch.Pitch(root.transpose('P5')).transpose(12),  # Fifth up an octave
+            high_root
         ]
+        
+    elif genre.lower() == 'rock':
+        # Power chord emphasis with octave doubling
+        power_chord = [
+            pitch.Pitch(root),
+            pitch.Pitch(root.transpose('P5')),
+            pitch.Pitch(root.transpose(12))  # Octave
+        ]
+        chord_tones = power_chord
+        
+    # Create Chord object with Duration
+    chord_obj = chord.Chord(chord_tones, quarterLength=chord_duration.quarterLength)
     
-    return chord.Chord(chord_tones)
+    # Add dynamics based on emotion
+    if emotion > 0.5:
+        chord_obj.volume.velocity = 95  # Bright and loud
+    elif emotion < -0.5:
+        chord_obj.volume.velocity = 60  # Soft and contemplative
+    else:
+        chord_obj.volume.velocity = 80  # Moderate
+    
+    return chord_obj
 
 def create_dynamic_bass(genre, key_sig, measures):
     """Create dynamic bass line"""
@@ -606,53 +672,104 @@ def create_dynamic_bass(genre, key_sig, measures):
     return bass
 
 def get_bass_pattern(genre, root_note, measure):
-    """Generate bass pattern based on genre"""
-    bass_notes = []
+    """Generate bass pattern based on genre using proper music21 objects"""
+    bass_measure = stream.Measure()
+    bass_measure.timeSignature = meter.TimeSignature('4/4')
     
     if genre.lower() == 'electronic':
-        # Syncopated electronic bass
-        pattern = [root_note, None, root_note.transpose('P5'), root_note]
-        durations = [0.75, 0.25, 0.5, 1.5]  # Syncopated rhythm
+        # Syncopated electronic bass with precise Duration objects
+        pattern_data = [
+            (root_note, 0.75, False),
+            (None, 0.25, True),  # Rest
+            (root_note.transpose('P5'), 0.5, False),
+            (root_note, 1.5, False)
+        ]
         
-        for note_pitch, duration in zip(pattern, durations):
-            if note_pitch:
-                bass_note = note.Note(note_pitch, quarterLength=duration)
-                bass_note.octave = 2
-                bass_note.volume.velocity = 85
-                bass_notes.append(bass_note)
+        for note_data, dur, is_rest in pattern_data:
+            note_duration = duration.Duration(quarterLength=dur)
+            
+            if is_rest or note_data is None:
+                rest_obj = note.Rest(quarterLength=note_duration.quarterLength)
+                bass_measure.append(rest_obj)
             else:
-                bass_notes.append(note.Rest(quarterLength=duration))
+                bass_pitch = pitch.Pitch(note_data)
+                bass_pitch.octave = 2  # Bass octave
+                bass_note = note.Note(bass_pitch, quarterLength=note_duration.quarterLength)
+                bass_note.volume.velocity = 85
+                bass_measure.append(bass_note)
                 
     elif genre.lower() == 'rock':
-        # Driving rock bass
-        pattern = [root_note] * 4  # Four quarter notes
-        for note_pitch in pattern:
-            bass_note = note.Note(note_pitch, quarterLength=1.0)
-            bass_note.octave = 2
+        # Driving rock bass with consistent Duration
+        quarter_duration = duration.Duration(quarterLength=1.0)
+        
+        for i in range(4):  # Four quarter notes
+            bass_pitch = pitch.Pitch(root_note)
+            bass_pitch.octave = 2
+            bass_note = note.Note(bass_pitch, quarterLength=quarter_duration.quarterLength)
             bass_note.volume.velocity = 95
-            bass_notes.append(bass_note)
+            
+            # Add slight accent on beats 1 and 3
+            if i % 2 == 0:
+                bass_note.volume.velocity = 105
+                
+            bass_measure.append(bass_note)
             
     elif genre.lower() == 'jazz':
-        # Walking jazz bass
+        # Walking jazz bass with smooth voice leading
         intervals = ['M2', 'M3', 'P4', 'P5']
+        quarter_duration = duration.Duration(quarterLength=1.0)
+        
         for i in range(4):
             interval_choice = intervals[i % len(intervals)]
-            bass_pitch = root_note.transpose(interval_choice)
-            bass_note = note.Note(bass_pitch, quarterLength=1.0)
-            bass_note.octave = 2
+            bass_pitch = pitch.Pitch(root_note.transpose(interval_choice))
+            bass_pitch.octave = 2
+            
+            bass_note = note.Note(bass_pitch, quarterLength=quarter_duration.quarterLength)
             bass_note.volume.velocity = 75
-            bass_notes.append(bass_note)
+            
+            # Add swing feel to jazz bass
+            if i % 2 == 1:  # Slightly shorter on off-beats
+                swing_duration = duration.Duration(quarterLength=0.9)
+                bass_note.duration = swing_duration
+                
+            bass_measure.append(bass_note)
+            
+    elif genre.lower() == 'hip-hop':
+        # Hip-hop bass with syncopated pattern
+        pattern_data = [
+            (root_note, 1.0, False),
+            (None, 0.5, True),  # Rest for groove
+            (root_note.transpose('P5'), 0.75, False),
+            (root_note, 0.75, False)
+        ]
+        
+        for note_data, dur, is_rest in pattern_data:
+            note_duration = duration.Duration(quarterLength=dur)
+            
+            if is_rest:
+                rest_obj = note.Rest(quarterLength=note_duration.quarterLength)
+                bass_measure.append(rest_obj)
+            else:
+                bass_pitch = pitch.Pitch(note_data)
+                bass_pitch.octave = 1  # Very low for hip-hop
+                bass_note = note.Note(bass_pitch, quarterLength=note_duration.quarterLength)
+                bass_note.volume.velocity = 90
+                bass_measure.append(bass_note)
+                
     else:
-        # Standard pop/rock bass
+        # Standard pop/rock bass with proper Duration objects
         fifth = root_note.transpose('P5')
         pattern = [root_note, root_note, fifth, root_note]
+        quarter_duration = duration.Duration(quarterLength=1.0)
+        
         for note_pitch in pattern:
-            bass_note = note.Note(note_pitch, quarterLength=1.0)
-            bass_note.octave = 2
+            bass_pitch = pitch.Pitch(note_pitch)
+            bass_pitch.octave = 2
+            bass_note = note.Note(bass_pitch, quarterLength=quarter_duration.quarterLength)
             bass_note.volume.velocity = 80
-            bass_notes.append(bass_note)
+            bass_measure.append(bass_note)
     
-    return bass_notes
+    return bass_measure.notes
 
 def get_genre_instrument(genre, part_type):
     """Get appropriate instrument for genre and part"""
