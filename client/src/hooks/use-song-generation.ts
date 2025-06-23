@@ -11,6 +11,13 @@ interface UseSongGenerationProps {
   userId: number;
 }
 
+// Add default props support
+const DEFAULT_PROPS: UseSongGenerationProps = {
+  userId: 1,
+  onGenerationComplete: () => {},
+  onGenerationStart: () => {}
+};
+
 export const useSongGeneration = ({ 
   onGenerationComplete, 
   onGenerationStart,
@@ -59,7 +66,7 @@ export const useSongGeneration = ({
         planRestricted: false,
         playCount: 0,
         likes: 0,
-        rating: 4,
+        rating: '4',
         createdAt: new Date(),
         updatedAt: new Date()
       } as Song;
@@ -137,7 +144,7 @@ export const useSongGeneration = ({
   const generateSong = useCallback((songData: Omit<InsertSong, 'userId'>) => {
     generateSongMutation.mutate({
       ...songData,
-      userId
+      userId: String(userId)
     });
   }, [generateSongMutation, userId]);
 
@@ -150,6 +157,7 @@ export const useSongGeneration = ({
   return { 
     generatingSong,
     generationProgress,
+    generationStage: 'Ready',
     isGenerating: generateSongMutation.isPending || !!generatingSong,
     generateSong,
     cancelGeneration,

@@ -139,7 +139,7 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
       case "Voice Samples":
         return <VoiceRecorder userId={user?.id || 1} />;
       case "Voice Cloning":
-        return ["basic", "pro", "enterprise"].includes(userPlan) ? (
+        return ["basic", "pro", "enterprise"].includes(userPlan || "free") ? (
           <AdvancedVoiceCloning userId={user?.id || 1} />
         ) : renderUpgradePrompt(
           "Voice Cloning - Basic+ Only",
@@ -148,7 +148,7 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
           "$6.99/month"
         );
       case "Text-to-Speech":
-        return ["basic", "pro", "enterprise"].includes(userPlan) ? (
+        return ["basic", "pro", "enterprise"].includes(userPlan || "free") ? (
           <EnhancedTextToSpeech userId={user?.id || 1} />
         ) : renderUpgradePrompt(
           "Enhanced Text-to-Speech - Basic+ Only",
@@ -157,7 +157,7 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
           "$6.99/month"
         );
       case "Analytics":
-        return ["pro", "enterprise"].includes(userPlan) ? (
+        return ["pro", "enterprise"].includes(userPlan || "free") ? (
           <AnalyticsDashboard userId={user?.id || 1} />
         ) : renderUpgradePrompt(
           "Analytics Dashboard - Pro Only",
@@ -166,7 +166,7 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
           "$12.99/month"
         );
       case "Version Control":
-        return ["pro", "enterprise"].includes(userPlan) ? (
+        return ["pro", "enterprise"].includes(userPlan || "free") ? (
           completedSong ? (
             <VersionControl userId={user?.id || 1} song={completedSong} />
           ) : (
@@ -179,7 +179,7 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
           "$12.99/month"
         );
       case "Collaboration":
-        return ["pro", "enterprise"].includes(userPlan) ? (
+        return ["pro", "enterprise"].includes(userPlan || "free") ? (
           completedSong && user?.id && user?.username ? (
             <CollaborativeWorkspace 
               song={completedSong} 
@@ -196,7 +196,7 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
           "$12.99/month"
         );
       case "Music Theory":
-        return userPlan === "enterprise" ? (
+        return (userPlan || "free") === "enterprise" ? (
           <MusicTheoryTools />
         ) : renderUpgradePrompt(
           "Music Theory Tools - Enterprise Only",
@@ -229,7 +229,7 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
                   <h1 className="text-3xl font-bold text-white">Create Your Next Hit</h1>
                   <div className="flex items-center space-x-4">
                     <Badge variant="outline" className="text-yellow-400 border-yellow-400">
-                      {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)} Plan
+                      {userPlan ? userPlan.charAt(0).toUpperCase() + userPlan.slice(1) : "Free"} Plan
                     </Badge>
                     <Button onClick={onUpgrade} className="bg-gradient-to-r from-yellow-400 to-yellow-600">
                       <Crown className="w-4 h-4 mr-2" />
@@ -261,21 +261,20 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
 
               {generatingSong ? (
                 <GenerationProgress
-                  song={generatingSong}
-                  onComplete={handleGenerationComplete}
+                  generationProgress={generatingSong.generationProgress || 0}
+                  generationStage="Generating..."
                 />
               ) : currentStep === 1 ? (
                 <SongForm
-                  onSongGenerated={handleSongGenerated}
-                  currentStep={currentStep}
-                  setCurrentStep={setCurrentStep}
+                  onSongGenerated={handleGenerationComplete}
                   user={user}
+                  userPlan={userPlan || "free"}
                   onUpgrade={onUpgrade}
                 />
               ) : currentStep === 3 && completedSong ? (
                 <div className="space-y-6">
                   <AudioPlayer song={completedSong} />
-                  <SongEditor song={completedSong} onSongUpdated={handleSongUpdated} userPlan={userPlan} onUpgrade={onUpgrade} />
+                  <SongEditor song={completedSong} onSongUpdated={handleSongUpdated} userPlan={userPlan || "free"} onUpgrade={onUpgrade} />
                   <DownloadOptions song={completedSong} />
                 </div>
               ) : (
