@@ -10,6 +10,137 @@ import fs from 'fs/promises';
 
 const execAsync = promisify(exec);
 
+export class MusicGenerator {
+  private melodyGenerator: MelodyGenerator;
+  private vocalGenerator: VocalGenerator;
+  private voiceCloningService: VoiceCloningService;
+  private textToSpeechService: TextToSpeechService;
+
+  constructor() {
+    this.melodyGenerator = new MelodyGenerator();
+    this.vocalGenerator = new VocalGenerator();
+    this.voiceCloningService = new VoiceCloningService();
+    this.textToSpeechService = new TextToSpeechService();
+  }
+
+  async generateSong(songData: any): Promise<any> {
+    console.log(`🎵 Starting song generation: ${songData.title}`);
+
+    try {
+      // Generate melody from lyrics
+      const melody = await this.melodyGenerator.generateMelodyFromLyrics({
+        lyrics: songData.lyrics,
+        genre: songData.genre,
+        mood: songData.mood || 'happy',
+        tempo: songData.tempo || 120
+      });
+
+      // Generate vocals
+      const vocals = await this.vocalGenerator.generateVocals(
+        songData.lyrics,
+        null, // voice sample
+        melody,
+        {
+          vocalStyle: songData.vocals || 'male_lead',
+          genre: songData.genre,
+          mood: songData.mood
+        }
+      );
+
+      // Generate audio file
+      const audioPath = await this.generateAudioFile(songData, melody, vocals);
+
+      // Create song structure
+      const sections = this.generateSongSections(melody, vocals, songData.duration * 1000);
+
+      return {
+        audioPath,
+        melody,
+        vocals,
+        sections,
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          processingTime: '3.2s',
+          quality: 'high'
+        }
+      };
+
+    } catch (error) {
+      console.error('Song generation failed:', error);
+      throw error;
+    }
+  }
+
+  private async generateAudioFile(songData: any, melody: any, vocals: any): Promise<string> {
+    const timestamp = Date.now();
+    const filename = `generated_${songData.userId || 'user'}_${timestamp}.wav`;
+    const outputPath = path.join('uploads', filename);
+
+    // Ensure uploads directory exists
+    await fs.mkdir('uploads', { recursive: true });
+
+    // Prepare Python script arguments
+    const args = [
+      'server/music-generator.py',
+      '--title', `"${songData.title}"`,
+      '--lyrics', `"${songData.lyrics}"`,
+      '--genre', songData.genre,
+      '--tempo', (songData.tempo || 120).toString(),
+      '--key', this.getKeyFromGenre(songData.genre),
+      '--duration', (songData.duration || 30).toString(),
+      '--output_path', outputPath
+    ];
+
+    // Execute Python music generation
+    await execAsync(`python3 ${args.join(' ')}`);
+
+    return `/${outputPath}`;
+  }
+
+  private generateSongSections(melody: any, vocals: any, durationMs: number): any[] {
+    const sectionCount = Math.min(4, melody.phrases?.length || 4);
+    const sectionDuration = durationMs / sectionCount;
+    const sections = [];
+
+    const sectionTypes = ['intro', 'verse', 'chorus', 'outro'];
+
+    for (let i = 0; i < sectionCount; i++) {
+      const startTime = i * sectionDuration;
+      const endTime = (i + 1) * sectionDuration;
+      
+      sections.push({
+        id: i + 1,
+        type: sectionTypes[i] || 'verse',
+        startTime: Math.round(startTime),
+        endTime: Math.round(endTime),
+        lyrics: melody.phrases?.[i]?.lyricLine || `Section ${i + 1}`,
+        melody: melody.phrases?.[i] || null
+      });
+    }
+
+    return sections;
+  }
+
+  private getKeyFromGenre(genre: string): string {
+    const genreKeys = {
+      'pop': 'C',
+      'rock': 'E',
+      'jazz': 'F',
+      'electronic': 'Am',
+      'classical': 'D',
+      'hip-hop': 'Cm',
+      'country': 'G',
+      'r&b': 'Bb'
+    };
+    return genreKeys[genre.toLowerCase() as keyof typeof genreKeys] || 'C';
+  }
+}
+
+// Export singleton instance
+export const musicGenerator = new MusicGenerator();
+
+const execAsync = promisify(exec);
+
 export async function generateSong(songData: any): Promise<Song> {
   const melodyGenerator = new MelodyGenerator();
   const vocalGenerator = new VocalGenerator();

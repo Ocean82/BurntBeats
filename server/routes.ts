@@ -878,8 +878,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const embedding = {
         id: `embedding_${userId}_${Date.now()}`,
         features: {
-          fundamentalFrequency: 220 + Math.random() * 100,
-          formants: [800, 1200, 2500, 3500],
+          fundamentalFrequency: 220 + Math.random() * 100,          formants: [800, 1200, 2500, 3500],
           spectralCentroid: 1250,
           mfcc: Array.from({ length: 13 }, () => Math.random())
         },
@@ -1693,6 +1692,30 @@ function broadcastToSession(songId: number, message: any, excludeUserId?: number
   });
 }
 
+// Helper function to generate song structure from melody and lyrics
+function generateSongStructure(melody: any, vocals: any, durationMs: number): any[] {
+  const sections = [];
+  const sectionDuration = durationMs / 4; // Divide into 4 main sections
+
+  // Create structured sections based on song composition
+  const sectionTypes = ['intro', 'verse', 'chorus', 'outro'];
+
+  for (let i = 0; i < 4; i++) {
+    const startTime = i * sectionDuration;
+    const endTime = (i + 1) * sectionDuration;
+
+    sections.push({
+      id: i + 1,
+      type: sectionTypes[i],
+      startTime: Math.round(startTime),
+      endTime: Math.round(endTime),
+      lyrics: vocals?.structure?.[i]?.lyrics || `${sectionTypes[i]} section`,
+      melody: melody?.phrases?.[i] || null
+    });
+  }
+
+  return sections;
+}
 
 
 function generateHarmonies(genre: string, mood: string) {
