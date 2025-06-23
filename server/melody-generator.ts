@@ -1,435 +1,428 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import path from 'path';
+import type { GeneratedMelody, MelodyNote, MelodyPhrase, AudioFeatures } from "@shared/schema";
 
-const execAsync = promisify(exec);
+export interface MelodyGenerationConfig {
+  lyrics: string;
+  genre: string;
+  mood: string;
+  tempo: number;
+  structure?: string[];
+}
+
+export interface LyricsAnalysis {
+  lines: string[];
+  emotionalArc: number[];
+  syllableCounts: number[];
+  totalSyllables: number;
+  rhymeScheme: string[];
+}
 
 export class MelodyGenerator {
-  async generateMelody(genre: string, mood: string, tempo: number, duration: number = 30): Promise<any> {
-    try {
-      // Advanced melody generation using our Python music21 integration
-      const melodyData = {
-        genre,
-        mood,
-        tempo,
-        duration,
-        complexity: this.getComplexityFromGenre(genre),
-        harmonicStructure: this.getHarmonicStructure(genre),
-        rhythmicPattern: this.getRhythmicPattern(genre, tempo),
-        modalCharacteristics: this.getModalCharacteristics(mood)
-      };
+  // Musical scales and modes
+  private scales = {
+    major: [0, 2, 4, 5, 7, 9, 11],
+    minor: [0, 2, 3, 5, 7, 8, 10],
+    dorian: [0, 2, 3, 5, 7, 9, 10],
+    mixolydian: [0, 2, 4, 5, 7, 9, 10],
+    pentatonic_major: [0, 2, 4, 7, 9],
+    pentatonic_minor: [0, 3, 5, 7, 10],
+    blues: [0, 3, 5, 6, 7, 10],
+  };
 
-      // Generate chord progression based on genre and mood
-      const chordProgression = this.generateChordProgression(genre, mood);
-      
-      // Create melodic contour based on mood and genre characteristics
-      const melodicContour = this.generateMelodicContour(mood, genre);
-      
-      // Generate rhythmic patterns
-      const rhythmicStructure = this.generateRhythmicStructure(tempo, genre);
+  // Emotion to musical parameter mapping
+  private emotionMappings = {
+    happy: { scale: "major", tempoMod: 1.1, energy: 0.8 },
+    sad: { scale: "minor", tempoMod: 0.9, energy: 0.4 },
+    energetic: { scale: "mixolydian", tempoMod: 1.2, energy: 0.9 },
+    calm: { scale: "pentatonic_major", tempoMod: 0.8, energy: 0.3 },
+    mysterious: { scale: "dorian", tempoMod: 0.95, energy: 0.5 },
+    uplifting: { scale: "major", tempoMod: 1.05, energy: 0.7 },
+  };
 
-      // Advanced melody processing
-      const melody = {
-        ...melodyData,
-        chordProgression,
-        melodicContour,
-        rhythmicStructure,
-        scales: this.getScalesForGenre(genre),
-        motifs: this.generateMotifs(genre, mood),
-        phraseStructure: this.generatePhraseStructure(duration),
-        dynamicMarkings: this.generateDynamics(mood),
-        articulationMarks: this.generateArticulations(genre)
-      };
+  // Emotional word weights for lyrics analysis
+  private emotionWeights: Record<string, number> = {
+    // Positive emotions
+    love: 0.9, joy: 0.8, happy: 0.7, beautiful: 0.6,
+    amazing: 0.7, wonderful: 0.8, perfect: 0.6, dream: 0.5,
+    sunshine: 0.7, freedom: 0.6, hope: 0.5, smile: 0.6,
+    dance: 0.7, fly: 0.6, soar: 0.8, bright: 0.5,
 
-      // Quality validation
-      const qualityScore = this.validateMelodyQuality(melody);
-      if (qualityScore < 0.7) {
-        console.warn(`Melody quality score low (${qualityScore}), regenerating...`);
-        // Regenerate with enhanced parameters
-        melody.dynamicMarkings = this.enhanceDynamics(melody.dynamicMarkings);
-        melody.motifs = this.enhanceMotifs(melody.motifs, genre);
-      }
+    // Negative emotions
+    sad: -0.7, pain: -0.8, hurt: -0.6, broken: -0.7,
+    lonely: -0.6, dark: -0.5, tears: -0.6, goodbye: -0.5,
+    lost: -0.6, empty: -0.7, cold: -0.4, fear: -0.6,
 
-      return melody;
-    } catch (error) {
-      console.error('Error generating melody:', error);
-      throw new Error('Failed to generate melody');
-    }
-  }
+    // Neutral/contextual
+    time: 0.0, day: 0.1, night: -0.2, way: 0.0,
+    life: 0.2, world: 0.1, heart: 0.3, soul: 0.2,
+  };
 
-  private getComplexityFromGenre(genre: string): 'simple' | 'moderate' | 'complex' {
-    const complexityMap: { [key: string]: 'simple' | 'moderate' | 'complex' } = {
-      'pop': 'simple',
-      'rock': 'moderate',
-      'jazz': 'complex',
-      'classical': 'complex',
-      'electronic': 'moderate',
-      'hip-hop': 'simple',
-      'country': 'simple',
-      'r&b': 'moderate'
-    };
-    return complexityMap[genre.toLowerCase()] || 'moderate';
-  }
+  // Syllable stress patterns for common words
+  private stressPatterns: Record<string, boolean[]> = {
+    beautiful: [true, false, false],
+    amazing: [false, true, false],
+    wonderful: [true, false, false],
+    together: [false, true, false],
+    forever: [false, true, false],
+    remember: [false, true, false],
+    believe: [false, true],
+    freedom: [true, false],
+    sunshine: [true, false],
+  };
 
-  private getHarmonicStructure(genre: string): any {
-    const harmonicStructures: { [key: string]: any } = {
-      'pop': {
-        primaryChords: ['I', 'V', 'vi', 'IV'],
-        secondaryChords: ['ii', 'iii'],
-        extensions: ['7th', 'add9'],
-        modality: 'major'
-      },
-      'rock': {
-        primaryChords: ['I', 'bVII', 'IV', 'V'],
-        secondaryChords: ['vi', 'iii'],
-        extensions: ['power chords', 'suspended'],
-        modality: 'minor'
-      },
-      'jazz': {
-        primaryChords: ['IIM7', 'V7', 'IM7', 'VIM7'],
-        secondaryChords: ['IIIM7', 'bVIM7', 'IVM7'],
-        extensions: ['9th', '11th', '13th', 'altered'],
-        modality: 'mixed'
-      },
-      'classical': {
-        primaryChords: ['I', 'IV', 'V', 'vi'],
-        secondaryChords: ['ii', 'iii', 'viio'],
-        extensions: ['inversions', 'suspensions'],
-        modality: 'classical'
-      }
-    };
-    return harmonicStructures[genre.toLowerCase()] || harmonicStructures['pop'];
-  }
+  async generateMelodyFromLyrics(config: MelodyGenerationConfig): Promise<GeneratedMelody> {
+    console.log(`🎵 Generating melody from lyrics...`);
+    console.log(`Genre: ${config.genre}, Mood: ${config.mood}, Tempo: ${config.tempo}`);
 
-  private getRhythmicPattern(genre: string, tempo: number): any {
-    const patterns: { [key: string]: any } = {
-      'pop': {
-        timeSignature: '4/4',
-        subdivision: 'eighth',
-        accentPattern: [1, 0, 0, 1, 0, 0, 1, 0],
-        syncopation: 'moderate'
-      },
-      'rock': {
-        timeSignature: '4/4',
-        subdivision: 'quarter',
-        accentPattern: [1, 0, 1, 0, 1, 0, 1, 0],
-        syncopation: 'minimal'
-      },
-      'jazz': {
-        timeSignature: '4/4',
-        subdivision: 'triplet',
-        accentPattern: [1, 0, 1, 0, 1, 0, 1, 1],
-        syncopation: 'high'
-      },
-      'electronic': {
-        timeSignature: '4/4',
-        subdivision: 'sixteenth',
-        accentPattern: [1, 0, 0, 0, 1, 0, 0, 0],
-        syncopation: 'programmed'
-      }
-    };
-    return patterns[genre.toLowerCase()] || patterns['pop'];
-  }
+    // Analyze lyrics structure
+    const lyricsAnalysis = this.analyzeLyricsStructure(config.lyrics);
 
-  private getModalCharacteristics(mood: string): any {
-    const modalMap: { [key: string]: any } = {
-      'happy': {
-        mode: 'Ionian',
-        intervals: [2, 2, 1, 2, 2, 2, 1],
-        colorTones: ['major 7th', 'major 9th'],
-        tendency: 'upward'
-      },
-      'sad': {
-        mode: 'Aeolian',
-        intervals: [2, 1, 2, 2, 1, 2, 2],
-        colorTones: ['minor 7th', 'flat 9th'],
-        tendency: 'downward'
-      },
-      'energetic': {
-        mode: 'Mixolydian',
-        intervals: [2, 2, 1, 2, 2, 1, 2],
-        colorTones: ['dominant 7th', 'major 9th'],
-        tendency: 'angular'
-      },
-      'calm': {
-        mode: 'Lydian',
-        intervals: [2, 2, 2, 1, 2, 2, 1],
-        colorTones: ['major 7th', '#11'],
-        tendency: 'flowing'
-      }
-    };
-    return modalMap[mood.toLowerCase()] || modalMap['happy'];
-  }
+    // Determine musical parameters
+    const [rootNote, scaleName] = this.determineKeyAndScale(lyricsAnalysis.emotionalArc, config.mood);
+    const audioFeatures = this.generateAudioFeatures(config.genre, config.mood, config.tempo, rootNote, scaleName);
 
-  private generateChordProgression(genre: string, mood: string): string[] {
-    const progressions: { [key: string]: { [key: string]: string[] } } = {
-      'pop': {
-        'happy': ['C', 'G', 'Am', 'F'],
-        'sad': ['Am', 'F', 'C', 'G'],
-        'energetic': ['C', 'F', 'G', 'C'],
-        'calm': ['C', 'Am', 'F', 'G']
-      },
-      'rock': {
-        'happy': ['A', 'D', 'E', 'A'],
-        'sad': ['Am', 'F', 'C', 'G'],
-        'energetic': ['E', 'A', 'B', 'E'],
-        'calm': ['Em', 'C', 'G', 'D']
-      },
-      'jazz': {
-        'happy': ['CM7', 'Am7', 'Dm7', 'G7'],
-        'sad': ['Am7', 'D7', 'GM7', 'CM7'],
-        'energetic': ['CM7', 'E7', 'Am7', 'D7'],
-        'calm': ['FM7', 'Em7', 'Am7', 'Dm7']
-      }
-    };
-    
-    const genreProgressions = progressions[genre.toLowerCase()] || progressions['pop'];
-    return genreProgressions[mood.toLowerCase()] || genreProgressions['happy'];
-  }
+    console.log(`🎼 Key: ${this.midiToNoteName(rootNote)}, Scale: ${scaleName}`);
 
-  private generateMelodicContour(mood: string, genre: string): any {
-    const contours: { [key: string]: any } = {
-      'happy': {
-        direction: 'ascending',
-        intervalPattern: [2, 3, -1, 4, -2, 5],
-        peakPosition: 0.7,
-        range: 'wide'
-      },
-      'sad': {
-        direction: 'descending',
-        intervalPattern: [-2, -1, 3, -4, 2, -3],
-        peakPosition: 0.3,
-        range: 'narrow'
-      },
-      'energetic': {
-        direction: 'angular',
-        intervalPattern: [4, -3, 5, -2, 6, -4],
-        peakPosition: 0.5,
-        range: 'very wide'
-      },
-      'calm': {
-        direction: 'wave',
-        intervalPattern: [1, 2, -1, 2, 1, -2],
-        peakPosition: 0.6,
-        range: 'moderate'
-      }
-    };
-    return contours[mood.toLowerCase()] || contours['happy'];
-  }
+    // Generate melody phrases for each lyric line
+    const melodyPhrases: MelodyPhrase[] = [];
+    let currentTime = 0.0;
 
-  private generateRhythmicStructure(tempo: number, genre: string): any {
-    const baseUnit = 60000 / tempo; // milliseconds per beat
-    
-    return {
-      tempo,
-      baseUnit,
-      subdivision: tempo > 120 ? 'eighth' : 'quarter',
-      swingFactor: genre === 'jazz' ? 0.67 : 0.5,
-      accentStrength: genre === 'rock' ? 0.8 : 0.6,
-      microTiming: genre === 'jazz' ? 'loose' : 'tight'
-    };
-  }
+    for (let lineIdx = 0; lineIdx < lyricsAnalysis.lines.length; lineIdx++) {
+      const line = lyricsAnalysis.lines[lineIdx];
+      if (!line.trim()) continue;
 
-  private getScalesForGenre(genre: string): any {
-    const scales: { [key: string]: any } = {
-      'pop': {
-        primary: 'major pentatonic',
-        secondary: 'natural minor',
-        blues: 'minor pentatonic + blue notes'
-      },
-      'rock': {
-        primary: 'minor pentatonic',
-        secondary: 'dorian',
-        blues: 'blues scale'
-      },
-      'jazz': {
-        primary: 'bebop dominant',
-        secondary: 'melodic minor',
-        blues: 'bebop blues'
-      },
-      'classical': {
-        primary: 'major',
-        secondary: 'harmonic minor',
-        blues: 'chromatic'
-      }
-    };
-    return scales[genre.toLowerCase()] || scales['pop'];
-  }
+      console.log(`🎶 Processing line ${lineIdx + 1}: '${line.substring(0, 40)}...'`);
 
-  private generateMotifs(genre: string, mood: string): any[] {
-    // Generate 2-4 musical motifs based on genre and mood
-    const motifCount = genre === 'classical' || genre === 'jazz' ? 4 : 2;
-    const motifs = [];
+      // Analyze this specific line
+      const lineSyllables = this.analyzeLineSyllables(line);
+      const emotionWeight = lyricsAnalysis.emotionalArc[lineIdx];
 
-    for (let i = 0; i < motifCount; i++) {
-      motifs.push({
-        id: `motif_${i + 1}`,
-        intervalPattern: this.generateMotifPattern(genre, mood),
-        rhythmPattern: this.generateMotifRhythm(genre),
-        development: this.generateMotifDevelopment(genre)
-      });
+      // Generate melodic phrase
+      const phrase = await this.generatePhraseFromLine(
+        line,
+        lineSyllables,
+        emotionWeight,
+        rootNote,
+        scaleName,
+        currentTime,
+        config.tempo,
+      );
+
+      melodyPhrases.push(phrase);
+      currentTime += phrase.notes.reduce((sum, note) => sum + note.duration, 0);
     }
 
-    return motifs;
+    // Create final melody object
+    const melody: GeneratedMelody = {
+      phrases: melodyPhrases,
+      audioFeatures: audioFeatures,
+      structure: lyricsAnalysis,
+      totalDuration: currentTime,
+      noteCount: melodyPhrases.reduce((sum, phrase) => sum + phrase.notes.length, 0),
+    };
+
+    console.log(`✅ Melody generated: ${melody.noteCount} notes, ${melody.totalDuration.toFixed(1)}s`);
+    return melody;
   }
 
-  private generateMotifPattern(genre: string, mood: string): number[] {
-    const patterns: { [key: string]: { [key: string]: number[] } } = {
-      'pop': {
-        'happy': [0, 2, 4, 2],
-        'sad': [0, -2, -3, -1],
-        'energetic': [0, 4, 2, 5],
-        'calm': [0, 1, 3, 2]
-      },
-      'rock': {
-        'happy': [0, 3, 5, 3],
-        'sad': [0, -3, -5, -2],
-        'energetic': [0, 5, 3, 7],
-        'calm': [0, 2, 5, 4]
+  private analyzeLyricsStructure(lyrics: string): LyricsAnalysis {
+    const lines = lyrics.split("\n").filter((line) => line.trim());
+
+    const analysis: LyricsAnalysis = {
+      lines: lines,
+      emotionalArc: [],
+      syllableCounts: [],
+      totalSyllables: 0,
+      rhymeScheme: [],
+    };
+
+    for (const line of lines) {
+      // Emotional analysis
+      const words = line.toLowerCase().split(/\s+/);
+      const lineEmotion =
+        words.reduce((sum, word) => {
+          return sum + (this.emotionWeights[word] || 0);
+        }, 0) / words.length;
+
+      analysis.emotionalArc.push(lineEmotion);
+
+      // Syllable counting
+      const syllableCount = words.reduce((count, word) => {
+        const vowels = word.match(/[aeiou]/g);
+        return count + Math.max(1, vowels ? vowels.length : 1);
+      }, 0);
+
+      analysis.syllableCounts.push(syllableCount);
+      analysis.totalSyllables += syllableCount;
+    }
+
+    return analysis;
+  }
+
+  private analyzeLineSyllables(line: string): Array<{
+    word: string;
+    syllableCount: number;
+    stressPattern: boolean[];
+    emotionWeight: number;
+  }> {
+    const words = line.toLowerCase().split(/\s+/);
+
+    return words.map((word) => {
+      // Estimate syllable count
+      const vowels = word.match(/[aeiou]/g);
+      const syllableCount = Math.max(1, vowels ? vowels.length : 1);
+
+      // Get stress pattern
+      let stressPattern = this.stressPatterns[word];
+      if (!stressPattern || stressPattern.length !== syllableCount) {
+        // Generate default stress pattern
+        if (syllableCount === 1) {
+          stressPattern = [true];
+        } else if (syllableCount === 2) {
+          stressPattern = [true, false]; // Most 2-syllable words are trochaic
+        } else {
+          // Alternate pattern for longer words
+          stressPattern = Array.from({ length: syllableCount }, (_, i) => i % 2 === 0);
+        }
       }
-    };
-    
-    const genrePatterns = patterns[genre.toLowerCase()] || patterns['pop'];
-    return genrePatterns[mood.toLowerCase()] || genrePatterns['happy'];
+
+      // Get emotional weight
+      const emotionWeight = this.emotionWeights[word] || 0.0;
+
+      return {
+        word,
+        syllableCount,
+        stressPattern,
+        emotionWeight,
+      };
+    });
   }
 
-  private generateMotifRhythm(genre: string): number[] {
-    const rhythms: { [key: string]: number[] } = {
-      'pop': [1, 0.5, 0.5, 1],
-      'rock': [1, 1, 0.5, 0.5],
-      'jazz': [0.67, 0.33, 1, 0.5],
-      'classical': [1, 0.5, 0.25, 0.25]
-    };
-    return rhythms[genre.toLowerCase()] || rhythms['pop'];
-  }
+  private async generatePhraseFromLine(
+    line: string,
+    syllableData: ReturnType<typeof this.analyzeLineSyllables>,
+    emotionWeight: number,
+    rootNote: number,
+    scaleName: keyof typeof this.scales,
+    startTime: number,
+    tempo: number,
+  ): Promise<MelodyPhrase> {
+    const scaleNotes = this.scales[scaleName];
+    const notes: MelodyNote[] = [];
+    let currentPitch = rootNote + 12; // Start an octave above root
+    let currentTime = startTime;
 
-  private generateMotifDevelopment(genre: string): any {
+    for (const wordData of syllableData) {
+      const { word, stressPattern, emotionWeight: wordEmotion } = wordData;
+
+      for (let sylIdx = 0; sylIdx < stressPattern.length; sylIdx++) {
+        const isStressed = stressPattern[sylIdx];
+
+        // Calculate pitch change based on stress and emotion
+        let pitchChange = isStressed ? 2 : -1;
+        pitchChange += Math.round(wordEmotion * 2); // Emotion influence
+        pitchChange += Math.floor(Math.random() * 3) - 1; // Random variation
+
+        currentPitch += pitchChange;
+
+        // Constrain to scale
+        const scaleDegree = (((currentPitch - rootNote) % 12) + 12) % 12;
+        const nearestScaleNote = scaleNotes.reduce((nearest, note) => {
+          return Math.abs(scaleDegree - note) < Math.abs(scaleDegree - nearest) ? note : nearest;
+        });
+
+        const finalPitch = rootNote + nearestScaleNote + Math.floor((currentPitch - rootNote) / 12) * 12;
+
+        // Calculate duration based on stress and tempo
+        let duration = isStressed ? 0.75 : 0.5;
+        duration += Math.abs(wordEmotion) * 0.25; // Emotional words get longer
+        duration = duration * (120 / tempo); // Normalize to tempo
+
+        // Calculate velocity
+        let velocity = isStressed ? 90 : 70;
+        velocity += Math.round(Math.abs(wordEmotion) * 20);
+        velocity = Math.max(40, Math.min(127, velocity));
+
+        // Create syllable text
+        const syllableText = stressPattern.length > 1 ? `${word}[${sylIdx}]` : word;
+
+        const note: MelodyNote = {
+          pitch: finalPitch,
+          duration: duration,
+          velocity: velocity,
+          syllable: syllableText,
+          timestamp: currentTime,
+        };
+
+        notes.push(note);
+        currentTime += duration;
+      }
+    }
+
     return {
-      transposition: genre === 'classical' ? 'sequence' : 'simple',
-      inversion: genre === 'jazz' || genre === 'classical',
-      fragmentation: genre === 'jazz',
-      augmentation: genre === 'classical'
+      notes,
+      startTime,
+      emotionWeight,
+      lyricLine: line,
     };
   }
 
-  private generatePhraseStructure(duration: number): any {
-    const phraseCount = Math.ceil(duration / 8); // 8-second phrases
-    
-    return {
-      phraseLength: 8,
-      phraseCount,
-      antecedent: 'question',
-      consequent: 'answer',
-      cadences: this.generateCadences(phraseCount)
-    };
-  }
+  private determineKeyAndScale(emotionalArc: number[], mood: string): [number, keyof typeof this.scales] {
+    const avgEmotion =
+      emotionalArc.length > 0 ? emotionalArc.reduce((sum, val) => sum + val, 0) / emotionalArc.length : 0;
 
-  private generateCadences(phraseCount: number): string[] {
-    const cadences = [];
-    for (let i = 0; i < phraseCount; i++) {
-      if (i === phraseCount - 1) {
-        cadences.push('authentic');
-      } else if (i % 2 === 0) {
-        cadences.push('half');
+    // Use mood mapping if available
+    const moodLower = mood.toLowerCase() as keyof typeof this.emotionMappings;
+    let scaleName: keyof typeof this.scales;
+
+    if (this.emotionMappings[moodLower]) {
+      scaleName = this.emotionMappings[moodLower].scale as keyof typeof this.scales;
+    } else {
+      // Choose scale based on average emotion
+      if (avgEmotion > 0.3) {
+        scaleName = "major";
+      } else if (avgEmotion < -0.3) {
+        scaleName = "minor";
+      } else if (avgEmotion > 0) {
+        scaleName = "mixolydian";
       } else {
-        cadences.push('deceptive');
+        scaleName = "dorian";
       }
     }
-    return cadences;
+
+    // Choose root note based on emotion
+    let rootNote: number;
+    if (avgEmotion > 0.5) {
+      rootNote = [60, 62, 64, 67][Math.floor(Math.random() * 4)]; // C, D, E, G (brighter keys)
+    } else if (avgEmotion < -0.5) {
+      rootNote = [57, 59, 61, 65][Math.floor(Math.random() * 4)]; // A, B, C#, F (darker keys)
+    } else {
+      rootNote = [60, 62, 65, 67][Math.floor(Math.random() * 4)]; // C, D, F, G (neutral)
+    }
+
+    return [rootNote, scaleName];
   }
 
-  private generateDynamics(mood: string): any {
-    const dynamics: { [key: string]: any } = {
-      'happy': {
-        overall: 'mf',
-        variation: ['mp', 'mf', 'f'],
-        crescendos: 3,
-        diminuendos: 2
-      },
-      'sad': {
-        overall: 'mp',
-        variation: ['pp', 'mp', 'mf'],
-        crescendos: 1,
-        diminuendos: 4
-      },
-      'energetic': {
-        overall: 'f',
-        variation: ['mf', 'f', 'ff'],
-        crescendos: 5,
-        diminuendos: 1
-      },
-      'calm': {
-        overall: 'mp',
-        variation: ['pp', 'mp', 'p'],
-        crescendos: 2,
-        diminuendos: 3
-      }
+  private generateAudioFeatures(
+    genre: string,
+    mood: string,
+    tempo: number,
+    rootNote: number,
+    scaleName: string,
+  ): AudioFeatures {
+    // Base features
+    const features: AudioFeatures = {
+      tempo: tempo,
+      key: this.midiToNoteName(rootNote),
+      timeSignature: "4/4",
+      energy: 0.7,
+      valence: 0.5,
+      danceability: 0.6,
+      acousticness: 0.3,
+      instrumentalness: 0.1,
     };
-    return dynamics[mood.toLowerCase()] || dynamics['happy'];
-  }
 
-  private generateArticulations(genre: string): any {
-    const articulations: { [key: string]: any } = {
-      'pop': {
-        primary: 'legato',
-        accents: 'moderate',
-        staccato: 'minimal'
-      },
-      'rock': {
-        primary: 'marcato',
-        accents: 'strong',
-        staccato: 'rhythmic'
-      },
-      'jazz': {
-        primary: 'swing',
-        accents: 'syncopated',
-        staccato: 'articulated'
-      },
-      'classical': {
-        primary: 'varied',
-        accents: 'expressive',
-        staccato: 'precise'
-      }
+    // Adjust based on mood
+    const moodLower = mood.toLowerCase() as keyof typeof this.emotionMappings;
+    if (this.emotionMappings[moodLower]) {
+      const moodConfig = this.emotionMappings[moodLower];
+      features.energy = moodConfig.energy;
+      features.valence = moodConfig.energy > 0.6 ? 0.8 : 0.3;
+    }
+
+    // Adjust based on genre
+    const genreAdjustments: Record<string, Partial<AudioFeatures>> = {
+      pop: { danceability: 0.8, energy: 0.7, acousticness: 0.2 },
+      rock: { energy: 0.9, acousticness: 0.1, danceability: 0.6 },
+      electronic: { danceability: 0.9, energy: 0.8, acousticness: 0.05 },
+      folk: { acousticness: 0.8, energy: 0.4, danceability: 0.3 },
+      jazz: { acousticness: 0.6, energy: 0.5, danceability: 0.4 },
+      hip_hop: { danceability: 0.8, energy: 0.7, acousticness: 0.1 },
     };
-    return articulations[genre.toLowerCase()] || articulations['pop'];
+
+    const genreAdj = genreAdjustments[genre.toLowerCase()];
+    if (genreAdj) {
+      Object.assign(features, genreAdj);
+    }
+
+    return features;
   }
 
-  private validateMelodyQuality(melody: any): number {
-    let score = 1.0;
-    
-    // Check chord progression complexity
-    const uniqueChords = new Set(melody.chordProgression).size;
-    if (uniqueChords < 3) score -= 0.2;
-    
-    // Check motif development
-    if (!melody.motifs || melody.motifs.length < 2) score -= 0.15;
-    
-    // Check dynamic range
-    if (!melody.dynamicMarkings?.variation || melody.dynamicMarkings.variation.length < 3) score -= 0.1;
-    
-    // Check rhythmic complexity
-    if (melody.rhythmicStructure?.syncopation === 'minimal') score -= 0.05;
-    
-    return Math.max(0, score);
+  private midiToNoteName(midiNote: number): string {
+    const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const octave = Math.floor(midiNote / 12) - 1;
+    const note = noteNames[midiNote % 12];
+    return `${note}${octave}`;
   }
 
-  private enhanceDynamics(dynamics: any): any {
+  // Legacy method for backward compatibility
+  async generateMelody(genre: string, mood: string, tempo: number, duration?: number): Promise<any> {
+    console.log("⚠️  Using legacy generateMelody method. Consider using generateMelodyFromLyrics for better results.");
+
+    // Generate a basic melody without lyrics
+    const basicLyrics = "La la la la la\nDa da da da da\nNa na na na na\nHa ha ha ha ha";
+
+    const melody = await this.generateMelodyFromLyrics({
+      lyrics: basicLyrics,
+      genre,
+      mood,
+      tempo,
+    });
+
+    // Add legacy structure for backward compatibility
     return {
-      ...dynamics,
-      variation: [...(dynamics.variation || []), 'mf', 'f'],
-      crescendos: (dynamics.crescendos || 0) + 1,
-      diminuendos: (dynamics.diminuendos || 0) + 1
+      ...melody,
+      phraseStructure: {
+        phraseLength: melody.totalDuration / melody.phrases.length,
+        phraseCount: melody.phrases.length
+      },
+      chordProgression: this.generateChordProgression(genre),
+      melodicContour: {
+        direction: this.determineMelodicDirection(melody.phrases),
+        intervalPattern: this.extractIntervalPattern(melody.phrases)
+      }
     };
   }
 
-  private enhanceMotifs(motifs: any[], genre: string): any[] {
-    return motifs.map(motif => ({
-      ...motif,
-      development: {
-        ...motif.development,
-        inversion: true,
-        fragmentation: genre === 'jazz' || genre === 'classical'
+  private generateChordProgression(genre: string): string[] {
+    const progressions = {
+      'pop': ['C', 'Am', 'F', 'G'],
+      'rock': ['E', 'A', 'B', 'E'],
+      'jazz': ['Cmaj7', 'Am7', 'Dm7', 'G7'],
+      'electronic': ['Am', 'F', 'C', 'G'],
+      'classical': ['C', 'F', 'G', 'C']
+    };
+    return progressions[genre.toLowerCase() as keyof typeof progressions] || progressions.pop;
+  }
+
+  private determineMelodicDirection(phrases: MelodyPhrase[]): string {
+    if (phrases.length === 0) return 'stable';
+    
+    const firstNote = phrases[0].notes[0]?.pitch || 60;
+    const lastNote = phrases[phrases.length - 1].notes.slice(-1)[0]?.pitch || 60;
+    
+    if (lastNote > firstNote + 5) return 'ascending';
+    if (lastNote < firstNote - 5) return 'descending';
+    return 'wave';
+  }
+
+  private extractIntervalPattern(phrases: MelodyPhrase[]): number[] {
+    const intervals: number[] = [];
+    
+    phrases.forEach(phrase => {
+      for (let i = 1; i < phrase.notes.length; i++) {
+        const interval = phrase.notes[i].pitch - phrase.notes[i-1].pitch;
+        intervals.push(interval);
       }
-    }));
+    });
+    
+    return intervals.slice(0, 8); // Return first 8 intervals as pattern
+  }
+
+  // Export the class instance
+  static getInstance(): MelodyGenerator {
+    return new MelodyGenerator();
   }
 }
+
+// Export default instance
+export const melodyGenerator = new MelodyGenerator();
