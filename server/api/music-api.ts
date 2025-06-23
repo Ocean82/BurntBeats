@@ -18,7 +18,7 @@ export class MusicAPI {
       return audioPath;
     } catch (error) {
       console.log("Timidity not available, using basic audio generation");
-      const silencePath = path.join(this.uploadsDir, 'silence.wav');
+      const silencePath = path.join(MusicAPI.uploadsDir, 'silence.wav');
       if (!fs.existsSync(silencePath)) {
         const sampleRate = 44100;
         const duration = 5;
@@ -58,20 +58,20 @@ export class MusicAPI {
 
       console.log("🎵 Generating basic song...");
 
-      const outputPath = path.join(this.uploadsDir, `song_${Date.now()}.mid`);
+      const outputPath = path.join(MusicAPI.uploadsDir, `song_${Date.now()}.wav`);
 
       const args = [
-        path.join(process.cwd(), "server/enhanced-music21-generator.py"),
-        `"${title}"`,
-        `"${lyrics}"`,
-        `"${genre || 'pop'}"`,
-        String(tempo || 120),
-        `"${key || 'C'}"`,
-        String(duration || 30),
-        outputPath
+        path.join(process.cwd(), "server/music-generator.py"),
+        `--title="${title}"`,
+        `--lyrics="${lyrics}"`,
+        `--genre="${genre || 'pop'}"`,
+        `--tempo=${tempo || 120}`,
+        `--key="${key || 'C'}"`,
+        `--duration=${duration || 30}`,
+        `--output_path="${outputPath}"`
       ];
 
-      const { stdout, stderr } = await execAsync(`python ${args.join(' ')}`);
+      const { stdout, stderr } = await execAsync(`python "${args[0]}" ${args.slice(1).join(' ')}`);
 
       if (stderr && !stderr.includes('⚠️') && !stderr.includes('🎵')) {
         console.error("Generation stderr:", stderr);
@@ -81,7 +81,8 @@ export class MusicAPI {
         throw new Error("Song generation failed - no output file created");
       }
 
-      const audioPath = await this.generateAudioFromMidi(outputPath);
+      // The simple generator creates WAV files directly, no MIDI conversion needed
+      const audioPath = outputPath;
 
       const song = {
         id: Date.now(),
@@ -130,7 +131,7 @@ export class MusicAPI {
 
       console.log("🤖 Generating AI-enhanced music...");
 
-      const outputPath = path.join(this.uploadsDir, `ai_music_${Date.now()}.mid`);
+      const outputPath = path.join(MusicAPI.uploadsDir, `ai_music_${Date.now()}.mid`);
 
       const args = [
         path.join(process.cwd(), "server/ai-music21-generator.py"),
@@ -149,7 +150,7 @@ export class MusicAPI {
         throw new Error("AI music generation failed - no output file created");
       }
 
-      const audioPath = await this.generateAudioFromMidi(outputPath);
+      const audioPath = await MusicAPI.generateAudioFromMidi(outputPath);
 
       const result = {
         success: true,
@@ -189,7 +190,7 @@ export class MusicAPI {
 
       console.log(`🎼 Running Music21 ${demoType} demo...`);
 
-      const outputPath = path.join(this.uploadsDir, `music21_${demoType}_demo_${Date.now()}.mid`);
+      const outputPath = path.join(MusicAPI.uploadsDir, `music21_${demoType}_demo_${Date.now()}.mid`);
 
       const args = [
         path.join(process.cwd(), "server/music21-demo-generator.py"),
@@ -209,7 +210,7 @@ export class MusicAPI {
         analysis = JSON.parse(fs.readFileSync(analysisPath, 'utf8'));
       }
 
-      const audioPath = await this.generateAudioFromMidi(outputPath);
+      const audioPath = await MusicAPI.generateAudioFromMidi(outputPath);
 
       const result = {
         success: true,

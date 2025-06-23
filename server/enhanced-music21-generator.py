@@ -417,15 +417,17 @@ def create_enhanced_composition(title, lyrics, genre, tempo_bpm, key_sig, durati
     score = stream.Score()
 
     # Enhanced metadata
-    score.metadata = {}
+    from music21 import metadata
+    score.metadata = metadata.Metadata()
     score.metadata.title = title
     score.metadata.composer = 'Enhanced Music Generator AI'
-    score.metadata.genre = genre
+    if hasattr(score.metadata, 'genre'):
+        score.metadata.genre = genre
 
     # Musical setup
     score.append(meter.TimeSignature('4/4'))
     score.append(tempo.TempoIndication(number=tempo_bpm))
-    score.append(key.KeySignature(key_sig))
+    score.append(key.Key(key_sig))
 
     # Calculate measures
     beats_per_measure = 4
