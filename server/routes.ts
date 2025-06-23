@@ -1,3 +1,16 @@
+import express, { type Request, Response } from "express";
+import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { pricingService } from "./pricing-service";
+import { spawn } from "child_process";
+import { storage } from "./storage";
+import { hashPassword, verifyPassword } from "./db";
+
+const app = express();
+
+export function registerRoutes(app: express.Application) {
 app.post("/api/generate-ai-music", async (req, res) => {
   try {
     const { title, lyrics, genre, tempo, key, duration } = req.body;
@@ -133,3 +146,8 @@ app.post("/api/demo-music21", async (req, res) => {
     });
   }
 });
+
+  return app;
+}
+
+export default app;

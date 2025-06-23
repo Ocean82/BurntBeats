@@ -338,7 +338,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
             <h3 className="font-semibold text-white mb-2">Pro</h3>
             <p className="text-2xl font-bold text-white mb-2">$12.99</p>
             <ul className="text-sm text-gray-300 space-y-1">
-              <li>50 songs/month</li>
+              <li>Unlimited songs</li>
               <li>Advanced tools</li>
               <li>Collaboration</li>
             </ul>

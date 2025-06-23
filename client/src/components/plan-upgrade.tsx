@@ -11,11 +11,11 @@ export default function PlanUpgrade({ currentPlan, onUpgrade }: PlanUpgradeProps
   if (currentPlan === "pro") return null;
 
   const freeFeatures = [
-    { feature: "30-second songs", included: true },
+    { feature: "2 full-length songs per month", included: true },
     { feature: "Basic vocal styles", included: true },
     { feature: "3 genres", included: true },
     { feature: "Standard quality", included: true },
-    { feature: "Full-length songs (up to 5:30)", included: false },
+    { feature: "4 songs per month (Basic)", included: false },
     { feature: "Advanced vocal controls", included: false },
     { feature: "Custom voice cloning", included: false },
     { feature: "Song editing tools", included: false },

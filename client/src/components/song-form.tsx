@@ -1,366 +1,264 @@
 "use client"
 
-import type React from "react"
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Slider } from "@/components/ui/slider"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Music, Sparkles } from "lucide-react"
-import { useMutation } from "@tanstack/react-query"
-import { useToast } from "@/hooks/use-toast"
-import type { Song } from "@shared/schema"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Crown, Music, Sparkles } from "lucide-react";
+import { useSongGeneration } from "@/hooks/use-song-generation";
+import GenerationProgress from "./generation-progress";
+import UpgradeModal from "./upgrade-modal";
 
 interface SongFormProps {
-  onSongGenerated: (song: Song) => void
-  currentStep?: number
-  setCurrentStep?: (step: number) => void
-  user: any
-  onUpgrade: () => void
+  onSongGenerated: (song: any) => void;
+  userPlan: string;
+  onUpgrade: () => void;
+  user?: {
+    id?: number;
+    songsThisMonth?: number;
+    monthlyLimit?: number;
+  };
 }
 
-export default function SongForm({ onSongGenerated, user, onUpgrade }: SongFormProps) {
-  const { toast } = useToast()
+export default function SongForm({ onSongGenerated, userPlan, onUpgrade, user }: SongFormProps) {
+  const [lyrics, setLyrics] = useState("");
+  const [genre, setGenre] = useState("");
+  const [style, setStyle] = useState("");
+  const [mood, setMood] = useState("");
 
-  const [formData, setFormData] = useState({
-    title: "",
-    lyrics: "",
-    genre: "pop",
-    mood: "happy",
-    tempo: [120],
-    vocals: "male_lead",
-    duration: [120], // 2 minutes default for free users
-    creativity: [75],
-    energy: [70],
-  })
+  const {
+    generateSong,
+    isGenerating,
+    progress,
+    currentStep,
+    error: generationError
+  } = useSongGeneration();
 
-  const genres = [
-    "Pop", "Rock", "Hip Hop", "Electronic", "Jazz", "Classical", 
-    "Country", "R&B", "Reggae", "Folk", "Blues", "Funk"
-  ]
-
-  const moods = [
-    "Happy", "Sad", "Energetic", "Calm", "Romantic", "Mysterious", 
-    "Uplifting", "Dark", "Playful", "Intense", "Dreamy", "Peaceful"
-  ]
-
-  const vocals = [
-    "Male Lead", "Female Lead", "Choir", "Rap", "Whisper", 
-    "Powerful", "Soft", "Auto-tuned", "No Vocals"
-  ]
-
-  const userPlan = user?.plan || "free"
-  const maxDuration = userPlan === "free" ? 60 : 300 // 1 minute for free, 5 minutes for pro
-
-  const generateSongMutation = useMutation({
-    mutationFn: async (songData: any) => {
-      // Check free plan limits
-      if (userPlan === "free") {
-        const songsThisMonth = user?.songsThisMonth || 0
-        if (songsThisMonth >= 2) {
-          throw new Error("Free plan limit reached (2 songs per month)")
-        }
-      }
-
-      const formattedData = {
-        title: songData.title,
-        lyrics: songData.lyrics,
-        genre: songData.genre,
-        mood: songData.mood,
-        tempo: songData.tempo,
-        duration: songData.duration,
-        vocals: songData.vocals,
-        energy: songData.energy,
-        creativity: songData.creativity,
-        userId: songData.userId
-      }
-
-      const response = await fetch('/api/songs/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formattedData)
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Failed to generate song')
-      }
-
-      return response.json()
-    },
-    onSuccess: (song) => {
-      toast({
-        title: "🎵 Song Generation Started!",
-        description: "Your song is being created. This may take a few minutes."
-      })
-      onSongGenerated(song)
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Generation Failed",
-        description: error.message,
-        variant: "destructive"
-      })
+  // Define available options based on plan
+  const getAvailableGenres = () => {
+    switch (userPlan) {
+      case "free":
+        return ["Pop", "Rock", "Electronic"];
+      case "basic":
+        return ["Pop", "Rock", "Electronic", "Jazz", "Classical"];
+      case "pro":
+      case "enterprise":
+        return ["Pop", "Rock", "Electronic", "Jazz", "Classical", "Hip-Hop", "Country", "R&B"];
+      default:
+        return ["Pop", "Rock", "Electronic"];
     }
-  })
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const getUsageInfo = () => {
+    if (!user) return null;
 
-    const songData = {
-      title: formData.title,
-      lyrics: formData.lyrics,
-      genre: formData.genre,
-      mood: formData.mood,
-      tempo: formData.tempo[0],
-      duration: formData.duration[0],
-      vocals: formData.vocals,
-      energy: formData.energy[0],
-      creativity: formData.creativity[0],
-      userId: user?.id || 1,
-      songLength: formatDuration(formData.duration[0]),
-      status: "pending" as const,
-      generationProgress: 0,
+    const songsUsed = user.songsThisMonth || 0;
+    const monthlyLimit = user.monthlyLimit || 2;
+
+    if (userPlan === "pro" || userPlan === "enterprise") {
+      return `Songs this month: ${songsUsed} (Unlimited)`;
     }
 
-    generateSongMutation.mutate(songData)
-  }
+    return `Songs this month: ${songsUsed}/${monthlyLimit}`;
+  };
 
-  const formatDuration = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds = seconds % 60
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-  }
+  const canGenerateSong = () => {
+    if (userPlan === "pro" || userPlan === "enterprise") return true;
+
+    const songsUsed = user?.songsThisMonth || 0;
+    const monthlyLimit = userPlan === "basic" ? 4 : 2; // Basic: 4, Free: 2
+
+    return songsUsed < monthlyLimit;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!canGenerateSong()) {
+      return;
+    }
+
+    try {
+      const song = await generateSong({
+        lyrics: lyrics.trim(),
+        genre: genre || "Pop",
+        style: style || "Upbeat",
+        mood: mood || "Happy"
+      });
+
+      if (song) {
+        onSongGenerated(song);
+        setLyrics("");
+        setGenre("");
+        setStyle("");
+        setMood("");
+      }
+    } catch (error) {
+      console.error("Song generation failed:", error);
+    }
+  };
+
+  const getPlanBadgeColor = () => {
+    switch (userPlan) {
+      case "basic": return "bg-blue-500";
+      case "pro": return "bg-gradient-to-r from-vibrant-orange to-orange-600";
+      case "enterprise": return "bg-gradient-to-r from-yellow-400 to-yellow-600 text-black";
+      default: return "bg-gray-500";
+    }
+  };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <Card className="bg-white/5 border-white/10 backdrop-blur-lg">
+    <div className="space-y-6">
+      {/* Plan Status */}
+      <Card className="bg-dark-card border-gray-800">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Badge className={`${getPlanBadgeColor()} text-white`}>
+                {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)} Plan
+              </Badge>
+              <span className="text-sm text-gray-400">{getUsageInfo()}</span>
+            </div>
+            {userPlan !== "enterprise" && (
+              <UpgradeModal currentPlan={userPlan} onUpgrade={onUpgrade}>
+                <Button variant="outline" size="sm">
+                  <Crown className="w-4 h-4 mr-2" />
+                  Upgrade
+                </Button>
+              </UpgradeModal>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Song Generation Form */}
+      <Card className="bg-dark-card border-gray-800">
         <CardHeader>
-          <CardTitle className="text-white flex items-center">
-            <Music className="w-6 h-6 mr-2 text-purple-400" />
-            Create New Song
+          <CardTitle className="flex items-center space-x-2">
+            <Music className="w-5 h-5" />
+            <span>Create Your Song</span>
           </CardTitle>
-          <CardDescription className="text-gray-400">
-            Use AI to transform your lyrics into professional music
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <Tabs defaultValue="basic" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 bg-white/10">
-                <TabsTrigger value="basic" className="text-white">
-                  Basic Info
-                </TabsTrigger>
-                <TabsTrigger value="style" className="text-white">
-                  Style & Mood
-                </TabsTrigger>
-                <TabsTrigger value="advanced" className="text-white">
-                  Advanced
-                </TabsTrigger>
-              </TabsList>
+            {/* Lyrics Input */}
+            <div className="space-y-2">
+              <Label htmlFor="lyrics">Enter Your Lyrics</Label>
+              <Textarea
+                id="lyrics"
+                placeholder="Enter your song lyrics here... (e.g., 'Verse 1: Walking down the street...')"
+                value={lyrics}
+                onChange={(e) => setLyrics(e.target.value)}
+                className="min-h-[120px] bg-gray-800 border-gray-700 text-white"
+                required
+              />
+              <p className="text-sm text-gray-400">
+                Tip: Structure your lyrics with verses, choruses, and bridges for best results
+              </p>
+            </div>
 
-              <TabsContent value="basic" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="title" className="text-white">
-                      Song Title
-                    </Label>
-                    <Input
-                      id="title"
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      placeholder="Enter your song title..."
-                      className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="genre" className="text-white">
-                      Genre
-                    </Label>
-                    <Select
-                      value={formData.genre}
-                      onValueChange={(value) => setFormData({ ...formData, genre: value })}
-                    >
-                      <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {genres.map((genre) => (
-                          <SelectItem key={genre} value={genre.toLowerCase()}>
-                            {genre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="lyrics" className="text-white">
-                    Lyrics
-                  </Label>
-                  <Textarea
-                    id="lyrics"
-                    value={formData.lyrics}
-                    onChange={(e) => setFormData({ ...formData, lyrics: e.target.value })}
-                    placeholder="Enter your lyrics here... Each line will be analyzed for melody generation."
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 min-h-32"
-                    required
-                  />
-                  <p className="text-xs text-gray-400">
-                    Tip: Use clear, emotional language for better melody generation
-                  </p>
-                  
-                  {/* Generate Button moved here */}
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-medium py-3 mt-4"
-                    disabled={!formData.title || !formData.lyrics || generateSongMutation.isPending}
+            {/* Generate Button - Moved directly under lyrics */}
+            <div className="pt-2">
+              {canGenerateSong() ? (
+                <Button 
+                  type="submit" 
+                  disabled={isGenerating || !lyrics.trim()}
+                  className="w-full bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange text-white"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Generating Song...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Generate Song
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <UpgradeModal currentPlan={userPlan} onUpgrade={onUpgrade}>
+                  <Button 
+                    type="button"
+                    className="w-full bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange text-white"
                   >
-                    <Music className="w-5 h-5 mr-2" />
-                    {generateSongMutation.isPending ? "Generating..." : "Generate Song"}
+                    <Crown className="w-4 h-4 mr-2" />
+                    Monthly Limit Reached - Upgrade to Continue
                   </Button>
-                </div>
-              </TabsContent>
+                </UpgradeModal>
+              )}
+            </div>
 
-              <TabsContent value="style" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-white">Mood</Label>
-                    <Select value={formData.mood} onValueChange={(value) => setFormData({ ...formData, mood: value })}>
-                      <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {moods.map((mood) => (
-                          <SelectItem key={mood} value={mood.toLowerCase()}>
-                            {mood}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-white">Vocals</Label>
-                    <Select
-                      value={formData.vocals}
-                      onValueChange={(value) => setFormData({ ...formData, vocals: value })}
-                    >
-                      <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {vocals.map((vocal) => (
-                          <SelectItem key={vocal} value={vocal.toLowerCase().replace(" ", "_")}>
-                            {vocal}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+            {/* Advanced Options */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="genre">Genre</Label>
+                <Select value={genre} onValueChange={setGenre}>
+                  <SelectTrigger className="bg-gray-800 border-gray-700">
+                    <SelectValue placeholder="Select genre" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getAvailableGenres().map((g) => (
+                      <SelectItem key={g} value={g}>{g}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-white flex items-center justify-between">
-                      Tempo: {formData.tempo[0]} BPM
-                      <Badge variant="secondary" className="text-xs">
-                        {formData.tempo[0] < 90 ? "Slow" : formData.tempo[0] < 120 ? "Medium" : "Fast"}
-                      </Badge>
-                    </Label>
-                    <Slider
-                      value={formData.tempo}
-                      onValueChange={(value) => setFormData({ ...formData, tempo: value })}
-                      max={180}
-                      min={60}
-                      step={5}
-                      className="w-full"
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="style">Style</Label>
+                <Select value={style} onValueChange={setStyle}>
+                  <SelectTrigger className="bg-gray-800 border-gray-700">
+                    <SelectValue placeholder="Select style" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Upbeat">Upbeat</SelectItem>
+                    <SelectItem value="Mellow">Mellow</SelectItem>
+                    <SelectItem value="Energetic">Energetic">Energetic</SelectItem>
+                    <SelectItem value="Calm">Calm</SelectItem>
+                    <SelectItem value="Aggressive">Aggressive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-white">Energy Level: {formData.energy[0]}%</Label>
-                    <Slider
-                      value={formData.energy}
-                      onValueChange={(value) => setFormData({ ...formData, energy: value })}
-                      max={100}
-                      min={0}
-                      step={5}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-              </TabsContent>
+              <div className="space-y-2">
+                <Label htmlFor="mood">Mood</Label>
+                <Select value={mood} onValueChange={setMood}>
+                  <SelectTrigger className="bg-gray-800 border-gray-700">
+                    <SelectValue placeholder="Select mood" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Happy">Happy</SelectItem>
+                    <SelectItem value="Sad">Sad</SelectItem>
+                    <SelectItem value="Romantic">Romantic</SelectItem>
+                    <SelectItem value="Motivational">Motivational</SelectItem>
+                    <SelectItem value="Nostalgic">Nostalgic</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-              <TabsContent value="advanced" className="space-y-4">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-white">
-                      Duration: {formatDuration(formData.duration[0])}
-                      {userPlan === "free" && (
-                        <Badge variant="outline" className="ml-2 text-yellow-400 border-yellow-400">
-                          Free: Max 1:00
-                        </Badge>
-                      )}
-                    </Label>
-                    <Slider
-                      value={formData.duration}
-                      onValueChange={(value) => setFormData({ ...formData, duration: value })}
-                      max={maxDuration}
-                      min={30}
-                      step={15}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-white">AI Creativity: {formData.creativity[0]}%</Label>
-                    <Slider
-                      value={formData.creativity}
-                      onValueChange={(value) => setFormData({ ...formData, creativity: value })}
-                      max={100}
-                      min={0}
-                      step={5}
-                      className="w-full"
-                    />
-                    <p className="text-xs text-gray-400">Higher creativity adds more unique musical elements</p>
-                  </div>
-                </div>
-
-                {userPlan !== "pro" && (
-                  <Card className="bg-yellow-500/10 border-yellow-500/20">
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-2">
-                        <Sparkles className="w-5 h-5 text-yellow-400" />
-                        <span className="text-yellow-200 font-medium">Pro Features Available</span>
-                      </div>
-                      <p className="text-yellow-200/80 text-sm mt-1">
-                        Unlock voice cloning, longer songs (up to 5 minutes), and advanced AI settings
-                      </p>
-                      <Button
-                        type="button"
-                        onClick={onUpgrade}
-                        size="sm"
-                        className="mt-2 bg-yellow-500 hover:bg-yellow-600 text-black"
-                      >
-                        Upgrade Now
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-            </Tabs>
-
-            
+            {/* Error Display */}
+            {generationError && (
+              <div className="p-4 bg-red-500/10 border border-red-500 rounded-lg">
+                <p className="text-red-400 text-sm">{generationError}</p>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>
+
+      {/* Progress Display */}
+      {isGenerating && (
+        <GenerationProgress 
+          progress={progress} 
+          currentStep={currentStep} 
+        />
+      )}
     </div>
-  )
+  );
 }
