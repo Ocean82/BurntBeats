@@ -66,6 +66,42 @@ export function registerRoutes(app: express.Application): http.Server {
   app.post("/api/pricing/upgrade", PricingAPI.upgradePlan);
   app.get("/api/pricing/subscription/:userId", PricingAPI.getUserSubscription);
 
+  // Stripe Payment Routes
+  app.post("/api/stripe/create-payment-intent", async (req: Request, res: Response) => {
+    try {
+      const { StripeService } = await import("./stripe-service");
+      const result = await StripeService.createPaymentIntent(req.body);
+      res.json(result);
+    } catch (error) {
+      console.error("Payment intent creation failed:", error);
+      res.status(500).json({ error: "Payment processing failed" });
+    }
+  });
+
+  app.post("/api/stripe/create-customer", async (req: Request, res: Response) => {
+    try {
+      const { StripeService } = await import("./stripe-service");
+      const { email, name } = req.body;
+      const customer = await StripeService.createCustomer(email, name);
+      res.json(customer);
+    } catch (error) {
+      console.error("Customer creation failed:", error);
+      res.status(500).json({ error: "Customer creation failed" });
+    }
+  });
+
+  app.post("/api/stripe/webhook", express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
+    try {
+      const { StripeService } = await import("./stripe-service");
+      const signature = req.headers['stripe-signature'] as string;
+      await StripeService.handleWebhook(req.body, signature);
+      res.json({ received: true });
+    } catch (error) {
+      console.error("Webhook processing failed:", error);
+      res.status(400).json({ error: "Webhook processing failed" });
+    }
+  });
+
   // API Documentation Route
   app.get("/api/docs", (req: Request, res: Response) => {
     const apiDocs = {

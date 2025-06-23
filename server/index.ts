@@ -1,11 +1,29 @@
 import express, { type Request, Response, NextFunction } from "express";
+import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import http from 'http'; // Import http module
+import http from 'http';
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// CORS configuration
+const corsOptions = {
+  origin: [
+    'http://localhost:5000',
+    'http://0.0.0.0:5000',
+    'https://burnt-beats-sammyjernigan.replit.app',
+    /\.replit\.app$/,
+    /\.replit\.dev$/
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with'],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -38,6 +56,12 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Validate environment variables
+  const { validateEnvironmentVariables } = await import("./env-check");
+  const envStatus = validateEnvironmentVariables();
+  
+  console.log('🔧 Environment Status:', envStatus);
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
