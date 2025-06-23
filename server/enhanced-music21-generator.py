@@ -8,8 +8,11 @@ import sys
 import json
 import os
 from music21 import stream, note, chord, meter, tempo, key, duration, pitch, scale, interval, bar
+from music21 import analysis, roman, features, graph, corpus, converter, metadata
+from music21.alpha import analysis as alpha_analysis
 import random
 import re
+import math
 
 def main():
     if len(sys.argv) < 8:
