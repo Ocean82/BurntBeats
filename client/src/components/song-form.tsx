@@ -218,7 +218,7 @@ export default function SongForm({ onSongGenerated, userPlan, onUpgrade, user }:
                   <SelectContent>
                     <SelectItem value="Upbeat">Upbeat</SelectItem>
                     <SelectItem value="Mellow">Mellow</SelectItem>
-                    <SelectItem value="Energetic">Energetic">Energetic</SelectItem>
+                    <SelectItem value="Energetic">Energetic</SelectItem>
                     <SelectItem value="Calm">Calm</SelectItem>
                     <SelectItem value="Aggressive">Aggressive</SelectItem>
                   </SelectContent>
