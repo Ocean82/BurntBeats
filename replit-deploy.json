@@ -1,0 +1,20 @@
+{
+  "entrypoint": "node dist/index.js",
+  "build": [
+    "node build-client.js",
+    "node build-server.js"
+  ],
+  "buildScript": "node build-client.js && node build-server.js",
+  "run": "node start-production.js",
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "healthCheck": {
+    "path": "/health",
+    "method": "GET"
+  },
+  "port": 5000,
+  "staticFiles": {
+    "/": "dist/public"
+  }
+}
