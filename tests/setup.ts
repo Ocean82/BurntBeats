@@ -1,4 +1,3 @@
-
 import { jest } from '@jest/globals';
 
 // Mock environment variables
@@ -24,3 +23,16 @@ jest.mock('../server/enhanced-voice-pipeline');
 
 // Set up global test timeout
 jest.setTimeout(30000);
+
+import { customMatchers } from './test-utils';
+
+// Add custom matchers
+expect.extend(customMatchers);
+
+// Configure Jest globals
+global.jest = jest;
+global.expect = expect;
+global.describe = describe;
+global.it = it;
+global.beforeEach = beforeEach;
+global.afterEach = afterEach;
