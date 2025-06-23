@@ -14,8 +14,10 @@ export async function apiRequest(
 ): Promise<Response> {
   const config: RequestInit = {
     method,
+    credentials: 'include',
     headers: {
       "Content-Type": "application/json",
+      "Accept": "application/json",
     },
   };
 

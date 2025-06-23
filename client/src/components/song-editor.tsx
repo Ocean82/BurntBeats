@@ -143,7 +143,7 @@ export default function SongEditor({ song, userPlan, onSongUpdated, onUpgrade }:
             <Edit3 className="w-12 h-12 text-gray-500 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-300 mb-2">Advanced Editing Tools</h3>
             <p className="text-sm text-gray-400 mb-6 max-w-md mx-auto">
-              Edit lyrics, modify song sections, regenerate parts, and fine-tune your songs with advanced editing tools. Available starting with Basic plan.
+              Edit lyrics, modify song sections, regenerate parts, and fine-tune your songs with advanced editing tools. Get 4 full-length songs per month with Basic plan.
             </p>
             <UpgradeModal currentPlan={userPlan} onUpgrade={onUpgrade}>
               <Button className="bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange text-white">

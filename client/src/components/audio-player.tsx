@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useRef, useEffect } from "react"
@@ -23,6 +22,43 @@ interface AudioPlayerProps {
 }
 
 export default function AudioPlayer({ song }: AudioPlayerProps) {
+  const audioUrl = song?.generatedAudioPath || song?.audioUrl;
+  const {
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    isLoading,
+    error,
+    play,
+    pause,
+    seek,
+    setVolume,
+    audioRef,
+  } = useAudioPlayer(audioUrl);
+
+  // Debug logging
+  console.log('AudioPlayer received song:', song);
+  console.log('Audio URL:', audioUrl);
+
+  if (!audioUrl) {
+    return (
+      <Card className={`bg-dark-card border-gray-800 ${className}`}>
+        <CardContent className="p-6">
+          <div className="text-center text-gray-400">
+            <Music className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <p>No audio available</p>
+            {song && (
+              <p className="text-sm mt-2">
+                Song: {song.title} | Status: {song.status}
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
