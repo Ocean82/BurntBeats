@@ -597,21 +597,38 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
             )}
 
             {/* Generate Button */}
-            <Button
-              type="submit"
-              disabled={generateSongMutation.isPending || (userPlan === "free" && freeUsage.songsThisMonth >= freeUsage.limit)}
-              className="w-full bg-gradient-to-r from-spotify-green to-green-600 hover:from-green-600 hover:to-spotify-green text-white py-4 px-6 h-auto font-poppins font-semibold text-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              <Sparkles className="mr-2" />
-              {generateSongMutation.isPending 
-                ? "Starting Generation..." 
-                : userPlan === "free" && freeUsage.songsThisMonth >= freeUsage.limit
-                  ? "Monthly Limit Reached"
-                  : userPlan === "free" 
-                    ? `Generate Full Song (${freeUsage.limit - freeUsage.songsThisMonth} left)` 
-                    : "Generate Song"
-              }
-            </Button>
+            <div className="space-y-3">
+              <Button
+                type="submit"
+                disabled={generateSongMutation.isPending || (userPlan === "free" && freeUsage.songsThisMonth >= freeUsage.limit) || !form.watch("lyrics")?.trim()}
+                className="w-full bg-gradient-to-r from-spotify-green to-green-600 hover:from-green-600 hover:to-spotify-green text-white py-6 px-8 h-auto font-poppins font-bold text-xl transition-all duration-200 transform hover:scale-105 hover:shadow-lg hover:shadow-green-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+              >
+                <Sparkles className="mr-3 w-6 h-6" />
+                {generateSongMutation.isPending 
+                  ? "🎵 Creating Your Masterpiece..." 
+                  : userPlan === "free" && freeUsage.songsThisMonth >= freeUsage.limit
+                    ? "Monthly Limit Reached"
+                    : !form.watch("lyrics")?.trim()
+                      ? "Write Some Lyrics First!"
+                      : userPlan === "free" 
+                        ? `🚀 Generate Full Song (${freeUsage.limit - freeUsage.songsThisMonth} left)` 
+                        : "🚀 Generate Amazing Song"
+                }
+              </Button>
+              
+              {/* Quick Generate Button for faster access */}
+              {form.watch("lyrics")?.trim() && !generateSongMutation.isPending && (
+                <div className="text-center">
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-none py-3 px-6 font-semibold"
+                  >
+                    ⚡ Quick Generate
+                  </Button>
+                </div>
+              )}
+            </div>
 
             {userPlan === "free" && (
               <div className="mt-2 text-center">
