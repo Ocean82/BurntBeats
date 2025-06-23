@@ -2,277 +2,184 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
-import { Badge } from "@/components/ui/badge"
-import {
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Volume2,
-  RotateCcw,
-  AudioWaveformIcon as Waveform,
-  Music,
-} from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+import { Play, Pause, Volume2, VolumeX } from "lucide-react"
 import type { Song } from "@shared/schema"
+import { formatTime } from "@/lib/utils"
 
 interface AudioPlayerProps {
-  song: Song
+  song: Song;
+  className?: string;
 }
 
-export default function AudioPlayer({ song }: AudioPlayerProps) {
-  const audioUrl = song?.generatedAudioPath || song?.audioUrl;
-  const {
-    isPlaying,
-    currentTime,
-    duration,
-    volume,
-    play,
-    pause,
-    seek,
-    setVolume,
-    audioRef,
-  } = useAudioPlayer(audioUrl);
+export default function AudioPlayer({ song, className = "" }: AudioPlayerProps) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
 
-  // Debug logging
-  console.log('AudioPlayer received song:', song);
-  console.log('Audio URL:', audioUrl);
+  const audioUrl = song?.generatedAudioPath ? song.generatedAudioPath : undefined;
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateDuration = () => setDuration(audio.duration);
+    const handleEnded = () => setIsPlaying(false);
+
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('loadedmetadata', updateDuration);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('loadedmetadata', updateDuration);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, []);
+
+  const togglePlay = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+    } else {
+      try {
+        await audio.play();
+        setIsPlaying(true);
+      } catch (error) {
+        console.error('Error playing audio:', error);
+      }
+    }
+  };
+
+  const handleSeek = (value: number[]) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    audio.currentTime = value[0];
+    setCurrentTime(value[0]);
+  };
+
+  const handleVolumeChange = (value: number[]) => {
+    const audio = audioRef.current;
+    const newVolume = value[0];
+    
+    if (audio) {
+      audio.volume = newVolume;
+    }
+    setVolume(newVolume);
+    setIsMuted(newVolume === 0);
+  };
+
+  const toggleMute = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isMuted) {
+      audio.volume = volume;
+      setIsMuted(false);
+    } else {
+      audio.volume = 0;
+      setIsMuted(true);
+    }
+  };
 
   if (!audioUrl) {
     return (
-      <Card className={`bg-dark-card border-gray-800 ${className}`}>
+      <Card className={`bg-white/5 border-white/10 backdrop-blur-lg ${className}`}>
         <CardContent className="p-6">
-          <div className="text-center text-gray-400">
-            <Music className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>No audio available</p>
-            {song && (
-              <p className="text-sm mt-2">
-                Song: {song.title} | Status: {song.status}
-              </p>
-            )}
+          <div className="text-center text-white/60">
+            No audio available for this song
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  const [currentSection, setCurrentSection] = useState(0)
-
-  // Generate sections based on song structure
-  const sections = [
-    { id: 1, type: "Intro", startTime: 0, endTime: 15, lyrics: "Instrumental opening..." },
-    { id: 2, type: "Verse 1", startTime: 15, endTime: 45, lyrics: song.lyrics?.split("\n")[0] || "First verse..." },
-    { id: 3, type: "Chorus", startTime: 45, endTime: 75, lyrics: song.lyrics?.split("\n")[1] || "Main chorus..." },
-    { id: 4, type: "Verse 2", startTime: 75, endTime: 105, lyrics: song.lyrics?.split("\n")[2] || "Second verse..." },
-    { id: 5, type: "Outro", startTime: 105, endTime: 120, lyrics: "Instrumental ending..." },
-  ]
-
-  useEffect(() => {
-    const audioElement = audioRef.current
-    if (audioElement) {
-      if (isPlaying) {
-        audioElement.play().catch(() => {
-          setIsPlaying(false)
-        })
-      } else {
-        audioElement.pause()
-      }
-    }
-  }, [isPlaying])
-
-  useEffect(() => {
-    const audioElement = audioRef.current
-    if (audioElement) {
-      audioElement.volume = volume[0] / 100
-    }
-  }, [volume])
-
-  const togglePlayback = () => {
-    setIsPlaying(!isPlaying)
-  }
-
-  const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60)
-    const seconds = Math.floor(time % 60)
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`
-  }
-
-  const handleTimeUpdate = () => {
-    const audioElement = audioRef.current
-    if (audioElement) {
-      setCurrentTime(audioElement.currentTime)
-
-      // Update current section
-      const section = sections.find(
-        (s) => audioElement.currentTime >= s.startTime && audioElement.currentTime < s.endTime,
-      )
-      if (section) {
-        setCurrentSection(section.id - 1)
-      }
-    }
-  }
-
-  const handleSeek = (value: number[]) => {
-    const audioElement = audioRef.current
-    if (audioElement) {
-      audioElement.currentTime = value[0]
-      setCurrentTime(value[0])
-    }
-  }
-
-  const jumpToSection = (section: any) => {
-    const audioElement = audioRef.current
-    if (audioElement) {
-      audioElement.currentTime = section.startTime
-      setCurrentTime(section.startTime)
-    }
-  }
-
-  const handleLoadedMetadata = () => {
-    const audioElement = audioRef.current
-    if (audioElement) {
-      setDuration(audioElement.duration)
-    }
-  }
-
-  const handleError = () => {
-    console.error("Audio loading error")
-    setIsPlaying(false)
-  }
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="space-y-6">
-      {/* Main Player Card */}
-      <Card className="bg-white/5 border-white/10 backdrop-blur-lg">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-white flex items-center">
-                <Music className="w-5 h-5 mr-2 text-purple-400" />
-                {song.title}
-              </CardTitle>
-              <div className="flex items-center space-x-2 mt-2">
-                <Badge variant="secondary">{song.genre}</Badge>
-                <Badge variant="outline" className="text-gray-300">
-                  {song.mood}
-                </Badge>
-                <Badge variant="outline" className="text-gray-300">
-                  {song.tempo} BPM
-                </Badge>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-gray-400 text-sm">Generated Song</p>
-              <p className="text-white font-medium">{formatTime(duration)}</p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Waveform Visualization */}
-          <div className="bg-white/5 rounded-lg p-4">
-            <div className="flex items-center justify-center h-20 space-x-1">
-              {Array.from({ length: 50 }, (_, i) => (
-                <div
-                  key={i}
-                  className={`w-1 bg-gradient-to-t from-purple-500 to-blue-500 rounded-full transition-all ${
-                    i < (currentTime / duration) * 50 ? "opacity-100" : "opacity-30"
-                  }`}
-                  style={{ height: `${Math.random() * 60 + 20}px` }}
-                />
-              ))}
-            </div>
+    <Card className={`bg-white/5 border-white/10 backdrop-blur-lg ${className}`}>
+      <CardContent className="p-6">
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          preload="metadata"
+        />
+        
+        <div className="space-y-4">
+          {/* Song Info */}
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-white">{song.title}</h3>
+            <p className="text-sm text-white/60 capitalize">{song.genre}</p>
           </div>
 
           {/* Progress Bar */}
           <div className="space-y-2">
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-400 w-12">{formatTime(currentTime)}</span>
-              <Slider 
-                value={[currentTime]} 
-                max={duration || 1} 
-                step={1} 
-                onValueChange={handleSeek} 
-                className="flex-1" 
-              />
-              <span className="text-sm text-gray-400 w-12">{formatTime(duration)}</span>
+            <Progress value={progress} className="h-2" />
+            <div className="flex justify-between text-xs text-white/60">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
             </div>
           </div>
 
+          {/* Seek Slider */}
+          <Slider
+            value={[currentTime]}
+            max={duration}
+            step={1}
+            onValueChange={handleSeek}
+            className="w-full"
+          />
+
           {/* Controls */}
           <div className="flex items-center justify-center space-x-4">
-            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
-              <SkipBack className="w-5 h-5" />
-            </Button>
             <Button
-              onClick={togglePlayback}
-              size="lg"
-              className="w-14 h-14 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600"
+              variant="ghost"
+              size="icon"
+              onClick={togglePlay}
+              className="h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white"
             >
-              {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-1" />}
-            </Button>
-            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
-              <SkipForward className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
-              <RotateCcw className="w-5 h-5" />
+              {isPlaying ? (
+                <Pause className="h-6 w-6" />
+              ) : (
+                <Play className="h-6 w-6" />
+              )}
             </Button>
           </div>
 
           {/* Volume Control */}
-          <div className="flex items-center space-x-3">
-            <Volume2 className="w-5 h-5 text-gray-400" />
-            <Slider value={volume} onValueChange={setVolume} max={100} step={1} className="flex-1 max-w-32" />
-            <span className="text-sm text-gray-400 w-8">{volume[0]}%</span>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleMute}
+              className="text-white/60 hover:text-white"
+            >
+              {isMuted ? (
+                <VolumeX className="h-4 w-4" />
+              ) : (
+                <Volume2 className="h-4 w-4" />
+              )}
+            </Button>
+            <Slider
+              value={[isMuted ? 0 : volume]}
+              max={1}
+              step={0.1}
+              onValueChange={handleVolumeChange}
+              className="flex-1"
+            />
           </div>
-
-          {/* Hidden Audio Element */}
-          <audio
-            ref={audioRef}
-            src={song.generatedAudioPath || song.audioUrl}
-            onTimeUpdate={handleTimeUpdate}
-            onLoadedMetadata={handleLoadedMetadata}
-            onError={handleError}
-            preload="metadata"
-            crossOrigin="anonymous"
-          />
-        </CardContent>
-      </Card>
-
-      {/* Song Sections */}
-      <Card className="bg-white/5 border-white/10 backdrop-blur-lg">
-        <CardHeader>
-          <CardTitle className="text-white">Song Structure</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {sections.map((section, index) => (
-              <div
-                key={section.id}
-                className={`p-4 rounded-lg border transition-all cursor-pointer ${
-                  currentSection === index
-                    ? "bg-purple-500/20 border-purple-500/50"
-                    : "bg-white/5 border-white/10 hover:bg-white/10"
-                }`}
-                onClick={() => jumpToSection(section)}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-3">
-                    <Badge variant={currentSection === index ? "default" : "secondary"}>
-                      {section.type}
-                    </Badge>
-                    <span className="text-sm text-gray-400">
-                      {formatTime(section.startTime)} - {formatTime(section.endTime)}
-                    </span>
-                  </div>
-                  {currentSection === index && <Waveform className="w-4 h-4 text-purple-400" />}
-                </div>
-                <p className="text-gray-300 text-sm">{section.lyrics}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
