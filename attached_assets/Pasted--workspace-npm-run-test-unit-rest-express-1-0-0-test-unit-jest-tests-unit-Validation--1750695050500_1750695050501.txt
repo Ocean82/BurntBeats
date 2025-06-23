@@ -1,0 +1,324 @@
+~/workspace$ npm run test:unit
+
+> rest-express@1.0.0 test:unit
+> jest tests/unit
+
+● Validation Warning:
+
+  Unknown option "moduleNameMapping" with value {"^@/(.*)$": "<rootDir>/$1"} was found.
+  This is probably a typing mistake. Fixing it will remove this message.
+
+  Configuration Documentation:
+  https://jestjs.io/docs/configuration
+
+● Validation Warning:
+
+  Unknown option "moduleNameMapping" with value {"^@/(.*)$": "<rootDir>/$1"} was found.
+  This is probably a typing mistake. Fixing it will remove this message.
+
+  Configuration Documentation:
+  https://jestjs.io/docs/configuration
+
+ FAIL  tests/unit/music-api.test.ts
+  ● Test suite failed to run
+
+    tests/unit/music-api.test.ts:6:1 - error TS2593: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    6 describe('MusicAPI', () => {
+      ~~~~~~~~
+    tests/unit/music-api.test.ts:10:3 - error TS2304: Cannot find name 'beforeEach'.
+
+    10   beforeEach(() => {
+         ~~~~~~~~~~
+    tests/unit/music-api.test.ts:16:7 - error TS2322: Type 'Mock<UnknownFunction>' is not assignable to type 'Send<any, Response<any, Record<string, any>>>'.
+      Type 'unknown' is not assignable to type 'Response<any, Record<string, any>>'.
+
+    16       json: jest.fn().mockReturnThis(),
+             ~~~~
+
+      node_modules/@types/express-serve-static-core/index.d.ts:758:5
+        758     json: Send<ResBody, this>;
+                ~~~~
+        The expected type comes from property 'json' which is declared here on type 'Partial<Response<any, Record<string, any>>>'
+    tests/unit/music-api.test.ts:17:7 - error TS2322: Type 'Mock<UnknownFunction>' is not assignable to type '(code: number) => Response<any, Record<string, any>>'.
+      Type 'unknown' is not assignable to type 'Response<any, Record<string, any>>'.
+
+    17       status: jest.fn().mockReturnThis()
+             ~~~~~~
+
+      node_modules/@types/express-serve-static-core/index.d.ts:709:5
+        709     status(code: StatusCode): this;
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        The expected type comes from property 'status' which is declared here on type 'Partial<Response<any, Record<string, any>>>'
+    tests/unit/music-api.test.ts:21:3 - error TS2593: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    21   describe('generateSong', () => {
+         ~~~~~~~~
+    tests/unit/music-api.test.ts:22:5 - error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    22     it('should generate song with valid parameters', async () => {
+           ~~
+    tests/unit/music-api.test.ts:33:7 - error TS2304: Cannot find name 'expect'.
+
+    33       expect(mockRes.status).toHaveBeenCalledWith(200);
+             ~~~~~~
+    tests/unit/music-api.test.ts:34:7 - error TS2304: Cannot find name 'expect'.
+
+    34       expect(mockRes.json).toHaveBeenCalledWith(
+             ~~~~~~
+    tests/unit/music-api.test.ts:35:9 - error TS2304: Cannot find name 'expect'.
+
+    35         expect.objectContaining({
+               ~~~~~~
+    tests/unit/music-api.test.ts:37:17 - error TS2304: Cannot find name 'expect'.
+
+    37           song: expect.objectContaining({
+                       ~~~~~~
+    tests/unit/music-api.test.ts:38:21 - error TS2304: Cannot find name 'expect'.
+
+    38             lyrics: expect.any(String),
+                           ~~~~~~
+    tests/unit/music-api.test.ts:46:5 - error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    46     it('should validate required fields', async () => {
+           ~~
+    tests/unit/music-api.test.ts:51:7 - error TS2304: Cannot find name 'expect'.
+
+    51       expect(mockRes.status).toHaveBeenCalledWith(400);
+             ~~~~~~
+    tests/unit/music-api.test.ts:54:5 - error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    54     it('should handle generation errors gracefully', async () => {
+           ~~
+    tests/unit/music-api.test.ts:62:7 - error TS2304: Cannot find name 'expect'.
+
+    62       expect(mockRes.status).toHaveBeenCalledWith(500);
+             ~~~~~~
+    tests/unit/music-api.test.ts:66:3 - error TS2593: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    66   describe('getUserSongs', () => {
+         ~~~~~~~~
+    tests/unit/music-api.test.ts:67:5 - error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    67     it('should return user songs', async () => {
+           ~~
+    tests/unit/music-api.test.ts:70:7 - error TS2304: Cannot find name 'expect'.
+
+    70       expect(mockRes.json).toHaveBeenCalledWith(
+             ~~~~~~
+    tests/unit/music-api.test.ts:71:9 - error TS2304: Cannot find name 'expect'.
+
+    71         expect.objectContaining({
+               ~~~~~~
+    tests/unit/music-api.test.ts:73:18 - error TS2304: Cannot find name 'expect'.
+
+    73           songs: expect.any(Array)
+                        ~~~~~~
+
+ FAIL  tests/unit/auth-api.test.ts
+  ● Test suite failed to run
+
+    tests/unit/auth-api.test.ts:6:1 - error TS2593: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    6 describe('AuthAPI', () => {
+      ~~~~~~~~
+    tests/unit/auth-api.test.ts:11:3 - error TS2304: Cannot find name 'beforeEach'.
+
+    11   beforeEach(() => {
+         ~~~~~~~~~~
+    tests/unit/auth-api.test.ts:17:7 - error TS2322: Type 'Mock<UnknownFunction>' is not assignable to type 'Send<any, Response<any, Record<string, any>>>'.
+      Type 'unknown' is not assignable to type 'Response<any, Record<string, any>>'.
+
+    17       json: jest.fn().mockReturnThis(),
+             ~~~~
+
+      node_modules/@types/express-serve-static-core/index.d.ts:758:5
+        758     json: Send<ResBody, this>;
+                ~~~~
+        The expected type comes from property 'json' which is declared here on type 'Partial<Response<any, Record<string, any>>>'
+    tests/unit/auth-api.test.ts:18:7 - error TS2322: Type 'Mock<UnknownFunction>' is not assignable to type '(code: number) => Response<any, Record<string, any>>'.
+      Type 'unknown' is not assignable to type 'Response<any, Record<string, any>>'.
+
+    18       status: jest.fn().mockReturnThis(),
+             ~~~~~~
+
+      node_modules/@types/express-serve-static-core/index.d.ts:709:5
+        709     status(code: StatusCode): this;
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        The expected type comes from property 'status' which is declared here on type 'Partial<Response<any, Record<string, any>>>'
+    tests/unit/auth-api.test.ts:19:7 - error TS2322: Type 'Mock<UnknownFunction>' is not assignable to type '{ (name: string, val: string, options: CookieOptions): Response<any, Record<string, any>>; (name: string, val: any, options: CookieOptions): Response<...>; (name: string, val: any): Response<...>; }'.
+      Type 'unknown' is not assignable to type 'Response<any, Record<string, any>>'.
+
+    19       cookie: jest.fn().mockReturnThis()
+             ~~~~~~
+
+      node_modules/@types/express-serve-static-core/index.d.ts:980:5
+        980     cookie(name: string, val: string, options: CookieOptions): this;
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        The expected type comes from property 'cookie' which is declared here on type 'Partial<Response<any, Record<string, any>>>'
+    tests/unit/auth-api.test.ts:24:3 - error TS2593: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    24   describe('login', () => {
+         ~~~~~~~~
+    tests/unit/auth-api.test.ts:25:5 - error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    25     it('should login user with valid credentials', async () => {
+           ~~
+    tests/unit/auth-api.test.ts:33:7 - error TS2304: Cannot find name 'expect'.
+
+    33       expect(mockRes.status).toHaveBeenCalledWith(200);
+             ~~~~~~
+    tests/unit/auth-api.test.ts:34:7 - error TS2304: Cannot find name 'expect'.
+
+    34       expect(mockRes.json).toHaveBeenCalledWith(
+             ~~~~~~
+    tests/unit/auth-api.test.ts:35:9 - error TS2304: Cannot find name 'expect'.
+
+    35         expect.objectContaining({
+               ~~~~~~
+    tests/unit/auth-api.test.ts:37:17 - error TS2304: Cannot find name 'expect'.
+
+    37           user: expect.any(Object)
+                       ~~~~~~
+    tests/unit/auth-api.test.ts:42:5 - error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    42     it('should reject invalid credentials', async () => {
+           ~~
+    tests/unit/auth-api.test.ts:50:7 - error TS2304: Cannot find name 'expect'.
+
+    50       expect(mockRes.status).toHaveBeenCalledWith(401);
+             ~~~~~~
+    tests/unit/auth-api.test.ts:51:7 - error TS2304: Cannot find name 'expect'.
+
+    51       expect(mockRes.json).toHaveBeenCalledWith(
+             ~~~~~~
+    tests/unit/auth-api.test.ts:52:9 - error TS2304: Cannot find name 'expect'.
+
+    52         expect.objectContaining({
+               ~~~~~~
+    tests/unit/auth-api.test.ts:54:18 - error TS2304: Cannot find name 'expect'.
+
+    54           error: expect.any(String)
+                        ~~~~~~
+    tests/unit/auth-api.test.ts:59:5 - error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    59     it('should validate required fields', async () => {
+           ~~
+    tests/unit/auth-api.test.ts:64:7 - error TS2304: Cannot find name 'expect'.
+
+    64       expect(mockRes.status).toHaveBeenCalledWith(400);
+             ~~~~~~
+    tests/unit/auth-api.test.ts:68:3 - error TS2593: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    68   describe('register', () => {
+         ~~~~~~~~
+    tests/unit/auth-api.test.ts:69:5 - error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    69     it('should register new user successfully', async () => {
+           ~~
+    tests/unit/auth-api.test.ts:78:7 - error TS2304: Cannot find name 'expect'.
+
+    78       expect(mockRes.status).toHaveBeenCalledWith(201);
+             ~~~~~~
+    tests/unit/auth-api.test.ts:79:7 - error TS2304: Cannot find name 'expect'.
+
+    79       expect(mockRes.json).toHaveBeenCalledWith(
+             ~~~~~~
+    tests/unit/auth-api.test.ts:80:9 - error TS2304: Cannot find name 'expect'.
+
+    80         expect.objectContaining({
+               ~~~~~~
+    tests/unit/auth-api.test.ts:82:17 - error TS2304: Cannot find name 'expect'.
+
+    82           user: expect.objectContaining({
+                       ~~~~~~
+    tests/unit/auth-api.test.ts:90:5 - error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    90     it('should reject duplicate email', async () => {
+           ~~
+    tests/unit/auth-api.test.ts:99:7 - error TS2304: Cannot find name 'expect'.
+
+    99       expect(mockRes.status).toHaveBeenCalledWith(409);
+             ~~~~~~
+
+ FAIL  tests/unit/enhanced-voice-pipeline.test.ts
+  ● Test suite failed to run
+
+    tests/unit/enhanced-voice-pipeline.test.ts:4:1 - error TS2593: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    4 describe('EnhancedVoicePipeline', () => {
+      ~~~~~~~~
+    tests/unit/enhanced-voice-pipeline.test.ts:7:3 - error TS2304: Cannot find name 'beforeEach'.
+
+    7   beforeEach(() => {
+        ~~~~~~~~~~
+    tests/unit/enhanced-voice-pipeline.test.ts:11:3 - error TS2593: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    11   describe('generateVoiceWithPipeline', () => {
+         ~~~~~~~~
+    tests/unit/enhanced-voice-pipeline.test.ts:12:5 - error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    12     it('should complete all 7 processing stages', async () => {
+           ~~
+    tests/unit/enhanced-voice-pipeline.test.ts:31:7 - error TS2304: Cannot find name 'expect'.
+
+    31       expect(result).toMatchObject({
+             ~~~~~~
+    tests/unit/enhanced-voice-pipeline.test.ts:32:20 - error TS2304: Cannot find name 'expect'.
+
+    32         audioData: expect.any(Object),
+                          ~~~~~~
+    tests/unit/enhanced-voice-pipeline.test.ts:33:23 - error TS2304: Cannot find name 'expect'.
+
+    33         processingId: expect.stringMatching(/^voice_\d+$/),
+                             ~~~~~~
+    tests/unit/enhanced-voice-pipeline.test.ts:34:25 - error TS2304: Cannot find name 'expect'.
+
+    34         qualityMetrics: expect.objectContaining({
+                               ~~~~~~
+    tests/unit/enhanced-voice-pipeline.test.ts:35:25 - error TS2304: Cannot find name 'expect'.
+
+    35           overallScore: expect.any(Number)
+                               ~~~~~~
+    tests/unit/enhanced-voice-pipeline.test.ts:37:19 - error TS2304: Cannot find name 'expect'.
+
+    37         metadata: expect.objectContaining({
+                         ~~~~~~
+    tests/unit/enhanced-voice-pipeline.test.ts:45:5 - error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    45     it('should handle different quality settings', async () => {
+           ~~
+    tests/unit/enhanced-voice-pipeline.test.ts:62:9 - error TS2304: Cannot find name 'expect'.
+
+    62         expect(result.metadata.qualityScore).toBeGreaterThan(0);
+               ~~~~~~
+    tests/unit/enhanced-voice-pipeline.test.ts:63:9 - error TS2304: Cannot find name 'expect'.
+
+    63         expect(result.metadata.qualityScore).toBeLessThanOrEqual(1);
+               ~~~~~~
+    tests/unit/enhanced-voice-pipeline.test.ts:67:5 - error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    67     it('should apply neural enhancement when enabled', async () => {
+           ~~
+    tests/unit/enhanced-voice-pipeline.test.ts:81:7 - error TS2304: Cannot find name 'expect'.
+
+    81       expect(result.metadata.neuralEnhanced).toBe(true);
+             ~~~~~~
+    tests/unit/enhanced-voice-pipeline.test.ts:85:3 - error TS2593: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    85   describe('error handling', () => {
+         ~~~~~~~~
+    tests/unit/enhanced-voice-pipeline.test.ts:86:5 - error TS2593: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha` and then add 'jest' or 'mocha' to the types field in your tsconfig.
+
+    86     it('should handle invalid input gracefully', async () => {
+           ~~
+    tests/unit/enhanced-voice-pipeline.test.ts:87:13 - error TS2304: Cannot find name 'expect'.
+
+    87       await expect(
+                   ~~~~~~
+
+Test Suites: 3 failed, 3 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        29.694 s
+Ran all test suites matching tests/unit.
