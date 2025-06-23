@@ -361,12 +361,61 @@ export class MelodyGenerator {
     // Generate a basic melody without lyrics
     const basicLyrics = "La la la la la\nDa da da da da\nNa na na na na\nHa ha ha ha ha";
 
-    return this.generateMelodyFromLyrics({
+    const melody = await this.generateMelodyFromLyrics({
       lyrics: basicLyrics,
       genre,
       mood,
       tempo,
     });
+
+    // Add legacy structure for backward compatibility
+    return {
+      ...melody,
+      phraseStructure: {
+        phraseLength: melody.totalDuration / melody.phrases.length,
+        phraseCount: melody.phrases.length
+      },
+      chordProgression: this.generateChordProgression(genre),
+      melodicContour: {
+        direction: this.determineMelodicDirection(melody.phrases),
+        intervalPattern: this.extractIntervalPattern(melody.phrases)
+      }
+    };
+  }
+
+  private generateChordProgression(genre: string): string[] {
+    const progressions = {
+      'pop': ['C', 'Am', 'F', 'G'],
+      'rock': ['E', 'A', 'B', 'E'],
+      'jazz': ['Cmaj7', 'Am7', 'Dm7', 'G7'],
+      'electronic': ['Am', 'F', 'C', 'G'],
+      'classical': ['C', 'F', 'G', 'C']
+    };
+    return progressions[genre.toLowerCase() as keyof typeof progressions] || progressions.pop;
+  }
+
+  private determineMelodicDirection(phrases: MelodyPhrase[]): string {
+    if (phrases.length === 0) return 'stable';
+    
+    const firstNote = phrases[0].notes[0]?.pitch || 60;
+    const lastNote = phrases[phrases.length - 1].notes.slice(-1)[0]?.pitch || 60;
+    
+    if (lastNote > firstNote + 5) return 'ascending';
+    if (lastNote < firstNote - 5) return 'descending';
+    return 'wave';
+  }
+
+  private extractIntervalPattern(phrases: MelodyPhrase[]): number[] {
+    const intervals: number[] = [];
+    
+    phrases.forEach(phrase => {
+      for (let i = 1; i < phrase.notes.length; i++) {
+        const interval = phrase.notes[i].pitch - phrase.notes[i-1].pitch;
+        intervals.push(interval);
+      }
+    });
+    
+    return intervals.slice(0, 8); // Return first 8 intervals as pattern
   }
 
   // Export the class instance

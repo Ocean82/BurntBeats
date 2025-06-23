@@ -1728,5 +1728,3 @@ function generateDynamicMarkings(mood: string) {
 
   return dynamics[mood.toLowerCase()] || dynamics.happy;
 }
-
-// The code has duplicate `generateSongStructure` function definitions, and this commit removes these duplicates.

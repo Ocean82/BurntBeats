@@ -99,34 +99,99 @@ async function loadVoiceSample(voiceSampleId: number): Promise<any> {
 }
 
 async function generateAudioComposition(songData: any, melody: any, vocals: any): Promise<string> {
-  const outputPath = path.join('uploads', `composition_${songData.userId}_${Date.now()}.mid`);
+  const timestamp = Date.now();
+  const audioFileName = `generated_${songData.userId}_${timestamp}.mp3`;
+  const outputPath = path.join('uploads', audioFileName);
   
   // Ensure uploads directory exists
   await fs.mkdir('uploads', { recursive: true });
   
-  // Prepare Python script arguments with proper escaping
-  const pythonArgs = [
-    'server/music-generator.py',
-    `"${songData.title.replace(/"/g, '\\"')}"`,
-    `"${songData.lyrics.replace(/"/g, '\\"')}"`,
-    `"${songData.genre}"`,
-    songData.tempo.toString(),
-    `"${getKeyFromGenre(songData.genre)}"`,
-    parseSongDuration(songData.songLength || '0:30').toString(),
-    `"${outputPath}"`
-  ];
-
+  console.log('🎼 Generating audio composition with melody and vocal integration...');
+  
   try {
-    // Check if Python is available
-    const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    // Generate composition using Node.js for reliability
+    const duration = parseSongDuration(songData.songLength || '0:30');
+    const baseFreq = getGenreFrequency(songData.genre);
+    const chordProgression = melody.chordProgression || ['C', 'Am', 'F', 'G'];
     
-    // Execute Python music generation with advanced melody structure
-    const { stdout, stderr } = await execAsync(`${pythonCmd} ${pythonArgs.join(' ')}`);
+    // Create layered audio composition
+    const bassFreq = baseFreq / 2;
+    const melodyFreq = baseFreq * 1.5;
+    const harmonyFreq = baseFreq * 1.25;
     
-    if (stderr && !stderr.includes('Warning') && !stderr.includes('INFO')) {
-      console.error('Python script errors:', stderr);
-      throw new Error(`Python script error: ${stderr}`);
+    // Build audio layers with proper timing
+    const beatsPerSecond = (songData.tempo || 120) / 60;
+    const beatDuration = 1 / beatsPerSecond;
+    const totalBeats = Math.floor(duration * beatsPerSecond);
+    
+    // Generate musical phrases based on melody structure
+    let audioCommand = '';
+    
+    if (melody.phrases && melody.phrases.length > 0) {
+      // Use actual melody data
+      const melodyNotes = melody.phrases.flatMap((phrase: any) => phrase.notes);
+      const noteFreqs = melodyNotes.map((note: any) => midiToFrequency(note.pitch));
+      
+      // Create melody line from actual notes
+      const melodyLayer = noteFreqs.map((freq, i) => {
+        const startTime = i * beatDuration;
+        const noteVolume = melodyNotes[i]?.velocity || 80;
+        const volume = (noteVolume / 127) * 1.5;
+        return `sine=frequency=${freq}:duration=${beatDuration}:volume=${volume}`;
+      }).join(',');
+      
+      audioCommand = `ffmpeg -f lavfi -i "${melodyLayer}" `;
+    } else {
+      // Fallback to chord-based composition
+      const chordFreqs = chordProgression.map(chord => getChordFrequency(chord, baseFreq));
+      const melodyLayer = `sine=frequency=${chordFreqs[0]}:duration=${duration}`;
+      audioCommand = `ffmpeg -f lavfi -i "${melodyLayer}" `;
     }
+    
+    // Add bass and harmony layers
+    const bassLayer = `sine=frequency=${bassFreq}:duration=${duration}`;
+    const harmonyLayer = `sine=frequency=${harmonyFreq}:duration=${duration}`;
+    
+    // Combine all layers with proper mixing
+    audioCommand += `-f lavfi -i "${bassLayer}" -f lavfi -i "${harmonyLayer}" `;
+    audioCommand += `-filter_complex "[0:a]volume=1.8[melody];[1:a]volume=2.0[bass];[2:a]volume=1.2[harmony];[melody][bass][harmony]amix=inputs=3:duration=first:dropout_transition=0[mixed];[mixed]volume=3.0,highpass=f=80,lowpass=f=8000[out]" `;
+    audioCommand += `-map "[out]" -t ${duration} -ar 44100 -ac 2 -b:a 192k "${outputPath}" -y`;
+    
+    console.log('🎵 Executing audio generation...');
+    await execAsync(audioCommand);
+    
+    console.log('✅ Audio composition generated successfully');
+    return `/uploads/${audioFileName}`;
+    
+  } catch (error) {
+    console.error('Audio generation failed, using fallback:', error);
+    
+    // Simple fallback composition
+    const fallbackCmd = `ffmpeg -f lavfi -i "sine=frequency=${baseFreq}:duration=${duration}" -f lavfi -i "sine=frequency=${baseFreq/2}:duration=${duration}" -filter_complex "[0][1]amix=inputs=2:duration=first[out]" -map "[out]" -ar 44100 -ac 2 -b:a 128k "${outputPath}" -y`;
+    await execAsync(fallbackCmd);
+    
+    return `/uploads/${audioFileName}`;
+  }
+}
+
+function midiToFrequency(midiNote: number): number {
+  return 440 * Math.pow(2, (midiNote - 69) / 12);
+}
+
+function getChordFrequency(chord: string, baseFreq: number): number {
+  const chordMap: { [key: string]: number } = {
+    'C': 1.0, 'Cm': 1.0, 'Cmaj7': 1.0,
+    'D': 1.125, 'Dm': 1.125, 'Dm7': 1.125,
+    'E': 1.25, 'Em': 1.25,
+    'F': 1.33, 'Fm': 1.33,
+    'G': 1.5, 'Gm': 1.5, 'G7': 1.5,
+    'A': 1.67, 'Am': 1.67, 'Am7': 1.67,
+    'B': 1.875, 'Bm': 1.875
+  };
+  
+  const multiplier = chordMap[chord] || 1.0;
+  return baseFreq * multiplier;
+}
 
     console.log('Python music generation completed:', stdout);
     

@@ -200,11 +200,12 @@ export default function AudioPlayer({ song }: AudioPlayerProps) {
           {/* Hidden Audio Element */}
           <audio
             ref={audioRef}
-            src={song.audioUrl}
+            src={song.generatedAudioPath || song.audioUrl}
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onError={handleError}
             preload="metadata"
+            crossOrigin="anonymous"
           />
         </CardContent>
       </Card>
