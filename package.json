@@ -7,14 +7,14 @@
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "npm run build:client && npm run build:server",
     "test": "npm run test:unit && npm run test:integration && npm run test:frontend",
-    "test:unit": "jest --testPathPattern=tests/unit",
-    "test:integration": "jest --testPathPattern=tests/integration",
-    "test:frontend": "vitest run --testPathPattern=tests/frontend",
+    "test:unit": "jest tests/unit",
+    "test:integration": "jest tests/integration",
+    "test:frontend": "vitest run tests/frontend",
     "test:e2e": "playwright test",
     "test:performance": "playwright test tests/performance",
     "test:security": "playwright test tests/security",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage && vitest run --coverage",
+    "test:coverage": "jest --coverage && vitest run --coverage tests/frontend",
     "test:ci": "npm run test:unit && npm run test:integration && npm run test:frontend && npm run test:e2e"
   },
   "dependencies": {

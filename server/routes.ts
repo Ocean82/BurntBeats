@@ -1,4 +1,4 @@
-import express, { type Request, Response } from "express";
+import express, { type Request, Response, NextFunction } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -14,6 +14,19 @@ import { VocalGenerator } from "./vocal-generator";
 import { VoiceCloningService } from "./voice-cloning-service";
 import { TextToSpeechService } from "./text-to-speech-service";
 import { EnhancedVoicePipeline } from "./enhanced-voice-pipeline";
+import { authenticateUser } from "./replitAuth";
+import { validateEnvironmentVariables } from "./env-check";
+import { enhancedVoicePipeline } from "./enhanced-voice-pipeline";
+
+// Add authenticateOptional middleware
+const authenticateOptional = (req: Request, res: Response, next: NextFunction) => {
+  // Optional authentication - doesn't require user to be logged in
+  // but adds user info if available
+  if (req.session?.user) {
+    req.user = req.session.user;
+  }
+  next();
+};
 
 const app = express();
 
@@ -258,10 +271,6 @@ export function registerRoutes(app: express.Application): http.Server {
     // Implementation for voice cloning
     res.status(501).json({ error: "Not implemented" });
   });
-
-  const authenticateOptional = (req: Request, res: Response, next: any) => {
-    next();
-  };
 
   // Create HTTP server
   const server = http.createServer(app);
