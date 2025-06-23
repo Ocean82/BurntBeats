@@ -28,8 +28,6 @@ export default function AudioPlayer({ song }: AudioPlayerProps) {
     currentTime,
     duration,
     volume,
-    isLoading,
-    error,
     play,
     pause,
     seek,
@@ -59,12 +57,7 @@ export default function AudioPlayer({ song }: AudioPlayerProps) {
     );
   }
 
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [duration, setDuration] = useState(0)
-  const [volume, setVolume] = useState([70])
   const [currentSection, setCurrentSection] = useState(0)
-  const audioRef = useRef<HTMLAudioElement>(null)
 
   // Generate sections based on song structure
   const sections = [
