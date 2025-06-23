@@ -1,0 +1,38 @@
+{
+  "name": "burnt-beats",
+  "displayName": "Burnt Beats - AI Music Creation Platform",
+  "run": "node dist/index.js",
+  "build": {
+    "client": "node build-client.js",
+    "server": "node build-server.js",
+    "full": "node build-server.js"
+  },
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "healthCheck": "/health",
+  "port": 5000,
+  "domains": ["burnt-beats-sammyjernigan.replit.app"],
+  "buildDependencies": [
+    "vite",
+    "esbuild", 
+    "@vitejs/plugin-react",
+    "typescript"
+  ],
+  "productionDependencies": [
+    "express",
+    "express-session",
+    "cors",
+    "multer",
+    "drizzle-orm",
+    "@neondatabase/serverless",
+    "connect-pg-simple",
+    "passport",
+    "passport-local",
+    "openid-client",
+    "stripe",
+    "ws",
+    "zod",
+    "nanoid"
+  ]
+}
