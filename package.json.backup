@@ -1,4 +1,6 @@
-{
+{"build:client": "echo 'Skipping client build'",
+  "build:server": "echo 'Skipping server build'",
+  "start": "NODE_ENV=production tsx server/index.ts"
   "name": "rest-express",
   "version": "1.0.0",
   "type": "module",
@@ -6,9 +8,6 @@
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "npm run build:client && npm run build:server",
-    "build:client": "node build-client.js",
-    "build:server": "node build-server.js",
-    "start": "node dist/index.js",
     "test": "npm run test:unit && npm run test:integration && npm run test:frontend",
     "test:unit": "jest tests/unit",
     "test:integration": "jest tests/integration",
@@ -132,6 +131,7 @@
     "typescript": "5.6.3",
     "vite": "^5.4.15",
     "vitest": "^3.2.4"
+
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
