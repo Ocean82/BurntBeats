@@ -1,23 +1,36 @@
 
 #!/usr/bin/env python3
 """
-Enhanced Music21 generator with lyrics-to-melody integration
+Enhanced Music21 generator with lyrics-to-melody integration and data loading capabilities
 """
 
 import sys
 import json
 import os
 from music21 import stream, note, chord, meter, tempo, key, duration, pitch, scale, interval, bar
-from music21 import analysis, roman, features, graph, corpus, converter, metadata
-from music21.alpha import analysis as alpha_analysis
+from music21 import converter, corpus, analysis, features
+from music21.midi import MidiFile
+from music21.musicxml import m21ToXml
 import random
 import re
-import math
+import glob
+from pathlib import Path
+import pickle
 
 def main():
     if len(sys.argv) < 8:
-        print("Usage: python enhanced-music21-generator.py <title> <lyrics> <genre> <tempo> <key> <duration> <output_path>")
+        print("Usage: python enhanced-music21-generator.py <title> <lyrics> <genre> <tempo> <key> <duration> <output_path> [--train-data=<path>] [--format=<midi|musicxml|both>]")
         sys.exit(1)
+    
+    # Parse additional arguments
+    train_data_path = None
+    output_format = "midi"
+    
+    for arg in sys.argv[8:]:
+        if arg.startswith("--train-data="):
+            train_data_path = arg.split("=", 1)[1]
+        elif arg.startswith("--format="):
+            output_format = arg.split("=", 1)[1]
     
     try:
         title = sys.argv[1].strip('"')
@@ -31,12 +44,20 @@ def main():
         print(f"🎵 Generating enhanced composition: {title}")
         print(f"Genre: {genre}, Tempo: {tempo_bpm} BPM, Duration: {duration_seconds}s")
         
-        # Create the composition with lyrics integration
-        score = create_enhanced_composition(title, lyrics, genre, tempo_bpm, key_sig, duration_seconds)
+        # Load and analyze training data if provided
+        musical_patterns = None
+        if train_data_path:
+            print(f"🎼 Loading training data from: {train_data_path}")
+            musical_patterns = load_and_analyze_training_data(train_data_path, genre)
         
-        # Write MIDI file
-        score.write('midi', fp=output_path)
-        print(f"✅ Enhanced MIDI file generated: {output_path}")
+        # Create the composition with lyrics integration and training patterns
+        score = create_enhanced_composition(title, lyrics, genre, tempo_bpm, key_sig, duration_seconds, musical_patterns)
+        
+        # Generate output in specified format(s)
+        output_paths = write_enhanced_output(score, output_path, output_format)
+        
+        for path in output_paths:
+            print(f"✅ Enhanced music file generated: {path}")
         
         # Generate comprehensive metadata
         metadata = generate_enhanced_metadata(title, lyrics, genre, tempo_bpm, key_sig, duration_seconds, score)
@@ -51,8 +72,349 @@ def main():
         print(f"❌ Error generating enhanced music: {e}", file=sys.stderr)
         sys.exit(1)
 
-def create_enhanced_composition(title, lyrics, genre, tempo_bpm, key_sig, duration_seconds):
-    """Create enhanced composition with lyrics integration"""
+def load_and_analyze_training_data(data_path, target_genre):
+    """Load and analyze existing music data for pattern learning"""
+    print("📊 Analyzing training data...")
+    
+    patterns = {
+        'melodic_intervals': [],
+        'rhythmic_patterns': [],
+        'harmonic_progressions': [],
+        'phrase_structures': [],
+        'genre_characteristics': {}
+    }
+    
+    # Support multiple file formats
+    supported_formats = ['*.mid', '*.midi', '*.xml', '*.mxl', '*.krn']
+    files_found = []
+    
+    data_path = Path(data_path)
+    if data_path.is_file():
+        files_found = [data_path]
+    elif data_path.is_dir():
+        for pattern in supported_formats:
+            files_found.extend(data_path.glob(pattern))
+            files_found.extend(data_path.glob(f"**/{pattern}"))  # Recursive search
+    
+    print(f"🎵 Found {len(files_found)} training files")
+    
+    if not files_found:
+        print("⚠️  No compatible music files found in training data path")
+        return patterns
+    
+    # Analyze each file
+    analyzed_count = 0
+    for file_path in files_found[:50]:  # Limit to first 50 files for performance
+        try:
+            # Load music file using music21's converter
+            score = converter.parse(str(file_path))
+            if score is None:
+                continue
+                
+            # Extract melodic patterns
+            melodic_intervals = extract_melodic_intervals(score)
+            patterns['melodic_intervals'].extend(melodic_intervals)
+            
+            # Extract rhythmic patterns
+            rhythmic_patterns = extract_rhythmic_patterns(score)
+            patterns['rhythmic_patterns'].extend(rhythmic_patterns)
+            
+            # Extract harmonic progressions
+            harmonic_progressions = extract_harmonic_progressions(score)
+            patterns['harmonic_progressions'].extend(harmonic_progressions)
+            
+            # Extract phrase structures
+            phrase_structures = extract_phrase_structures(score)
+            patterns['phrase_structures'].extend(phrase_structures)
+            
+            analyzed_count += 1
+            
+        except Exception as e:
+            print(f"⚠️  Could not analyze {file_path}: {e}")
+            continue
+    
+    print(f"✅ Successfully analyzed {analyzed_count} files")
+    
+    # Process and filter patterns
+    patterns = process_training_patterns(patterns, target_genre)
+    
+    # Save processed patterns for future use
+    cache_path = f"training_cache_{target_genre}.pkl"
+    try:
+        with open(cache_path, 'wb') as f:
+            pickle.dump(patterns, f)
+        print(f"💾 Training patterns cached to {cache_path}")
+    except Exception as e:
+        print(f"⚠️  Could not cache patterns: {e}")
+    
+    return patterns
+
+def extract_melodic_intervals(score):
+    """Extract melodic interval patterns from a score"""
+    intervals = []
+    
+    for part in score.parts:
+        notes = part.flat.notes
+        for i in range(len(notes) - 1):
+            if hasattr(notes[i], 'pitch') and hasattr(notes[i+1], 'pitch'):
+                interval_obj = interval.Interval(notes[i].pitch, notes[i+1].pitch)
+                intervals.append({
+                    'semitones': interval_obj.semitones,
+                    'direction': interval_obj.direction.name,
+                    'name': interval_obj.name,
+                    'duration_ratio': notes[i+1].duration.quarterLength / max(notes[i].duration.quarterLength, 0.25)
+                })
+    
+    return intervals
+
+def extract_rhythmic_patterns(score):
+    """Extract rhythmic patterns from a score"""
+    patterns = []
+    
+    for part in score.parts:
+        measures = part.getElementsByClass('Measure')
+        for measure in measures:
+            rhythm_pattern = []
+            for element in measure.notesAndRests:
+                rhythm_pattern.append({
+                    'duration': element.duration.quarterLength,
+                    'is_note': element.isNote,
+                    'is_rest': element.isRest,
+                    'is_chord': element.isChord
+                })
+            
+            if rhythm_pattern:
+                patterns.append(rhythm_pattern)
+    
+    return patterns
+
+def extract_harmonic_progressions(score):
+    """Extract chord progressions from a score"""
+    progressions = []
+    
+    try:
+        # Use music21's chord analysis
+        key_obj = score.analyze('key')
+        chords = score.chordify()
+        
+        chord_sequence = []
+        for element in chords.flat.notes:
+            if element.isChord:
+                # Get roman numeral analysis
+                try:
+                    rn = analysis.roman.romanNumeralFromChord(element, key_obj)
+                    chord_sequence.append({
+                        'roman': str(rn),
+                        'duration': element.duration.quarterLength,
+                        'root': element.root().name,
+                        'quality': element.quality
+                    })
+                except:
+                    # Fallback to basic chord analysis
+                    chord_sequence.append({
+                        'roman': 'I',  # Default
+                        'duration': element.duration.quarterLength,
+                        'root': element.root().name if element.root() else 'C',
+                        'quality': element.quality if hasattr(element, 'quality') else 'major'
+                    })
+        
+        if chord_sequence:
+            progressions.append(chord_sequence)
+            
+    except Exception as e:
+        print(f"⚠️  Harmonic analysis failed: {e}")
+    
+    return progressions
+
+def extract_phrase_structures(score):
+    """Extract phrase and section structures from a score"""
+    structures = []
+    
+    for part in score.parts:
+        measures = part.getElementsByClass('Measure')
+        if len(measures) > 0:
+            phrase_lengths = []
+            current_phrase_length = 0
+            
+            for measure in measures:
+                current_phrase_length += 1
+                # Simple heuristic: phrases often end with longer notes or rests
+                last_element = measure.notes[-1] if measure.notes else None
+                if last_element and (last_element.duration.quarterLength >= 2.0 or last_element.isRest):
+                    phrase_lengths.append(current_phrase_length)
+                    current_phrase_length = 0
+            
+            if current_phrase_length > 0:
+                phrase_lengths.append(current_phrase_length)
+            
+            if phrase_lengths:
+                structures.append({
+                    'phrase_lengths': phrase_lengths,
+                    'total_measures': len(measures),
+                    'avg_phrase_length': sum(phrase_lengths) / len(phrase_lengths)
+                })
+    
+    return structures
+
+def process_training_patterns(patterns, target_genre):
+    """Process and filter training patterns for the target genre"""
+    # Filter most common intervals
+    if patterns['melodic_intervals']:
+        interval_counts = {}
+        for interval_data in patterns['melodic_intervals']:
+            key = (interval_data['semitones'], interval_data['direction'])
+            interval_counts[key] = interval_counts.get(key, 0) + 1
+        
+        # Keep top 20 most common intervals
+        common_intervals = sorted(interval_counts.items(), key=lambda x: x[1], reverse=True)[:20]
+        patterns['common_intervals'] = [interval for interval, count in common_intervals]
+    
+    # Process rhythmic patterns
+    if patterns['rhythmic_patterns']:
+        # Find most common rhythm patterns (first 4 beats)
+        rhythm_signatures = []
+        for pattern in patterns['rhythmic_patterns']:
+            if len(pattern) >= 2:
+                signature = tuple(p['duration'] for p in pattern[:4])
+                rhythm_signatures.append(signature)
+        
+        rhythm_counts = {}
+        for sig in rhythm_signatures:
+            rhythm_counts[sig] = rhythm_counts.get(sig, 0) + 1
+        
+        patterns['common_rhythms'] = sorted(rhythm_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+    
+    # Process harmonic progressions
+    if patterns['harmonic_progressions']:
+        progression_signatures = []
+        for progression in patterns['harmonic_progressions']:
+            if len(progression) >= 2:
+                sig = tuple(chord['roman'] for chord in progression[:4])
+                progression_signatures.append(sig)
+        
+        progression_counts = {}
+        for sig in progression_signatures:
+            progression_counts[sig] = progression_counts.get(sig, 0) + 1
+        
+        patterns['common_progressions'] = sorted(progression_counts.items(), key=lambda x: x[1], reverse=True)[:8]
+    
+    return patterns
+
+def write_enhanced_output(score, base_output_path, output_format):
+    """Write score in multiple enhanced formats"""
+    output_paths = []
+    base_path = Path(base_output_path)
+    base_name = base_path.stem
+    base_dir = base_path.parent
+    
+    formats_to_write = []
+    if output_format == "both":
+        formats_to_write = ["midi", "musicxml"]
+    else:
+        formats_to_write = [output_format]
+    
+    for fmt in formats_to_write:
+        if fmt == "midi":
+            midi_path = base_dir / f"{base_name}.mid"
+            try:
+                # Enhanced MIDI writing with better instrument assignment
+                for i, part in enumerate(score.parts):
+                    if not part.instrument:
+                        # Assign appropriate instruments based on part name
+                        if 'melody' in part.partName.lower():
+                            part.instrument = get_genre_instrument('pop', 'melody')
+                        elif 'harmony' in part.partName.lower():
+                            part.instrument = get_genre_instrument('pop', 'harmony')
+                        elif 'bass' in part.partName.lower():
+                            part.instrument = get_genre_instrument('pop', 'bass')
+                
+                score.write('midi', fp=str(midi_path))
+                output_paths.append(str(midi_path))
+                print(f"🎵 MIDI file written: {midi_path}")
+                
+            except Exception as e:
+                print(f"❌ Error writing MIDI: {e}")
+        
+        elif fmt == "musicxml":
+            xml_path = base_dir / f"{base_name}.musicxml"
+            try:
+                # Enhanced MusicXML output with metadata
+                score.write('musicxml', fp=str(xml_path))
+                output_paths.append(str(xml_path))
+                print(f"🎼 MusicXML file written: {xml_path}")
+                
+            except Exception as e:
+                print(f"❌ Error writing MusicXML: {e}")
+    
+    # Also create a detailed analysis file
+    analysis_path = base_dir / f"{base_name}_analysis.json"
+    try:
+        analysis_data = generate_detailed_analysis(score)
+        with open(analysis_path, 'w') as f:
+            json.dump(analysis_data, f, indent=2)
+        output_paths.append(str(analysis_path))
+        print(f"📊 Analysis file written: {analysis_path}")
+    except Exception as e:
+        print(f"⚠️  Could not write analysis: {e}")
+    
+    return output_paths
+
+def generate_detailed_analysis(score):
+    """Generate detailed musical analysis of the composition"""
+    analysis_data = {
+        "basic_info": {
+            "parts": len(score.parts),
+            "measures": len(score.flat.getElementsByClass('Measure')),
+            "notes": len(score.flat.notes),
+            "total_duration": float(score.duration.quarterLength)
+        },
+        "harmonic_analysis": {},
+        "melodic_analysis": {},
+        "rhythmic_analysis": {}
+    }
+    
+    try:
+        # Key analysis
+        detected_key = score.analyze('key')
+        analysis_data["harmonic_analysis"]["key"] = str(detected_key)
+        analysis_data["harmonic_analysis"]["key_confidence"] = float(detected_key.tonalCertainty())
+        
+        # Tempo analysis
+        tempos = score.flat.getElementsByClass(tempo.TempoIndication)
+        if tempos:
+            analysis_data["basic_info"]["tempo"] = tempos[0].number
+        
+        # Melodic analysis for first part
+        if score.parts:
+            first_part = score.parts[0]
+            notes = first_part.flat.notes
+            if notes:
+                pitches = [n.pitch.midi for n in notes if hasattr(n, 'pitch')]
+                if pitches:
+                    analysis_data["melodic_analysis"] = {
+                        "range_semitones": max(pitches) - min(pitches),
+                        "highest_note": max(pitches),
+                        "lowest_note": min(pitches),
+                        "average_pitch": sum(pitches) / len(pitches)
+                    }
+        
+        # Rhythmic analysis
+        durations = [n.duration.quarterLength for n in score.flat.notes]
+        if durations:
+            analysis_data["rhythmic_analysis"] = {
+                "note_count": len(durations),
+                "average_duration": sum(durations) / len(durations),
+                "shortest_note": min(durations),
+                "longest_note": max(durations)
+            }
+    
+    except Exception as e:
+        analysis_data["error"] = f"Analysis failed: {e}"
+    
+    return analysis_data
+
+def create_enhanced_composition(title, lyrics, genre, tempo_bpm, key_sig, duration_seconds, musical_patterns=None):
+    """Create enhanced composition with lyrics integration and training patterns"""
     score = stream.Score()
     
     # Enhanced metadata
@@ -73,10 +435,10 @@ def create_enhanced_composition(title, lyrics, genre, tempo_bpm, key_sig, durati
     # Analyze lyrics for musical inspiration
     lyric_analysis = analyze_lyrics_for_music(lyrics)
     
-    # Create enhanced parts
-    melody_part = create_lyrics_informed_melody(genre, key_sig, tempo_bpm, measures, lyric_analysis)
-    harmony_part = create_enhanced_harmony(genre, key_sig, measures, lyric_analysis['emotion_arc'])
-    bass_part = create_dynamic_bass(genre, key_sig, measures)
+    # Create enhanced parts with training pattern integration
+    melody_part = create_lyrics_informed_melody(genre, key_sig, tempo_bpm, measures, lyric_analysis, musical_patterns)
+    harmony_part = create_enhanced_harmony(genre, key_sig, measures, lyric_analysis['emotion_arc'], musical_patterns)
+    bass_part = create_dynamic_bass(genre, key_sig, measures, musical_patterns)
     
     # Add parts to score
     score.append(melody_part)
@@ -156,8 +518,8 @@ def get_rhythm_from_syllables(syllable_count):
     else:
         return 'complex'
 
-def create_lyrics_informed_melody(genre, key_sig, tempo_bpm, measures, lyric_analysis):
-    """Create melody informed by lyrics analysis"""
+def create_lyrics_informed_melody(genre, key_sig, tempo_bpm, measures, lyric_analysis, musical_patterns=None):
+    """Create melody informed by lyrics analysis and training patterns"""
     melody = stream.Part()
     melody.partName = 'Lyrics-Informed Melody'
     melody.instrument = get_genre_instrument(genre, 'melody')
@@ -170,14 +532,14 @@ def create_lyrics_informed_melody(genre, key_sig, tempo_bpm, measures, lyric_ana
         phrase_data = lyric_analysis['musical_phrases'][phrase_idx]
         
         melody_phrase = create_melodic_phrase_from_lyrics(
-            scale_notes, genre, phrase_data, tempo_bpm
+            scale_notes, genre, phrase_data, tempo_bpm, musical_patterns
         )
         melody.extend(melody_phrase)
     
     return melody
 
-def create_melodic_phrase_from_lyrics(scale_notes, genre, phrase_data, tempo_bpm):
-    """Create a melodic phrase based on lyric analysis with proper music21 objects"""
+def create_melodic_phrase_from_lyrics(scale_notes, genre, phrase_data, tempo_bpm, musical_patterns=None):
+    """Create a melodic phrase based on lyric analysis with proper music21 objects and training patterns"""
     phrase = []
     
     # Base patterns influenced by lyrics
@@ -195,8 +557,26 @@ def create_melodic_phrase_from_lyrics(scale_notes, genre, phrase_data, tempo_bpm
     elif emotion < -0.5:  # Very negative
         pattern = [p - 1 if p > 1 else p for p in pattern]  # Shift lower
     
-    # Generate advanced rhythmic patterns based on genre and lyrics
-    rhythm_pattern = create_advanced_rhythm_pattern(genre, phrase_data, tempo_bpm)
+    # Generate advanced rhythmic patterns based on genre, lyrics, and training data
+    rhythm_pattern = create_advanced_rhythm_pattern(genre, phrase_data, tempo_bpm, musical_patterns)
+    
+    # Apply learned melodic intervals if available
+    if musical_patterns and 'common_intervals' in musical_patterns:
+        # Use training data intervals with 30% probability
+        if random.random() < 0.3:
+            common_intervals = musical_patterns['common_intervals']
+            if common_intervals:
+                # Modify pattern based on learned intervals
+                learned_interval = random.choice(common_intervals)
+                semitones, direction = learned_interval
+                
+                # Apply learned interval pattern
+                for i in range(1, len(pattern)):
+                    if random.random() < 0.4:  # 40% chance to apply learned interval
+                        if direction == 'ASCENDING' and pattern[i] <= 6:
+                            pattern[i] = min(7, pattern[i-1] + abs(semitones) // 2)
+                        elif direction == 'DESCENDING' and pattern[i] >= 2:
+                            pattern[i] = max(1, pattern[i-1] - abs(semitones) // 2)
     
     # Generate notes with sophisticated rhythm using proper music21 objects
     for i, degree in enumerate(pattern):
