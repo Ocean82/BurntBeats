@@ -44,7 +44,7 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
   const [mood, setMood] = useState("happy");
   const [tone, setTone] = useState("warm");
   const userPlan = user?.plan || "free";
-  const freeUsage = { songsThisMonth: user?.songsThisMonth || 0, limit: 3 };
+  const freeUsage = { songsThisMonth: user?.songsThisMonth || 0, limit: 2 };
   const [selectedVoiceSample, setSelectedVoiceSample] = useState<number | null>(null);
   const [advancedSettings, setAdvancedSettings] = useState({
     introOutro: true,
@@ -53,7 +53,14 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
   });
   const [lyricsQuality, setLyricsQuality] = useState<any>(null);
   const [currentLyrics, setCurrentLyrics] = useState("");
+  const [songDuration, setSongDuration] = useState([120]); // Default 2 minutes
   const { toast } = useToast();
+
+  const formatDurationFromSeconds = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Fetch user's voice samples
   const { data: voiceSamples = [] } = useQuery<VoiceSample[]>({
@@ -61,18 +68,16 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
     enabled: userPlan === "pro",
   });
 
-  const songLengths = userPlan === "free" 
-    ? ["0:30"]
-    : [
-        "3:00 - 3:30",
-        "3:30 - 4:00", 
-        "4:00 - 4:30",
-        "4:30 - 5:00",
-        "5:00 - 5:30"
-      ];
+  const songLengths = [
+    "3:00 - 3:30",
+    "3:30 - 4:00", 
+    "4:00 - 4:30",
+    "4:30 - 5:00",
+    "5:00 - 5:30"
+  ];
 
-  // Set default song length based on plan
-  const defaultSongLength = userPlan === "free" ? "0:30" : userPlan === "basic" ? "1:00" : "3:00 - 3:30";
+  // Set default song length for all plans
+  const defaultSongLength = "3:00 - 3:30";
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -86,13 +91,26 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
       mood: "happy", 
       tone: "warm",
       tempo: 120,
-      songLength: userPlan === "basic" ? "1:00" : defaultSongLength,
+      songLength: "2:00",
       voiceSampleId: null,
       status: "pending",
       generationProgress: 0,
       planRestricted: userPlan === "free",
       settings: {},
     },
+  });
+
+  const generateMelodyMutation = useMutation({
+    mutationFn: async (data: { genre: string; mood: string; tempo: number; duration: number }) => {
+      const response = await apiRequest("POST", "/api/generate-melody", data);
+      return await response.json();
+    },
+    onSuccess: (melody) => {
+      toast({
+        title: "Melody Generated!",
+        description: "Your musical composition is ready. Preview it before creating the full song!",
+      });
+    }
   });
 
   const generateSongMutation = useMutation({
@@ -226,6 +244,8 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
     const secs = seconds % 60;
     return `~${mins}:${secs.toString().padStart(2, '0')} minutes`;
   };
+
+  const usage = user?.usage;
 
   return (
     <Form {...form}>
@@ -499,21 +519,37 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
                   name="songLength"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-sm font-medium text-gray-300">Song Length</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-gray-800 border-gray-600">
-                            <SelectValue placeholder="Select song length" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {songLengths.map((length) => (
-                            <SelectItem key={length} value={length}>
-                              {length}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel className="text-sm font-medium text-gray-300 mb-2 block">
+                        Song Length: {formatDurationFromSeconds(songDuration[0])}
+                      </FormLabel>
+                      <div className="space-y-2">
+                        <Slider
+                          value={songDuration}
+                          onValueChange={(value) => {
+                            setSongDuration(value);
+                            const minutes = Math.floor(value[0] / 60);
+                            const seconds = value[0] % 60;
+                            const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                            field.onChange(timeString);
+                          }}
+                          min={userPlan === "free" ? 30 : 30}
+                          max={userPlan === "free" ? 120 : 330}
+                          step={15}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-gray-400">
+                          <span>0:30</span>
+                          <span className="text-spotify-green font-medium">
+                            {formatDurationFromSeconds(songDuration[0])}
+                          </span>
+                          <span>{userPlan === "free" ? "2:00" : "5:30"}</span>
+                        </div>
+                        {userPlan === "free" && (
+                          <p className="text-xs text-orange-400">
+                            Free plan: Up to 2 minutes. Upgrade for full-length songs up to 5:30.
+                          </p>
+                        )}
+                      </div>
                     </FormItem>
                   )}
                 />
@@ -580,52 +616,80 @@ export default function SongForm({ onSongGenerated, currentStep, setCurrentStep,
               </UpgradeModal>
             )}
 
-            {/* Usage Indicator for Free Plan */}
-            {userPlan === "free" && (
-              <div className="bg-gray-800 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-300">Monthly Usage</span>
-                  <span className="text-sm text-gray-400">
-                    {freeUsage.songsThisMonth}/{freeUsage.limit} songs used
+            {usage && typeof usage === 'object' && 'songsThisMonth' in usage && (
+              <div className="mb-6 p-4 bg-gray-800 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-300">Monthly Usage:</span>
+                  <span className="text-sm font-semibold text-vibrant-orange">
+                    {(usage as any).songsThisMonth}/{(usage as any).monthlyLimit === -1 ? "∞" : (usage as any).monthlyLimit} songs
                   </span>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-2">
-                  <div 
-                    className="bg-spotify-green h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${(freeUsage.songsThisMonth / freeUsage.limit) * 100}%` }}
-                  />
-                </div>
-                {freeUsage.songsThisMonth >= freeUsage.limit && (
-                  <p className="text-xs text-orange-400 mt-2">
-                    Monthly limit reached. Upgrade to Pro for unlimited songs!
-                  </p>
+                {user?.plan === 'free' && (
+                  <div className="mt-2 text-xs text-gray-400">
+                    Free plan: Full-length songs, no storage
+                  </div>
                 )}
               </div>
             )}
 
             {/* Generate Button */}
-            <Button
-              type="submit"
-              disabled={generateSongMutation.isPending || (userPlan === "free" && freeUsage.songsThisMonth >= freeUsage.limit)}
-              className="w-full bg-gradient-to-r from-spotify-green to-green-600 hover:from-green-600 hover:to-spotify-green text-white py-4 px-6 h-auto font-poppins font-semibold text-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              <Sparkles className="mr-2" />
-              {generateSongMutation.isPending 
-                ? "Starting Generation..." 
-                : userPlan === "free" && freeUsage.songsThisMonth >= freeUsage.limit
-                  ? "Monthly Limit Reached"
-                  : userPlan === "free" 
-                    ? `Generate 30s Song (${freeUsage.limit - freeUsage.songsThisMonth} left)` 
-                    : "Generate Song"
-              }
-            </Button>
+            <div className="space-y-3">
+              <Button
+                type="submit"
+                disabled={generateSongMutation.isPending || (userPlan === "free" && freeUsage.songsThisMonth >= freeUsage.limit) || !form.watch("lyrics")?.trim()}
+                className="w-full bg-gradient-to-r from-spotify-green to-green-600 hover:from-green-600 hover:to-spotify-green text-white py-6 px-8 h-auto font-poppins font-bold text-xl transition-all duration-200 transform hover:scale-105 hover:shadow-lg hover:shadow-green-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none"
+              >
+                <Sparkles className="mr-3 w-6 h-6" />
+                {generateSongMutation.isPending 
+                  ? "🎵 Creating Your Masterpiece..." 
+                  : userPlan === "free" && freeUsage.songsThisMonth >= freeUsage.limit
+                    ? "Monthly Limit Reached"
+                    : !form.watch("lyrics")?.trim()
+                      ? "Write Some Lyrics First!"
+                      : userPlan === "free" 
+                        ? `🚀 Generate Song (${freeUsage.limit - freeUsage.songsThisMonth} left)` 
+                        : "🚀 Generate Amazing Song"
+                }
+              </Button>
+              
+              {/* Melody Preview Button */}
+              {form.watch("genre") && !generateSongMutation.isPending && (
+                <div className="text-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => generateMelodyMutation.mutate({
+                      genre: form.watch("genre"),
+                      mood: mood,
+                      tempo: tempo[0],
+                      duration: songDuration[0]
+                    })}
+                    disabled={generateMelodyMutation.isPending}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-none py-3 px-6 font-semibold mr-4"
+                  >
+                    {generateMelodyMutation.isPending ? "🎼 Creating..." : "🎼 Preview Melody"}
+                  </Button>
+                  
+                  {/* Quick Generate Button for faster access */}
+                  {form.watch("lyrics")?.trim() && (
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white border-none py-3 px-6 font-semibold"
+                    >
+                      ⚡ Quick Generate
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
 
             {userPlan === "free" && (
               <div className="mt-2 text-center">
                 <p className="text-xs text-gray-400">
-                  Free plan creates 30-second songs. 
+                  Free plan: 2 full-length songs per month, no storage or editing. 
                   <span className="text-vibrant-orange cursor-pointer hover:underline ml-1">
-                    Upgrade to Pro for full-length songs
+                    Upgrade to Basic for voice cloning & storage
                   </span>
                 </p>
               </div>

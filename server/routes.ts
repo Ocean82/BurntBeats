@@ -75,19 +75,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { plan = 'basic' } = req.body;
-      
+
       // Define pricing for each plan
       const planPricing = {
         basic: { amount: 699, name: 'Basic' },      // $6.99
         pro: { amount: 1299, name: 'Pro' },        // $12.99  
         enterprise: { amount: 3999, name: 'Enterprise' } // $39.99
       };
-      
+
       const selectedPlan = planPricing[plan as keyof typeof planPricing];
       if (!selectedPlan) {
         return res.status(400).json({ error: "Invalid plan selected" });
       }
-      
+
       const paymentIntent = await stripe.paymentIntents.create({
         amount: selectedPlan.amount,
         currency: 'usd',
@@ -116,11 +116,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/payments/upgrade", async (req, res) => {
     try {
       const { cardNumber, expiryDate, cvv, cardholderName, billingEmail, plan, amount } = req.body;
-      
+
       if (!stripe) {
         return res.status(500).json({ error: "Payment service not configured" });
       }
-      
+
       // For now, return success for form-based payments
       // In production, this would create a PaymentMethod and confirm the PaymentIntent
       const paymentResult = {
@@ -142,7 +142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.id);
       const { plan, subscriptionId } = req.body;
-      
+
       // Update user plan in database (would need to extend user schema)
       res.json({
         success: true,
@@ -190,7 +190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const sample = await storage.getVoiceSample(id);
-      
+
       if (!sample) {
         return res.status(404).json({ message: "Voice sample not found" });
       }
@@ -211,7 +211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/songs", async (req, res) => {
     try {
       const song = insertSongSchema.parse(req.body);
-      
+
       // For test user, use basic plan with 1 minute songs
       const testUserId = "1";
       const testUser = {
@@ -230,10 +230,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const created = await storage.createSong(restrictedSong);
-      
+
       // Start generation process in background
       generateSong(created.id);
-      
+
       res.json(created);
     } catch (error) {
       res.status(400).json({ message: error instanceof Error ? error.message : "Invalid request" });
@@ -254,11 +254,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const song = await storage.getSong(id);
-      
+
       if (!song) {
         return res.status(404).json({ message: "Song not found" });
       }
-      
+
       res.json(song);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch song" });
@@ -270,11 +270,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const id = parseInt(req.params.id);
       const updates = req.body;
       const updated = await storage.updateSong(id, updates);
-      
+
       if (!updated) {
         return res.status(404).json({ message: "Song not found" });
       }
-      
+
       res.json(updated);
     } catch (error) {
       res.status(500).json({ message: "Failed to update song" });
@@ -285,7 +285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const song = await storage.getSong(id);
-      
+
       if (!song) {
         return res.status(404).json({ message: "Song not found" });
       }
@@ -319,7 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const songId = parseInt(req.params.songId);
       const format = req.params.format;
       const song = await storage.getSong(songId);
-      
+
       if (!song || !song.generatedAudioPath) {
         return res.status(404).json({ message: "Audio file not found" });
       }
@@ -328,12 +328,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const path = require('path');
       const audioFileName = song.generatedAudioPath.replace('/uploads/', '');
       const filePath = path.join(process.cwd(), 'uploads', audioFileName);
-      
+
       if (!fs.existsSync(filePath)) {
         return res.status(404).json({ message: "Audio file not found on disk" });
       }
       const fileName = `${song.title}.${format}`;
-      
+
       res.download(filePath, fileName);
     } catch (error) {
       res.status(500).json({ message: "Failed to download file" });
@@ -404,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = parseInt(req.params.userId);
       const songs = await storage.getSongsByUser(userId);
-      
+
       const stats = {
         totalSongs: songs.length,
         totalPlays: songs.reduce((sum, song) => sum + (song.playCount || 0), 0),
@@ -413,7 +413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         topGenre: getTopGenre(songs),
         monthlyGrowth: calculateMonthlyGrowth(songs)
       };
-      
+
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch analytics" });
@@ -436,7 +436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const songId = parseInt(req.params.songId);
       const { userId, username } = req.body;
-      
+
       const song = await storage.getSong(songId);
       if (!song) {
         return res.status(404).json({ error: "Song not found" });
@@ -457,10 +457,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const songId = parseInt(req.params.songId);
       const { lyrics, userId, username } = req.body;
-      
+
       // Update song in database
       await storage.updateSong(songId, { lyrics });
-      
+
       // Broadcast to all collaborators
       broadcastToSession(songId, {
         type: "lyrics_update",
@@ -469,7 +469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         username,
         timestamp: Date.now()
       }, userId);
-      
+
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to update song" });
@@ -480,7 +480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const songId = parseInt(req.params.songId);
       const { content, userId, username, sectionId } = req.body;
-      
+
       const comment = {
         id: Date.now(),
         userId,
@@ -489,13 +489,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sectionId,
         timestamp: Date.now()
       };
-      
+
       // Broadcast comment to all collaborators
       broadcastToSession(songId, {
         type: "new_comment",
         comment
       });
-      
+
       res.json({ success: true, comment });
     } catch (error) {
       res.status(500).json({ error: "Failed to add comment" });
@@ -507,10 +507,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const songId = parseInt(req.params.songId);
       const { email, role, invitedBy } = req.body;
-      
+
       // In a real implementation, send email invitation
       console.log(`Sending invitation to ${email} for song ${songId} with role ${role}`);
-      
+
       res.json({ 
         success: true, 
         message: "Invitation sent successfully" 
@@ -524,7 +524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const songId = parseInt(req.params.songId);
       const { role, maxUses, createdBy } = req.body;
-      
+
       const inviteLink = {
         id: `invite_${Date.now()}`,
         songId,
@@ -534,7 +534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         usageCount: 0
       };
-      
+
       res.json({ success: true, inviteLink });
     } catch (error) {
       res.status(500).json({ error: "Failed to create invite link" });
@@ -546,10 +546,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const songId = parseInt(req.params.songId);
       const userId = parseInt(req.params.userId);
       const { role } = req.body;
-      
+
       // Update member role in database
       console.log(`Updating user ${userId} role to ${role} for song ${songId}`);
-      
+
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to update member role" });
@@ -560,10 +560,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const songId = parseInt(req.params.songId);
       const userId = parseInt(req.params.userId);
-      
+
       // Remove member from collaboration
       console.log(`Removing user ${userId} from song ${songId} collaboration`);
-      
+
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to remove member" });
@@ -575,7 +575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId } = req.body;
       const audioFile = req.file;
-      
+
       if (!audioFile) {
         return res.status(400).json({ error: "Audio file required" });
       }
@@ -610,7 +610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/voice-analysis/similarity", async (req, res) => {
     try {
       const { embedding, targetGenre, userId } = req.body;
-      
+
       // Advanced similarity analysis for voice quality assessment
       const genreCompatibility = {
         pop: 0.92,
@@ -621,7 +621,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const similarity = genreCompatibility[targetGenre as keyof typeof genreCompatibility] || 0.75;
-      
+
       res.json({ 
         similarity,
         qualityMetrics: {
@@ -638,7 +638,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/voice-processing/spectral-transfer", async (req, res) => {
     try {
       const { embedding, targetStyle, userId } = req.body;
-      
+
       // Advanced spectral transfer processing
       const spectralData = {
         transferMatrix: embedding.voiceCharacteristics,
@@ -659,7 +659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/voice-processing/timbre-preservation", async (req, res) => {
     try {
       const { spectralData, userId } = req.body;
-      
+
       // Advanced timbre preservation processing
       const preservedTimbre = {
         originalTimbre: spectralData.transferMatrix.mfccCoefficients,
@@ -680,7 +680,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/voice-processing/pitch-formant", async (req, res) => {
     try {
       const { voiceData, genre, style, userId } = req.body;
-      
+
       // Advanced pitch and formant manipulation
       const genreAdaptations = {
         pop: { pitchShift: 0.02, formantShift: 0.05 },
@@ -690,7 +690,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const adaptation = genreAdaptations[genre as keyof typeof genreAdaptations] || { pitchShift: 0, formantShift: 0 };
-      
+
       const manipulatedVoice = {
         pitchProfile: voiceData.preservedTimbre.adaptedTimbre,
         formantShifts: adaptation,
@@ -710,13 +710,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/voice-clone/generate", async (req, res) => {
     try {
       const { voiceData, genre, style, userId } = req.body;
-      
+
       // Generate final cloned voice file
       const audioUrl = `/uploads/cloned_voice_${userId}_${Date.now()}.mp3`;
-      
+
       // Advanced voice synthesis would happen here
       console.log(`Generating cloned voice for user ${userId}: ${genre} ${style}`);
-      
+
       res.json({ 
         audioUrl,
         metadata: {
@@ -737,7 +737,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tts/analyze-text", async (req, res) => {
     try {
       const { text, voiceType, userId } = req.body;
-      
+
       // Advanced text analysis for TTS optimization
       const analysis = {
         syllableCount: text.split(/[aeiouAEIOU]/).length - 1,
@@ -761,7 +761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tts/phonemes", async (req, res) => {
     try {
       const { text, analysis, userId } = req.body;
-      
+
       // Advanced phoneme extraction and processing
       const phonemes = {
         phonemeSequence: text.toLowerCase().replace(/[^a-z\s]/g, '').split('').map(char => {
@@ -784,7 +784,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tts/synthesize", async (req, res) => {
     try {
       const { phonemes, voiceType, pitch, speed, tone, userId } = req.body;
-      
+
       // Advanced voice synthesis
       const synthesis = {
         audioData: `synthesized_audio_${Date.now()}`,
@@ -805,7 +805,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tts/enhance", async (req, res) => {
     try {
       const { rawAudio, voiceType, tone, userId } = req.body;
-      
+
       // Advanced audio enhancement
       const enhanced = {
         audioData: `enhanced_${rawAudio}`,
@@ -826,12 +826,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/tts/generate", async (req, res) => {
     try {
       const { enhancedAudio, metadata, userId } = req.body;
-      
+
+      // Generate final TTS audio
+      const result = {
+        audioUrl: `/uploads/tts_${userId}_${Date.now()}.mp3`,
+        duration: metadata.textLength * 0.1, // Estimate duration
+        quality: 'high',
+        metadata
+      };
+
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate TTS audio" });
+    }
+  });
+
+  // Voice analysis endpoints
+  app.post("/api/voice-analysis/embedding", async (req, res) => {
+    try {
+      const { userId } = req.body;
+
+      const embedding = {
+        id: `embedding_${userId}_${Date.now()}`,
+        features: {
+          fundamentalFrequency: 220 + Math.random() * 100,
+          formants: [800, 1200, 2500, 3500],
+          spectralCentroid: 1250,
+          mfcc: Array.from({ length: 13 }, () => Math.random())
+        },
+        quality: 0.85 + Math.random() * 0.1
+      };
+
+      res.json(embedding);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to extract voice embedding" });
+    }
+  });
+
+  app.post("/api/voice-analysis/similarity", async (req, res) => {
+    try {
+      const { embedding, targetGenre, userId } = req.body;
+
+      const similarity = 0.7 + Math.random() * 0.25; // 70-95% similarity
+
+      res.json({ similarity });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to analyze similarity" });
+    }
+  });
+
+  app.post("/api/voice-processing/spectral-transfer", async (req, res) => {
+    try {
+      const { embedding, targetStyle, userId } = req.body;
+
+      const spectralData = {
+        transferredEmbedding: embedding,
+        styleAdaptation: {
+          spectralTilt: targetStyle === 'bright' ? 1.2 : 0.8,
+          formantShift: 1.0 + (Math.random() - 0.5) * 0.1,
+          harmonicBalance: targetStyle === 'warm' ? 1.1 : 0.9
+        }
+      };
+
+      res.json(spectralData);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to apply spectral transfer" });
+    }
+  });
+
+  app.post("/api/voice-processing/timbre-preservation", async (req, res) => {
+    try {
+      const { spectralData, userId } = req.body;
+
+      const preserved = {
+        ...spectralData,
+        timbreCharacteristics: {
+          preserved: true,
+          originalTimbre: 0.85,
+          adaptedTimbre: 0.80,
+          consistency: 0.90
+        }
+      };
+
+      res.json(preserved);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to preserve timbre" });
+    }
+  });
+
+  app.post("/api/voice-processing/pitch-formant", async (req, res) => {
+    try {
+      const { voiceData, genre, style, userId } = req.body;
+
+      const manipulated = {
+        ...voiceData,
+        pitchAdjustment: {
+          fundamentalFrequency: voiceData.fundamentalFrequency || 220,
+          range: genre === 'classical' ? 2.5 : 2.0,
+          stability: style === 'smooth' ? 0.9 : 0.7
+        },
+        formantAdjustment: {
+          f1: 800 * (1 + (Math.random() - 0.5) * 0.1),
+          f2: 1200 * (1 + (Math.random() - 0.5) * 0.1),
+          f3: 2500 * (1 + (Math.random() - 0.5) * 0.1)
+        }
+      };
+
+      res.json(manipulated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to manipulate pitch and formant" });
+    }
+  });
+
+  app.post("/api/voice-clone/generate", async (req, res) => {
+    try {
+      const { voiceData, genre, style, userId } = req.body;
+
+      const result = {
+        audioUrl: `/uploads/cloned_voice_${userId}_${Date.now()}.mp3`,
+        voiceProfile: {
+          id: `profile_${userId}_${Date.now()}`,
+          characteristics: voiceData.pitchAdjustment,
+          quality: 0.88,
+          genre,
+          style
+        },
+        metadata: {
+          processingTime: 3.2,
+          quality: 'professional',
+          compatibility: ['singing', 'speaking']
+        }
+      };
+
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate cloned voice" });
+    }
+  });
+
+  app.post("/api/tts/generate", async (req, res) => {
+    try {
+      const { enhancedAudio, metadata, userId } = req.body;
+
       // Generate final TTS audio file
       const audioUrl = `/uploads/tts_${userId}_${Date.now()}.mp3`;
-      
+
       console.log(`Generating TTS audio for user ${userId}: ${metadata.voiceType}`);
-      
+
       res.json({ 
         audioUrl,
         metadata: {
@@ -847,22 +988,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const httpServer = createServer(app);
-  
+
   // WebSocket server for real-time collaboration
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-  
+
   wss.on('connection', (ws, req) => {
     console.log('New WebSocket connection established');
-    
+
     ws.on('message', async (data) => {
       try {
         const message = JSON.parse(data.toString());
-        
+
         switch (message.type) {
           case 'join_song':
             const { songId, userId, username } = message;
             const clientId = `${userId}_${Date.now()}`;
-            
+
             // Create or get collaboration session
             if (!collaborationSessions.has(songId)) {
               const song = await storage.getSong(songId);
@@ -873,10 +1014,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 lastUpdate: Date.now()
               });
             }
-            
+
             const session = collaborationSessions.get(songId)!;
             session.participants.set(clientId, { userId, username, ws });
-            
+
             // Notify all participants about new user
             broadcastToSession(songId, {
               type: 'user_joined',
@@ -887,7 +1028,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 username: p.username
               }))
             });
-            
+
             // Send current state to new participant
             ws.send(JSON.stringify({
               type: 'session_state',
@@ -898,16 +1039,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }))
             }));
             break;
-            
+
           case 'lyrics_change':
             const changeMessage = message as { songId: number; lyrics: string; userId: number; username: string };
-            
+
             // Update session state
             const changeSession = collaborationSessions.get(changeMessage.songId);
             if (changeSession) {
               changeSession.currentLyrics = changeMessage.lyrics;
               changeSession.lastUpdate = Date.now();
-              
+
               // Broadcast to other participants
               broadcastToSession(changeMessage.songId, {
                 type: 'lyrics_update',
@@ -922,7 +1063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('WebSocket message error:', error);
       }
     });
-    
+
     ws.on('close', () => {
       // Remove user from all sessions
       collaborationSessions.forEach((session, songId) => {
@@ -932,7 +1073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             toRemove.push(clientId);
           }
         });
-        
+
         toRemove.forEach(clientId => {
           const participant = session.participants.get(clientId);
           if (participant) {
@@ -948,7 +1089,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
         });
-        
+
         // Clean up empty sessions
         if (session.participants.size === 0) {
           collaborationSessions.delete(songId);
@@ -973,12 +1114,12 @@ async function generateSong(songId: number) {
 
     // Parse duration - ensure Basic plan gets 60 seconds
     const durationSeconds = song.songLength === "1:00" ? 60 : parseSongDuration(song.songLength);
-    
+
     // Generate file paths
     const outputPath = `uploads/generated_${songId}_${Date.now()}.mp3`;
-    
+
     await storage.updateSong(songId, { generationProgress: 30 });
-    
+
     // Prepare song data for music21 generator
     const songData = {
       title: song.title,
@@ -992,13 +1133,43 @@ async function generateSong(songId: number) {
 
     // Generate music using reliable Node.js approach
     console.log('Generating music composition:', songData);
-    
+
     await storage.updateSong(songId, { generationProgress: 50 });
-    
+
     // Create audio file with proper composition
-    const fullOutputPath = path.join(process.cwd(), outputPath);
-    await generateAudioComposition(songData, fullOutputPath);
-    
+    const pythonArgs = [
+      './music-generator.py',
+      `--title="${song.title}"`,
+      `--lyrics="${song.lyrics}"`,
+      `--genre="${song.genre}"`,
+      `--tempo=${song.tempo}`,
+      `--duration=${durationSeconds}`,
+      `--output_path="${outputPath}"`,
+      `--key="${getKeyFromGenre(song.genre)}"`
+    ];
+
+    try {
+    // Execute Python music generation with advanced melody structure
+    const { stdout, stderr } = await execAsync(`python3 ${pythonArgs.join(' ')}`);
+
+    if (stderr) {
+      console.error('Python stderr:', stderr);
+      if (!stderr.includes('Warning')) {
+        console.error('Python script execution had errors:', stderr);
+      }
+    }
+
+    if (stdout) {
+      console.log('Python stdout:', stdout);
+    }
+
+    console.log('Python music generation completed');
+
+    } catch (error) {
+      console.error('Python script execution failed:', error);
+      throw error;
+    }
+
     await storage.updateSong(songId, { generationProgress: 80 });
 
     // Create structured song sections
@@ -1022,49 +1193,49 @@ async function generateSong(songId: number) {
 // Generate audio composition using Node.js
 async function generateAudioComposition(songData: any, outputPath: string) {
   const { duration, tempo, key, genre } = songData;
-  
+
   // Audio generation parameters
   const sampleRate = 44100;
   const channels = 2; // Stereo
   const bitDepth = 16;
   const bufferLength = Math.floor(sampleRate * duration);
-  
+
   // Create audio buffer
   const audioBuffer = Buffer.alloc(bufferLength * channels * (bitDepth / 8));
-  
+
   // Generate musical composition
   const chordProgression = getChordProgression(genre);
   const baseFreq = getBaseFrequency(key);
-  
+
   for (let i = 0; i < bufferLength; i++) {
     const time = i / sampleRate;
     const chordIndex = Math.floor(time / 2) % chordProgression.length;
     const chord = chordProgression[chordIndex];
-    
+
     // Generate harmonic content
     let sample = 0;
     chord.frequencies.forEach((freq, index) => {
       const amplitude = 0.3 / (index + 1); // Decreasing amplitude for harmonics
       sample += Math.sin(2 * Math.PI * (baseFreq * freq) * time) * amplitude;
     });
-    
+
     // Apply envelope and dynamics
     const envelope = getEnvelope(time, duration);
     sample *= envelope;
-    
+
     // Convert to 16-bit integer
     const sampleInt = Math.max(-32768, Math.min(32767, Math.round(sample * 32767)));
-    
+
     // Write stereo samples
     const offset = i * channels * (bitDepth / 8);
     audioBuffer.writeInt16LE(sampleInt, offset);
     audioBuffer.writeInt16LE(sampleInt, offset + 2);
   }
-  
+
   // Create WAV file
   const wavHeader = createWavHeader(audioBuffer.length, sampleRate, channels, bitDepth);
   const wavFile = Buffer.concat([wavHeader, audioBuffer]);
-  
+
   // Write to file
   await fs.promises.writeFile(outputPath.replace('.mp3', '.wav'), wavFile);
   await fs.promises.copyFile(outputPath.replace('.mp3', '.wav'), outputPath);
@@ -1073,7 +1244,7 @@ async function generateAudioComposition(songData: any, outputPath: string) {
 // Create WAV file header
 function createWavHeader(dataSize: number, sampleRate: number, channels: number, bitDepth: number): Buffer {
   const header = Buffer.alloc(44);
-  
+
   header.write('RIFF', 0);
   header.writeUInt32LE(dataSize + 36, 4);
   header.write('WAVE', 8);
@@ -1087,7 +1258,7 @@ function createWavHeader(dataSize: number, sampleRate: number, channels: number,
   header.writeUInt16LE(bitDepth, 34);
   header.write('data', 36);
   header.writeUInt32LE(dataSize, 40);
-  
+
   return header;
 }
 
@@ -1095,7 +1266,7 @@ function createWavHeader(dataSize: number, sampleRate: number, channels: number,
 function getEnvelope(time: number, totalDuration: number): number {
   const fadeInTime = 0.1;
   const fadeOutTime = 0.5;
-  
+
   if (time < fadeInTime) return time / fadeInTime;
   if (time > totalDuration - fadeOutTime) return (totalDuration - time) / fadeOutTime;
   return 1.0;
@@ -1134,7 +1305,7 @@ function getChordProgression(genre: string): Array<{name: string, frequencies: n
       {name: 'G7', frequencies: [0.889, 1.111, 1.333, 1.667]}
     ]
   };
-  
+
   return progressions[genre.toLowerCase()] || progressions['pop'];
 }
 
@@ -1156,7 +1327,7 @@ function getKeyFromGenre(genre: string): string {
 function identifyLyricalSections(lines: string[]) {
   const sections = [];
   let currentSection = { type: 'verse', lines: [] };
-  
+
   for (const line of lines) {
     const lowerLine = line.toLowerCase();
     if (lowerLine.includes('chorus') || lowerLine.includes('hook')) {
@@ -1172,7 +1343,7 @@ function identifyLyricalSections(lines: string[]) {
       currentSection.lines.push(line);
     }
   }
-  
+
   if (currentSection.lines.length > 0) sections.push(currentSection);
   return sections;
 }
@@ -1181,19 +1352,19 @@ function analyzeRhymeScheme(lines: string[]) {
   const rhymeMap = new Map();
   const scheme = [];
   let currentLetter = 'A';
-  
+
   for (const line of lines) {
     const lastWord = line.trim().split(' ').pop()?.toLowerCase().replace(/[^a-z]/g, '') || '';
     const rhymeSound = lastWord.slice(-2);
-    
+
     if (!rhymeMap.has(rhymeSound)) {
       rhymeMap.set(rhymeSound, currentLetter);
       currentLetter = String.fromCharCode(currentLetter.charCodeAt(0) + 1);
     }
-    
+
     scheme.push(rhymeMap.get(rhymeSound));
   }
-  
+
   return scheme.join('');
 }
 
@@ -1208,7 +1379,7 @@ function getVocalProcessingParams(song: any) {
     energetic: { brightness: 1.3, energy: 1.4 },
     calm: { brightness: 0.9, energy: 0.8 }
   };
-  
+
   return moodSettings[song.mood as keyof typeof moodSettings] || moodSettings.happy;
 }
 
@@ -1218,7 +1389,7 @@ function parseSongDuration(songLength: string): number {
     const [minutes, seconds] = songLength.split(':').map(Number);
     return (minutes * 60 + seconds);
   }
-  
+
   // Handle legacy formats
   const durations = {
     '30sec': 30,
@@ -1228,7 +1399,7 @@ function parseSongDuration(songLength: string): number {
     '4min': 240,
     '5min30sec': 330
   };
-  
+
   return durations[songLength as keyof typeof durations] || 30; // Default to 30 seconds
 }
 
@@ -1238,7 +1409,7 @@ function createStructuredSections(lyrics: string, durationSeconds: number) {
   const durationMs = durationSeconds * 1000;
   const totalSections = sections.length || 4;
   const sectionDuration = durationMs / totalSections;
-  
+
   return sections.map((section, index) => ({
     type: section.type,
     startMs: index * sectionDuration,
@@ -1258,7 +1429,7 @@ function getGenreArrangement(genre: string) {
     country: ['drums', 'bass', 'acoustic_guitar', 'steel_guitar', 'vocals'],
     'r&b': ['drums', 'bass', 'electric_piano', 'guitar', 'vocals']
   };
-  
+
   return arrangements[genre as keyof typeof arrangements] || arrangements.pop;
 }
 
@@ -1278,7 +1449,7 @@ function getTopGenre(songs: any[]) {
     acc[song.genre] = (acc[song.genre] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-  
+
   return Object.entries(genreCounts).sort(([,a], [,b]) => b - a)[0]?.[0] || 'Pop';
 }
 
@@ -1286,13 +1457,13 @@ function calculateMonthlyGrowth(songs: any[]) {
   const now = new Date();
   const lastMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
   const twoMonthsAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
-  
+
   const thisMonthSongs = songs.filter(song => new Date(song.createdAt) > lastMonth).length;
   const lastMonthSongs = songs.filter(song => {
     const created = new Date(song.createdAt);
     return created > twoMonthsAgo && created <= lastMonth;
   }).length;
-  
+
   if (lastMonthSongs === 0) return thisMonthSongs > 0 ? 100 : 0;
   return ((thisMonthSongs - lastMonthSongs) / lastMonthSongs) * 100;
 }
@@ -1300,7 +1471,7 @@ function calculateMonthlyGrowth(songs: any[]) {
 function analyzeLyricsStructure(lyrics: string) {
   const lines = lyrics.split('\n').filter(line => line.trim());
   const wordCount = lyrics.split(/\s+/).length;
-  
+
   return {
     lineCount: lines.length,
     wordCount: wordCount,
@@ -1324,7 +1495,7 @@ function analyzeVocalPreferences(song: any) {
 
 function generateMusicalComposition(song: any, lyricsAnalysis: any) {
   const durationSeconds = parseSongDuration(song.songLength);
-  
+
   return {
     duration: durationSeconds,
     tempo: song.tempo,
@@ -1341,89 +1512,89 @@ async function processAudioGeneration(song: any, composition: any, vocalAnalysis
   const filename = `generated_${song.id}_${timestamp}.mp3`;
   const uploadsDir = path.join(process.cwd(), 'uploads');
   const audioPath = path.join(uploadsDir, filename);
-  
+
   // Ensure uploads directory exists
   if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
   }
-  
+
   try {
     const duration = composition.duration; // Already in seconds
     const tempo = composition.tempo || 120;
     const genre = composition.genre || 'pop';
-    
+
     // Generate rich musical composition with proper structure
     const baseFreq = getGenreFrequency(genre);
     const moodMod = getMoodModifier(vocalAnalysis.mood || 'happy');
-    
+
     // Create musical elements based on genre
     const chords = getChordProgression(genre);
     const beatsPerSecond = tempo / 60;
     const totalBeats = Math.floor(duration * beatsPerSecond);
-    
+
     // Build layered musical composition with audible frequencies
     const melodyFreq = Math.max(440, baseFreq * moodMod); // Ensure at least A4 (440Hz) for audibility
     const bassFreq = Math.max(220, baseFreq / 2); // Ensure audible bass frequency
     const harmonyFreq = Math.max(330, baseFreq * 1.25); // Perfect fourth, audible range
     const leadFreq = Math.max(660, baseFreq * 1.5); // Perfect fifth, clear high frequency
-    
+
     // Create dynamic composition with rhythm variations
     let rhythmPattern = '';
     for (let beat = 0; beat < totalBeats; beat++) {
       const beatTime = beat / beatsPerSecond;
       const nextBeatTime = (beat + 1) / beatsPerSecond;
       const beatDuration = nextBeatTime - beatTime;
-      
+
       // Vary frequencies based on beat position for musical interest
       const chordIndex = Math.floor((beat / totalBeats) * chords.length);
       const currentChord = chords[chordIndex] || chords[0];
       const rootFreq = currentChord.frequencies[0];
-      
+
       if (beat === 0) {
         rhythmPattern = `sine=frequency=${rootFreq}:duration=${beatDuration}`;
       } else {
         rhythmPattern += `,sine=frequency=${rootFreq}:duration=${beatDuration}`;
       }
     }
-    
+
     // Create rich musical composition with dynamic elements
     const bassLine = `sine=frequency=${bassFreq}:duration=${duration}`;
     const melody = `sine=frequency=${melodyFreq}:duration=${duration},tremolo=f=6:d=0.3`;
     const harmony = `sine=frequency=${harmonyFreq}:duration=${duration},tremolo=f=4:d=0.2`;
-    
+
     // Build comprehensive musical arrangement
     const chordFreqs = chords.map(chord => chord.frequencies).flat();
     const chord1 = chordFreqs[0] || baseFreq;
     const chord2 = chordFreqs[1] || baseFreq * 1.25;
     const chord3 = chordFreqs[2] || baseFreq * 1.5;
-    
+
     const chordLayer1 = `sine=frequency=${chord1}:duration=${duration}`;
     const chordLayer2 = `sine=frequency=${chord2}:duration=${duration}`;
     const chordLayer3 = `sine=frequency=${chord3}:duration=${duration}`;
-    
+
     // Generate final composition with proper duration control and audible volume
     const ffmpegCmd = `ffmpeg -f lavfi -i "${bassLine}" -f lavfi -i "${melody}" -f lavfi -i "${harmony}" -f lavfi -i "${chordLayer1}" -f lavfi -i "${chordLayer2}" -f lavfi -i "${chordLayer3}" -filter_complex "[0:a]volume=2.0[bass];[1:a]volume=1.8[mel];[2:a]volume=1.5[harm];[3:a]volume=1.2[c1];[4:a]volume=1.2[c2];[5:a]volume=1.2[c3];[bass][mel][harm][c1][c2][c3]amix=inputs=6:duration=first:dropout_transition=0[mixed];[mixed]volume=3.0[out]" -map "[out]" -t ${duration} -ar 44100 -ac 2 -b:a 192k "${audioPath}" -y`;
-    
+
     console.log('Generating audio with command:', ffmpegCmd);
     await execAsync(ffmpegCmd);
-    
+
     return `/uploads/${filename}`;
   } catch (error) {
     console.error('Audio generation failed:', error);
-    
+
     // Enhanced fallback with basic musical structure
     try {
       const duration = composition.duration / 1000;
       const baseFreq = getGenreFrequency(composition.genre || 'pop');
-      
+
       // Create a simple but musical fallback with chord progression
       const chord1 = `sine=frequency=${baseFreq}:duration=${duration/4}`;
       const chord2 = `sine=frequency=${baseFreq * 1.25}:duration=${duration/4}`;
       const chord3 = `sine=frequency=${baseFreq * 1.5}:duration=${duration/4}`;
       const chord4 = `sine=frequency=${baseFreq * 1.125}:duration=${duration/4}`;
-      
+
       const fallbackCmd = `ffmpeg -f lavfi -i "${chord1}" -f lavfi -i "${chord2}" -f lavfi -i "${chord3}" -f lavfi -i "${chord4}" -filter_complex "[0][1][2][3]concat=n=4:v=0:a=1[out]" -map "[out]" -ar 44100 -ac 2 -b:a 192k "${audioPath}" -y`;
-      
+
       await execAsync(fallbackCmd);
       return `/uploads/${filename}`;
     } catch (fallbackError) {
@@ -1481,8 +1652,67 @@ function broadcastToSession(songId: number, message: any, excludeUserId?: number
   const messageStr = JSON.stringify(message);
   session.participants.forEach((participant, clientId) => {
     if (excludeUserId && participant.userId === excludeUserId) return;
-    if (participant.ws.readyState === WebSocket.OPEN) {
+    if(participant.ws.readyState === WebSocket.OPEN) {
       participant.ws.send(messageStr);
     }
   });
+}
+
+function generateSongStructure(durationSeconds: number) {
+  const sections = ['intro', 'verse', 'chorus', 'verse', 'chorus', 'bridge', 'chorus', 'outro'];
+  const sectionDuration = durationSeconds / sections.length;
+
+  return sections.map((type, index) => ({
+    type,
+    startTime: index * sectionDuration,
+    endTime: (index + 1) * sectionDuration,
+    duration: sectionDuration
+  }));
+}
+
+function generateHarmonies(genre: string, mood: string) {
+  const harmonies = {
+    pop: { intervals: [3, 5, 7], density: 'moderate' },
+    rock: { intervals: [3, 5], density: 'heavy' },
+    jazz: { intervals: [3, 5, 7, 9, 11], density: 'complex' },
+    electronic: { intervals: [3, 5, 7], density: 'synthetic' }
+  };
+
+  return harmonies[genre.toLowerCase()] || harmonies.pop;
+}
+
+function generateRhythmPattern(genre: string, tempo: number) {
+  const patterns = {
+    pop: { beats: [1, 0, 1, 0], subdivision: 'quarter', swing: false },
+    rock: { beats: [1, 0, 1, 1], subdivision: 'eighth', swing: false },
+    jazz: { beats: [1, 0, 1, 0], subdivision: 'triplet', swing: true },
+    electronic: { beats: [1, 0, 0, 1], subdivision: 'sixteenth', swing: false }
+  };
+
+  const pattern = patterns[genre.toLowerCase()] || patterns.pop;
+  return { ...pattern, tempo, timesPerMinute: tempo };
+}
+
+function generateDynamicMarkings(mood: string) {
+  const dynamics = {
+    happy: { overall: 'mf', peaks: ['f'], valleys: ['mp'] },
+    sad: { overall: 'mp', peaks: ['mf'], valleys: ['pp'] },
+    energetic: { overall: 'f', peaks: ['ff'], valleys: ['mf'] },
+    calm: { overall: 'mp', peaks: ['mf'], valleys: ['p'] }
+  };
+
+  return dynamics[mood.toLowerCase()] || dynamics.happy;
+}
+
+function generateSongStructure(lyricsAnalysis: any, durationSeconds: number) {
+  const durationMs = durationSeconds * 1000;
+  const totalSections = sections.length || 4;
+  const sectionDuration = durationMs / totalSections;
+
+  return sections.map((section, index) => ({
+    type: section.type,
+    startMs: index * sectionDuration,
+    endMs: (index + 1) * sectionDuration,
+    lines: section.lines
+  }));
 }

@@ -100,7 +100,7 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
       <div className="text-center">
         <div className="flex items-center justify-center mb-4">
           <img 
-            src={bangerGptLogo} 
+            src="/burnt-beats-logo.jpeg" 
             alt="Burnt Beats Logo" 
             className="w-12 h-12 mr-3 rounded-lg object-cover"
           />
@@ -191,6 +191,14 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
                           <X className="w-4 h-4 text-gray-500" />
                         }
                         <span className="text-sm">Text-to-Speech</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {plan.features.advancedEditing ? 
+                          <Check className="w-4 h-4 text-green-400" /> : 
+                          <X className="w-4 h-4 text-gray-500" />
+                        }
+                        <span className="text-sm">Advanced Editing</span>
                       </div>
 
                       <div className="flex items-center gap-2">

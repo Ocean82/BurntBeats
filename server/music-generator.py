@@ -1,194 +1,274 @@
+
 #!/usr/bin/env python3
+"""
+Advanced music generation using Music21 for Burnt Beats
+"""
 
 import sys
 import json
-from music21 import stream, note, chord, tempo, key, scale
-import pretty_midi
-import numpy as np
-from scipy.io import wavfile
 import os
+from music21 import stream, note, chord, meter, tempo, key, duration, pitch, scale, interval, bar
+from music21.midi import MidiFile
+import random
 
-def generate_chord_progression(song_key, genre):
-    """Generate chord progression based on genre and key"""
-    progressions = {
-        'pop': ['I', 'V', 'vi', 'IV'],
-        'rock': ['I', 'VII', 'IV', 'I'],
-        'jazz': ['I', 'vi', 'ii', 'V'],
-        'electronic': ['vi', 'IV', 'I', 'V'],
-        'classical': ['I', 'vi', 'IV', 'V'],
-        'hip-hop': ['i', 'VII', 'VI', 'VII'],
-        'country': ['I', 'IV', 'V', 'I'],
-        'r&b': ['ii', 'V', 'I', 'vi']
-    }
-    
-    progression = progressions.get(genre.lower(), progressions['pop'])
-    return progression
-
-def create_melody(song_key, progression, bars=8):
-    """Create a melody line based on chord progression"""
-    key_obj = key.Key(song_key)
-    melody_stream = stream.Stream()
-    
-    # Define scale for melody
-    scale_notes = key_obj.getScale().pitches
-    
-    for i in range(bars):
-        # Create 4 quarter notes per bar
-        for beat in range(4):
-            # Choose notes from the current chord or scale
-            if np.random.random() > 0.3:  # 70% chance of playing a note
-                note_choice = np.random.choice(scale_notes[:7])  # Stay in one octave
-                note_obj = note.Note(note_choice, quarterLength=1.0)
-                melody_stream.append(note_obj)
-            else:
-                # Rest
-                rest = note.Rest(quarterLength=1.0)
-                melody_stream.append(rest)
-    
-    return melody_stream
-
-def create_chord_track(song_key, progression, bars=8):
-    """Create chord accompaniment"""
-    key_obj = key.Key(song_key)
-    chord_stream = stream.Stream()
-    
-    roman_numerals = {
-        'I': 1, 'ii': 2, 'iii': 3, 'IV': 4, 'V': 5, 'vi': 6, 'VII': 7,
-        'i': 1, 'bII': 2, 'bIII': 3, 'iv': 4, 'v': 5, 'bVI': 6, 'bVII': 7
-    }
-    
-    for i in range(bars):
-        # Get chord for this bar
-        chord_numeral = progression[i % len(progression)]
-        chord_degree = roman_numerals.get(chord_numeral, 1)
-        
-        # Create triad
-        root = key_obj.getScale().pitches[chord_degree - 1]
-        third = key_obj.getScale().pitches[(chord_degree + 1) % 7]
-        fifth = key_obj.getScale().pitches[(chord_degree + 3) % 7]
-        
-        chord_obj = chord.Chord([root, third, fifth], quarterLength=4.0)
-        chord_stream.append(chord_obj)
-    
-    return chord_stream
-
-def create_bass_line(song_key, progression, bars=8):
-    """Create bass line following chord progression"""
-    key_obj = key.Key(song_key)
-    bass_stream = stream.Stream()
-    
-    roman_numerals = {
-        'I': 1, 'ii': 2, 'iii': 3, 'IV': 4, 'V': 5, 'vi': 6, 'VII': 7,
-        'i': 1, 'bII': 2, 'bIII': 3, 'iv': 4, 'v': 5, 'bVI': 6, 'bVII': 7
-    }
-    
-    for i in range(bars):
-        chord_numeral = progression[i % len(progression)]
-        chord_degree = roman_numerals.get(chord_numeral, 1)
-        
-        # Root note of chord, played in lower octave
-        root_note = key_obj.getScale().pitches[chord_degree - 1]
-        root_note.octave = 3  # Lower octave for bass
-        
-        # Create bass pattern (root on beats 1 and 3)
-        bass_note1 = note.Note(root_note, quarterLength=2.0)
-        bass_note2 = note.Note(root_note, quarterLength=2.0)
-        
-        bass_stream.append(bass_note1)
-        bass_stream.append(bass_note2)
-    
-    return bass_stream
-
-def generate_song(title, lyrics, genre, tempo_bpm, song_key='C', duration_seconds=30):
-    """Generate a complete song with melody, chords, and bass"""
-    
-    # Calculate number of bars based on duration and tempo
-    beats_per_second = tempo_bpm / 60
-    total_beats = duration_seconds * beats_per_second
-    bars = max(8, int(total_beats / 4))  # 4 beats per bar, minimum 8 bars
-    
-    # Create main score
-    score = stream.Score()
-    
-    # Add tempo and key signature
-    score.append(tempo.TempoIndication(number=tempo_bpm))
-    score.append(key.Key(song_key))
-    
-    # Generate chord progression
-    progression = generate_chord_progression(song_key, genre)
-    
-    # Create musical parts
-    melody = create_melody(song_key, progression, bars)
-    chords = create_chord_track(song_key, progression, bars)
-    bass = create_bass_line(song_key, progression, bars)
-    
-    # Set instruments
-    melody.insert(0, tempo.TempoIndication(number=tempo_bpm))
-    chords.insert(0, tempo.TempoIndication(number=tempo_bpm))
-    bass.insert(0, tempo.TempoIndication(number=tempo_bpm))
-    
-    # Add parts to score
-    score.append(melody)
-    score.append(chords)
-    score.append(bass)
-    
-    return score
-
-def export_to_midi_and_wav(score, output_path):
-    """Export music21 score to MIDI and then convert to WAV"""
-    
-    # Export to MIDI first
-    midi_path = output_path.replace('.mp3', '.mid')
-    score.write('midi', fp=midi_path)
-    
-    # Convert MIDI to audio using pretty_midi
-    midi_data = pretty_midi.PrettyMIDI(midi_path)
-    
-    # Synthesize audio
-    audio = midi_data.synthesize(fs=44100)
-    
-    # Normalize audio
-    audio = audio / np.max(np.abs(audio)) * 0.7
-    
-    # Save as WAV
-    wav_path = output_path.replace('.mp3', '.wav')
-    wavfile.write(wav_path, 44100, (audio * 32767).astype(np.int16))
-    
-    return wav_path
-
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python music-generator.py <song_data_json>")
+def main():
+    if len(sys.argv) < 8:
+        print("Usage: python music-generator.py <title> <lyrics> <genre> <tempo> <key> <duration> <output_path>")
         sys.exit(1)
     
     try:
-        song_data = json.loads(sys.argv[1])
+        title = sys.argv[1].strip('"')
+        lyrics = sys.argv[2].strip('"')
+        genre = sys.argv[3].strip('"')
+        tempo_bpm = int(sys.argv[4])
+        key_sig = sys.argv[5].strip('"')
+        duration_seconds = int(sys.argv[6])
+        output_path = sys.argv[7].strip('"')
         
-        # Extract song parameters
-        title = song_data.get('title', 'Untitled')
-        lyrics = song_data.get('lyrics', '')
-        genre = song_data.get('genre', 'pop')
-        tempo_bpm = song_data.get('tempo', 120)
-        duration = song_data.get('duration', 30)
-        output_path = song_data.get('output_path', 'output.mp3')
-        song_key = song_data.get('key', 'C')
+        print(f"Generating music: {title} in {genre} at {tempo_bpm} BPM")
         
-        # Generate the musical score
-        score = generate_song(title, lyrics, genre, tempo_bpm, song_key, duration)
+        # Create the composition
+        score = create_composition(title, lyrics, genre, tempo_bpm, key_sig, duration_seconds)
         
-        # Export to audio file
-        wav_path = export_to_midi_and_wav(score, output_path)
+        # Write MIDI file
+        score.write('midi', fp=output_path)
+        print(f"MIDI file generated: {output_path}")
         
-        print(json.dumps({
-            "success": True,
-            "wav_path": wav_path,
-            "midi_path": output_path.replace('.mp3', '.mid'),
-            "message": f"Generated {genre} song in {song_key} major at {tempo_bpm} BPM"
-        }))
+        # Generate metadata
+        metadata = {
+            "title": title,
+            "genre": genre,
+            "tempo": tempo_bpm,
+            "key": key_sig,
+            "duration": duration_seconds,
+            "structure": analyze_structure(score)
+        }
+        
+        metadata_path = output_path.replace('.mid', '_metadata.json')
+        with open(metadata_path, 'w') as f:
+            json.dump(metadata, f, indent=2)
+        
+        print("Composition completed successfully")
         
     except Exception as e:
-        print(json.dumps({
-            "success": False,
-            "error": str(e)
-        }))
+        print(f"Error generating music: {e}", file=sys.stderr)
         sys.exit(1)
+
+def create_composition(title, lyrics, genre, tempo_bpm, key_sig, duration_seconds):
+    # Create the main score
+    score = stream.Score()
+    
+    # Add metadata
+    score.metadata = {}
+    score.metadata.title = title
+    score.metadata.composer = 'Burnt Beats AI'
+    
+    # Set time signature and tempo
+    score.append(meter.TimeSignature('4/4'))
+    score.append(tempo.TempoIndication(number=tempo_bpm))
+    score.append(key.KeySignature(key_sig))
+    
+    # Calculate number of measures based on duration
+    beats_per_measure = 4
+    measures = max(8, int((duration_seconds * tempo_bpm / 60) / beats_per_measure))
+    
+    # Create parts
+    melody_part = create_melody_part(genre, key_sig, tempo_bpm, measures)
+    chord_part = create_chord_part(genre, key_sig, measures)
+    bass_part = create_bass_part(genre, key_sig, measures)
+    
+    # Add parts to score
+    score.append(melody_part)
+    score.append(chord_part)
+    score.append(bass_part)
+    
+    return score
+
+def create_melody_part(genre, key_sig, tempo_bpm, measures):
+    melody = stream.Part()
+    melody.partName = 'Melody'
+    melody.instrument = get_melody_instrument(genre)
+    
+    # Get scale for the key
+    key_obj = key.Key(key_sig)
+    scale_notes = key_obj.scale.pitches
+    
+    for measure in range(measures):
+        # Create melodic phrases
+        if measure % 4 == 0:  # Start of phrase
+            melody_line = create_melodic_phrase(scale_notes, genre, phrase_type='opening')
+        elif measure % 4 == 3:  # End of phrase
+            melody_line = create_melodic_phrase(scale_notes, genre, phrase_type='closing')
+        else:
+            melody_line = create_melodic_phrase(scale_notes, genre, phrase_type='middle')
+        
+        melody.append(melody_line)
+    
+    return melody
+
+def create_melodic_phrase(scale_notes, genre, phrase_type='middle'):
+    phrase = []
+    
+    # Genre-specific melodic patterns
+    if genre.lower() == 'pop':
+        pattern = [1, 3, 2, 5, 4, 3, 1, 1] if phrase_type == 'opening' else [5, 4, 3, 2, 1, 1, 1, 1]
+    elif genre.lower() == 'rock':
+        pattern = [1, 1, 3, 5, 5, 3, 1, 1] if phrase_type == 'opening' else [5, 5, 3, 1, 1, 3, 5, 1]
+    elif genre.lower() == 'jazz':
+        pattern = [1, 3, 5, 7, 6, 4, 2, 1] if phrase_type == 'opening' else [7, 5, 3, 1, 2, 4, 6, 1]
+    else:
+        pattern = [1, 2, 3, 4, 5, 4, 3, 1]
+    
+    # Convert scale degrees to notes
+    for degree in pattern:
+        if degree <= len(scale_notes):
+            note_pitch = scale_notes[degree - 1]
+            note_obj = note.Note(note_pitch, quarterLength=0.5)
+            phrase.append(note_obj)
+    
+    return phrase
+
+def create_chord_part(genre, key_sig, measures):
+    chords = stream.Part()
+    chords.partName = 'Chords'
+    chords.instrument = get_chord_instrument(genre)
+    
+    # Get chord progression for genre
+    progression = get_chord_progression(genre, key_sig)
+    
+    for measure in range(measures):
+        chord_symbol = progression[measure % len(progression)]
+        chord_obj = chord.Chord(chord_symbol, quarterLength=4.0)  # Whole note
+        chords.append(chord_obj)
+    
+    return chords
+
+def create_bass_part(genre, key_sig, measures):
+    bass = stream.Part()
+    bass.partName = 'Bass'
+    bass.instrument = get_bass_instrument(genre)
+    
+    # Get bass line pattern
+    key_obj = key.Key(key_sig)
+    root_note = key_obj.tonic
+    
+    for measure in range(measures):
+        bass_line = create_bass_line(root_note, genre, measure)
+        bass.extend(bass_line)
+    
+    return bass
+
+def create_bass_line(root_note, genre, measure):
+    bass_notes = []
+    
+    if genre.lower() == 'rock':
+        # Rock bass pattern: root, fifth, root, fifth
+        fifth = root_note.transpose(interval.Interval('P5'))
+        pattern = [root_note, fifth, root_note, fifth]
+    elif genre.lower() == 'jazz':
+        # Jazz walking bass
+        second = root_note.transpose(interval.Interval('M2'))
+        third = root_note.transpose(interval.Interval('M3'))
+        fifth = root_note.transpose(interval.Interval('P5'))
+        pattern = [root_note, third, fifth, second]
+    else:  # Pop and other genres
+        # Simple root-fifth pattern
+        fifth = root_note.transpose(interval.Interval('P5'))
+        pattern = [root_note, root_note, fifth, root_note]
+    
+    for p in pattern:
+        bass_note = note.Note(p, quarterLength=1.0)
+        bass_note.octave = 2  # Bass octave
+        bass_notes.append(bass_note)
+    
+    return bass_notes
+
+def get_chord_progression(genre, key_sig):
+    """Get genre-appropriate chord progressions"""
+    
+    progressions = {
+        'pop': ['C', 'G', 'Am', 'F'],
+        'rock': ['Am', 'F', 'C', 'G'],
+        'jazz': ['CM7', 'Am7', 'Dm7', 'G7'],
+        'classical': ['C', 'F', 'G', 'C'],
+        'electronic': ['Am', 'F', 'C', 'G'],
+        'hip-hop': ['Am', 'F', 'C', 'G'],
+        'country': ['C', 'F', 'G', 'C'],
+        'r&b': ['CM7', 'Am7', 'FM7', 'G7']
+    }
+    
+    return progressions.get(genre.lower(), progressions['pop'])
+
+def get_melody_instrument(genre):
+    """Get appropriate melody instrument for genre"""
+    from music21 import instrument
+    
+    instruments = {
+        'pop': instrument.Piano(),
+        'rock': instrument.ElectricGuitar(),
+        'jazz': instrument.Saxophone(),
+        'classical': instrument.Violin(),
+        'electronic': instrument.Synth(),
+        'hip-hop': instrument.Synth(),
+        'country': instrument.AcousticGuitar(),
+        'r&b': instrument.Piano()
+    }
+    
+    return instruments.get(genre.lower(), instrument.Piano())
+
+def get_chord_instrument(genre):
+    """Get appropriate chord instrument for genre"""
+    from music21 import instrument
+    
+    instruments = {
+        'pop': instrument.Piano(),
+        'rock': instrument.ElectricGuitar(),
+        'jazz': instrument.Piano(),
+        'classical': instrument.Piano(),
+        'electronic': instrument.Synth(),
+        'hip-hop': instrument.Piano(),
+        'country': instrument.AcousticGuitar(),
+        'r&b': instrument.ElectricPiano()
+    }
+    
+    return instruments.get(genre.lower(), instrument.Piano())
+
+def get_bass_instrument(genre):
+    """Get appropriate bass instrument for genre"""
+    from music21 import instrument
+    
+    instruments = {
+        'pop': instrument.ElectricBass(),
+        'rock': instrument.ElectricBass(),
+        'jazz': instrument.AcousticBass(),
+        'classical': instrument.Cello(),
+        'electronic': instrument.Synth(),
+        'hip-hop': instrument.ElectricBass(),
+        'country': instrument.AcousticBass(),
+        'r&b': instrument.ElectricBass()
+    }
+    
+    return instruments.get(genre.lower(), instrument.ElectricBass())
+
+def analyze_structure(score):
+    """Analyze the musical structure"""
+    
+    parts = []
+    for part in score.parts:
+        part_info = {
+            'name': part.partName or 'Unknown',
+            'instrument': str(part.instrument) if part.instrument else 'Unknown',
+            'measures': len([m for m in part.getElementsByClass('Measure')]),
+            'notes': len(part.flat.notes)
+        }
+        parts.append(part_info)
+    
+    return {
+        'parts': parts,
+        'total_measures': len([m for m in score.flat.getElementsByClass('Measure')]),
+        'key_signature': str(score.analyze('key')),
+        'time_signature': str(score.flat.getElementsByClass(meter.TimeSignature)[0]) if score.flat.getElementsByClass(meter.TimeSignature) else '4/4'
+    }
+
+if __name__ == '__main__':
+    main()

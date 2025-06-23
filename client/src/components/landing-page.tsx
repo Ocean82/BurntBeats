@@ -92,10 +92,10 @@ export default function LandingPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <ul className="space-y-2 text-gray-300">
-                <li>• 3 songs per month</li>
-                <li>• 30-second tracks</li>
-                <li>• Basic genres only</li>
-                <li>• MP3 128kbps quality</li>
+                <li>• 2 full-length songs per month</li>
+                <li>• No voice cloning</li>
+                <li>• No storage</li>
+                <li>• Basic audio player</li>
               </ul>
               <Button onClick={handleLogin} variant="outline" className="w-full">
                 Get Started

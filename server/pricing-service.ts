@@ -1,9 +1,11 @@
+
 import { storage } from "./storage";
 import type { User } from "@shared/schema";
 
 export interface PlanLimits {
   songsPerMonth: number;
   maxSongLength: string;
+  storage: number; // number of songs that can be stored
   features: {
     voiceCloning: boolean;
     textToSpeech: boolean;
@@ -35,8 +37,9 @@ export interface PlanLimits {
 
 export const PLAN_LIMITS: Record<string, PlanLimits> = {
   free: {
-    songsPerMonth: 3,
-    maxSongLength: "0:30",
+    songsPerMonth: 2,
+    maxSongLength: "2:00", // 2 minute songs for free plan
+    storage: 0, // No storage
     features: {
       voiceCloning: false,
       textToSpeech: false,
@@ -66,8 +69,9 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     },
   },
   basic: {
-    songsPerMonth: 3,
-    maxSongLength: "1:00",
+    songsPerMonth: 4,
+    maxSongLength: "5:30",
+    storage: 5, // 5 songs storage
     features: {
       voiceCloning: true,
       textToSpeech: true,
@@ -97,8 +101,9 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
     },
   },
   pro: {
-    songsPerMonth: 50,
+    songsPerMonth: -1, // Unlimited
     maxSongLength: "5:30",
+    storage: 50, // 50 songs storage
     features: {
       voiceCloning: true,
       textToSpeech: true,
@@ -130,6 +135,7 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
   enterprise: {
     songsPerMonth: -1, // unlimited
     maxSongLength: "5:30",
+    storage: -1, // Unlimited storage
     features: {
       voiceCloning: true,
       textToSpeech: true,
@@ -175,7 +181,7 @@ export class PricingService {
     // Reset monthly usage if it's a new month
     await this.resetMonthlyUsageIfNeeded(user);
 
-    // Check if unlimited (enterprise)
+    // Check if unlimited (pro and enterprise)
     if (planLimits.songsPerMonth === -1) {
       return { canCreate: true };
     }
@@ -228,6 +234,11 @@ export class PricingService {
     return planLimits?.maxSongLength || "0:30";
   }
 
+  getStorageLimit(userPlan: string): number {
+    const planLimits = PLAN_LIMITS[userPlan];
+    return planLimits?.storage || 0;
+  }
+
   getAudioQualityOptions(userPlan: string): string[] {
     const planLimits = PLAN_LIMITS[userPlan];
     if (!planLimits) return ["mp3_128"];
@@ -257,7 +268,7 @@ export class PricingService {
       return "Voice features are available starting with Basic plan ($6.99/month) - includes voice cloning and text-to-speech";
     }
     if (requiredFeature === "analytics" || requiredFeature === "versionControl" || requiredFeature === "collaboration") {
-      return "Advanced tools are available with Pro plan ($12.99/month) - includes analytics, version control, and collaboration";
+      return "Advanced tools are available with Pro plan ($12.99/month) - includes unlimited songs, analytics, version control, and collaboration";
     }
     if (requiredFeature === "realTimeCollaboration" || requiredFeature === "musicTheoryTools" || requiredFeature === "socialFeatures") {
       return "Professional features are available with Enterprise plan ($39.99/month) - includes real-time collaboration, music theory tools, and social features";
