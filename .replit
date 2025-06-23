@@ -4,7 +4,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["ffmpeg", "libxcrypt", "pkg-config", "portmidi", "xsimd"]
+packages = ["ffmpeg", "glibcLocales", "libxcrypt", "pkg-config", "portmidi", "xsimd"]
 
 [deployment]
 deploymentTarget = "autoscale"
