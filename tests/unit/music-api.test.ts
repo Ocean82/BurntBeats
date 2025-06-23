@@ -1,4 +1,3 @@
-
 import { Request, Response } from 'express';
 import { MusicAPI } from '../../server/api/music-api';
 import { jest } from '@jest/globals';
@@ -15,7 +14,7 @@ describe('MusicAPI', () => {
     mockRes = {
       json: jest.fn().mockReturnThis(),
       status: jest.fn().mockReturnThis()
-    };
+    } as any;
   });
 
   describe('generateSong', () => {

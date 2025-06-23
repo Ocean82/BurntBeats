@@ -11,7 +11,7 @@ export default {
     '!server/index.ts'
   ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1'
   },
   testTimeout: 30000,

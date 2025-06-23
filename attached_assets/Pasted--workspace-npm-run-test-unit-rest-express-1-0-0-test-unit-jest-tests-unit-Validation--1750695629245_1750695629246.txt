@@ -1,0 +1,201 @@
+~/workspace$ npm run test:unit
+
+> rest-express@1.0.0 test:unit
+> jest tests/unit
+
+● Validation Warning:
+
+  Unknown option "moduleNameMapping" with value {"^@/(.*)$": "<rootDir>/$1"} was found.
+  This is probably a typing mistake. Fixing it will remove this message.
+
+  Configuration Documentation:
+  https://jestjs.io/docs/configuration
+
+● Validation Warning:
+
+  Unknown option "moduleNameMapping" with value {"^@/(.*)$": "<rootDir>/$1"} was found.
+  This is probably a typing mistake. Fixing it will remove this message.
+
+  Configuration Documentation:
+  https://jestjs.io/docs/configuration
+
+ FAIL  tests/unit/enhanced-voice-pipeline.test.ts
+  ● Test suite failed to run
+
+    tests/setup.ts:34:8 - error TS2339: Property 'expect' does not exist on type 'typeof globalThis'.
+
+    34 global.expect = expect;
+              ~~~~~~
+
+ FAIL  tests/unit/auth-api.test.ts
+  ● Test suite failed to run
+
+    tests/setup.ts:34:8 - error TS2339: Property 'expect' does not exist on type 'typeof globalThis'.
+
+    34 global.expect = expect;
+              ~~~~~~
+
+ FAIL  tests/unit/music-api.test.ts
+  ● Test suite failed to run
+
+    tests/setup.ts:34:8 - error TS2339: Property 'expect' does not exist on type 'typeof globalThis'.
+
+    34 global.expect = expect;
+              ~~~~~~
+
+Test Suites: 3 failed, 3 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        26.017 s
+Ran all test suites matching tests/unit.
+~/workspace$ ^[[200~python server/test-music21-concepts.py~
+python server/test-music21-concepts.py~bash: python: command not found
+~/workspace$ npm run test:unit
+
+> rest-express@1.0.0 test:unit
+> jest tests/unit
+
+ FAIL  tests/unit/auth-api.test.ts
+  ● Test suite failed to run
+
+    tests/test-utils.ts:12:7 - error TS2353: Object literal may only specify known properties, and 'cacheTime' does not exist in type 'OmitKeyof<QueryObserverOptions<unknown, Error, unknown, unknown, QueryKey, never>, "suspense" | "queryKey", "strictly">'.
+
+    12       cacheTime: 0,
+             ~~~~~~~~~
+    tests/test-utils.ts:32:8 - error TS2749: 'QueryClientProvider' refers to a value, but is being used as a type here. Did you mean 'typeof QueryClientProvider'?
+
+    32       <QueryClientProvider client={queryClient}>
+              ~~~~~~~~~~~~~~~~~~~
+    tests/test-utils.ts:32:28 - error TS2304: Cannot find name 'client'.
+
+    32       <QueryClientProvider client={queryClient}>
+                                  ~~~~~~
+    tests/test-utils.ts:32:35 - error TS2365: Operator '>' cannot be applied to types '{ queryClient: QueryClient; }' and '{ children: ReactNode; }'.
+
+    32       <QueryClientProvider client={queryClient}>
+                                         ~~~~~~~~~~~~~~
+    33         {children}
+       ~~~~~~~~~~~~~~~~~~
+    tests/test-utils.ts:32:35 - error TS2365: Operator '<' cannot be applied to types 'boolean' and 'RegExp'.
+
+    32       <QueryClientProvider client={queryClient}>
+                                         ~~~~~~~~~~~~~~
+    33         {children}
+       ~~~~~~~~~~~~~~~~~~
+    34       </QueryClientProvider>
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    tests/test-utils.ts:32:28 - error TS1005: '>' expected.
+
+    32       <QueryClientProvider client={queryClient}>
+                                  ~~~~~~
+    tests/test-utils.ts:32:34 - error TS1005: ')' expected.
+
+    32       <QueryClientProvider client={queryClient}>
+                                        ~
+    tests/test-utils.ts:34:8 - error TS1161: Unterminated regular expression literal.
+
+    34       </QueryClientProvider>
+              ~~~~~~~~~~~~~~~~~~~~~
+    tests/test-utils.ts:35:5 - error TS1128: Declaration or statement expected.
+
+    35     );
+           ~
+
+ FAIL  tests/unit/music-api.test.ts
+  ● Test suite failed to run
+
+    tests/test-utils.ts:12:7 - error TS2353: Object literal may only specify known properties, and 'cacheTime' does not exist in type 'OmitKeyof<QueryObserverOptions<unknown, Error, unknown, unknown, QueryKey, never>, "suspense" | "queryKey", "strictly">'.
+
+    12       cacheTime: 0,
+             ~~~~~~~~~
+    tests/test-utils.ts:32:8 - error TS2749: 'QueryClientProvider' refers to a value, but is being used as a type here. Did you mean 'typeof QueryClientProvider'?
+
+    32       <QueryClientProvider client={queryClient}>
+              ~~~~~~~~~~~~~~~~~~~
+    tests/test-utils.ts:32:28 - error TS2304: Cannot find name 'client'.
+
+    32       <QueryClientProvider client={queryClient}>
+                                  ~~~~~~
+    tests/test-utils.ts:32:35 - error TS2365: Operator '>' cannot be applied to types '{ queryClient: QueryClient; }' and '{ children: ReactNode; }'.
+
+    32       <QueryClientProvider client={queryClient}>
+                                         ~~~~~~~~~~~~~~
+    33         {children}
+       ~~~~~~~~~~~~~~~~~~
+    tests/test-utils.ts:32:35 - error TS2365: Operator '<' cannot be applied to types 'boolean' and 'RegExp'.
+
+    32       <QueryClientProvider client={queryClient}>
+                                         ~~~~~~~~~~~~~~
+    33         {children}
+       ~~~~~~~~~~~~~~~~~~
+    34       </QueryClientProvider>
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    tests/test-utils.ts:32:28 - error TS1005: '>' expected.
+
+    32       <QueryClientProvider client={queryClient}>
+                                  ~~~~~~
+    tests/test-utils.ts:32:34 - error TS1005: ')' expected.
+
+    32       <QueryClientProvider client={queryClient}>
+                                        ~
+    tests/test-utils.ts:34:8 - error TS1161: Unterminated regular expression literal.
+
+    34       </QueryClientProvider>
+              ~~~~~~~~~~~~~~~~~~~~~
+    tests/test-utils.ts:35:5 - error TS1128: Declaration or statement expected.
+
+    35     );
+           ~
+
+ FAIL  tests/unit/enhanced-voice-pipeline.test.ts
+  ● Test suite failed to run
+
+    tests/test-utils.ts:12:7 - error TS2353: Object literal may only specify known properties, and 'cacheTime' does not exist in type 'OmitKeyof<QueryObserverOptions<unknown, Error, unknown, unknown, QueryKey, never>, "suspense" | "queryKey", "strictly">'.
+
+    12       cacheTime: 0,
+             ~~~~~~~~~
+    tests/test-utils.ts:32:8 - error TS2749: 'QueryClientProvider' refers to a value, but is being used as a type here. Did you mean 'typeof QueryClientProvider'?
+
+    32       <QueryClientProvider client={queryClient}>
+              ~~~~~~~~~~~~~~~~~~~
+    tests/test-utils.ts:32:28 - error TS2304: Cannot find name 'client'.
+
+    32       <QueryClientProvider client={queryClient}>
+                                  ~~~~~~
+    tests/test-utils.ts:32:35 - error TS2365: Operator '>' cannot be applied to types '{ queryClient: QueryClient; }' and '{ children: ReactNode; }'.
+
+    32       <QueryClientProvider client={queryClient}>
+                                         ~~~~~~~~~~~~~~
+    33         {children}
+       ~~~~~~~~~~~~~~~~~~
+    tests/test-utils.ts:32:35 - error TS2365: Operator '<' cannot be applied to types 'boolean' and 'RegExp'.
+
+    32       <QueryClientProvider client={queryClient}>
+                                         ~~~~~~~~~~~~~~
+    33         {children}
+       ~~~~~~~~~~~~~~~~~~
+    34       </QueryClientProvider>
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    tests/test-utils.ts:32:28 - error TS1005: '>' expected.
+
+    32       <QueryClientProvider client={queryClient}>
+                                  ~~~~~~
+    tests/test-utils.ts:32:34 - error TS1005: ')' expected.
+
+    32       <QueryClientProvider client={queryClient}>
+                                        ~
+    tests/test-utils.ts:34:8 - error TS1161: Unterminated regular expression literal.
+
+    34       </QueryClientProvider>
+              ~~~~~~~~~~~~~~~~~~~~~
+    tests/test-utils.ts:35:5 - error TS1128: Declaration or statement expected.
+
+    35     );
+           ~
+
+Test Suites: 3 failed, 3 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        24.991 s
+Ran all test suites matching tests/unit.
+~/workspace$ 

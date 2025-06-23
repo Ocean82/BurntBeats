@@ -1,4 +1,3 @@
-
 import { Request, Response } from 'express';
 import { AuthAPI } from '../../server/api/auth-api';
 import { jest } from '@jest/globals';
@@ -17,7 +16,7 @@ describe('AuthAPI', () => {
       json: jest.fn().mockReturnThis(),
       status: jest.fn().mockReturnThis(),
       cookie: jest.fn().mockReturnThis()
-    };
+    } as any;
     mockNext = jest.fn();
   });
 
