@@ -29,10 +29,5 @@ import { customMatchers } from './test-utils';
 // Add custom matchers
 expect.extend(customMatchers);
 
-// Configure Jest globals
-global.jest = jest;
-global.expect = expect;
-global.describe = describe;
-global.it = it;
-global.beforeEach = beforeEach;
-global.afterEach = afterEach;
+// Configure Jest globals - these are already available globally in Jest environment
+// No need to explicitly assign them to global object
