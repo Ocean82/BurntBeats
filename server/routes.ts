@@ -888,7 +888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      res.json(spectralData);
+      res.json({ spectralData });
     } catch (error) {
       res.status(500).json({ error: "Failed to apply spectral transfer" });
     }
@@ -1658,15 +1658,16 @@ function broadcastToSession(songId: number, message: any, excludeUserId?: number
   });
 }
 
-function generateSongStructure(durationSeconds: number) {
+function generateSongStructure(lyricsAnalysis: any, durationSeconds: number) {
+  const durationMs = durationSeconds * 1000;
   const sections = ['intro', 'verse', 'chorus', 'verse', 'chorus', 'bridge', 'chorus', 'outro'];
-  const sectionDuration = durationSeconds / sections.length;
+  const totalSections = sections.length || 4;
+  const sectionDuration = durationMs / totalSections;
 
   return sections.map((type, index) => ({
     type,
-    startTime: index * sectionDuration,
-    endTime: (index + 1) * sectionDuration,
-    duration: sectionDuration
+    startMs: index * sectionDuration,
+    endMs: (index + 1) * sectionDuration,
   }));
 }
 
@@ -1702,17 +1703,4 @@ function generateDynamicMarkings(mood: string) {
   };
 
   return dynamics[mood.toLowerCase()] || dynamics.happy;
-}
-
-function generateSongStructure(lyricsAnalysis: any, durationSeconds: number) {
-  const durationMs = durationSeconds * 1000;
-  const totalSections = sections.length || 4;
-  const sectionDuration = durationMs / totalSections;
-
-  return sections.map((section, index) => ({
-    type: section.type,
-    startMs: index * sectionDuration,
-    endMs: (index + 1) * sectionDuration,
-    lines: section.lines
-  }));
 }
