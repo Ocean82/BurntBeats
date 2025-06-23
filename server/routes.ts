@@ -10,16 +10,16 @@ import { MusicAPI } from "./api/music-api";
 import { VoiceAPI } from "./api/voice-api";
 import { PricingAPI } from "./api/pricing-api";
 import { HealthAPI } from "./api/health-api";
+// Audio service imports removed temporarily
 import { VocalGenerator } from "./vocal-generator";
 import { VoiceCloningService } from "./voice-cloning-service";
 import { TextToSpeechService } from "./text-to-speech-service";
 import { EnhancedVoicePipeline } from "./enhanced-voice-pipeline";
-import { authenticateUser } from "./replitAuth";
+import { isAuthenticated } from "./replitAuth";
 import { validateEnvironmentVariables } from "./env-check";
-import { enhancedVoicePipeline } from "./enhanced-voice-pipeline";
 
 // Add authenticateOptional middleware
-const authenticateOptional = (req: Request, res: Response, next: NextFunction) => {
+const authenticateOptional = (req: any, res: Response, next: NextFunction) => {
   // Optional authentication - doesn't require user to be logged in
   // but adds user info if available
   if (req.session?.user) {
@@ -175,7 +175,8 @@ export function registerRoutes(app: express.Application): http.Server {
         auth: "/api/auth/*",
         music: "/api/music/*",
         voice: "/api/voice/*",
-        pricing: "/api/pricing/*"
+        pricing: "/api/pricing/*",
+        audio: "/api/audio/*"
       },
       timestamp: new Date().toISOString()
     };
@@ -271,6 +272,8 @@ export function registerRoutes(app: express.Application): http.Server {
     // Implementation for voice cloning
     res.status(501).json({ error: "Not implemented" });
   });
+
+  // Audio API Routes temporarily disabled
 
   // Create HTTP server
   const server = http.createServer(app);
