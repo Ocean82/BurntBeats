@@ -355,7 +355,7 @@ export class MelodyGenerator {
   }
 
   // Legacy method for backward compatibility
-  async generateMelody(genre: string, mood: string, tempo: number): Promise<any> {
+  async generateMelody(genre: string, mood: string, tempo: number, duration?: number): Promise<any> {
     console.log("⚠️  Using legacy generateMelody method. Consider using generateMelodyFromLyrics for better results.");
 
     // Generate a basic melody without lyrics
@@ -367,5 +367,10 @@ export class MelodyGenerator {
       mood,
       tempo,
     });
+  }
+
+  // Export the class instance
+  static getInstance(): MelodyGenerator {
+    return new MelodyGenerator();
   }
 }

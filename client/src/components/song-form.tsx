@@ -67,10 +67,23 @@ export default function SongForm({ onSongGenerated, user, onUpgrade }: SongFormP
         }
       }
 
+      const formattedData = {
+        title: songData.title,
+        lyrics: songData.lyrics,
+        genre: songData.genre,
+        mood: songData.mood,
+        tempo: songData.tempo,
+        duration: songData.duration,
+        vocals: songData.vocals,
+        energy: songData.energy,
+        creativity: songData.creativity,
+        userId: songData.userId
+      }
+
       const response = await fetch('/api/songs/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(songData)
+        body: JSON.stringify(formattedData)
       })
 
       if (!response.ok) {
@@ -197,6 +210,16 @@ export default function SongForm({ onSongGenerated, user, onUpgrade }: SongFormP
                   <p className="text-xs text-gray-400">
                     Tip: Use clear, emotional language for better melody generation
                   </p>
+                  
+                  {/* Generate Button moved here */}
+                  <Button
+                    type="submit"
+                    className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-medium py-3 mt-4"
+                    disabled={!formData.title || !formData.lyrics || generateSongMutation.isPending}
+                  >
+                    <Music className="w-5 h-5 mr-2" />
+                    {generateSongMutation.isPending ? "Generating..." : "Generate Song"}
+                  </Button>
                 </div>
               </TabsContent>
 
@@ -328,14 +351,7 @@ export default function SongForm({ onSongGenerated, user, onUpgrade }: SongFormP
               </TabsContent>
             </Tabs>
 
-            <Button
-              type="submit"
-              className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-medium py-3"
-              disabled={!formData.title || !formData.lyrics || generateSongMutation.isPending}
-            >
-              <Music className="w-5 h-5 mr-2" />
-              {generateSongMutation.isPending ? "Generating..." : "Generate Song"}
-            </Button>
+            
           </form>
         </CardContent>
       </Card>

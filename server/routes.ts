@@ -240,6 +240,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add specific song generation endpoint
+  app.post("/api/songs/generate", async (req, res) => {
+    try {
+      const songData = req.body;
+      
+      // Create song in database
+      const song = insertSongSchema.parse({
+        title: songData.title,
+        lyrics: songData.lyrics,
+        genre: songData.genre,
+        mood: songData.mood,
+        tempo: songData.tempo,
+        songLength: formatDuration(songData.duration),
+        userId: songData.userId || 1,
+        status: "generating",
+        generationProgress: 0
+      });
+
+      const created = await storage.createSong(song);
+
+      // Start generation process in background
+      generateSong(created.id);
+
+      res.json(created);
+    } catch (error) {
+      res.status(400).json({ message: error instanceof Error ? error.message : "Invalid request" });
+    }
+  });
+
   app.get("/api/songs/:userId", async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
@@ -1403,6 +1432,12 @@ function parseSongDuration(songLength: string): number {
   return durations[songLength as keyof typeof durations] || 30; // Default to 30 seconds
 }
 
+function formatDuration(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
 function createStructuredSections(lyrics: string, durationSeconds: number) {
   const lines = lyrics.split('\n').filter(line => line.trim());
   const sections = identifyLyricalSections(lines);
@@ -1658,18 +1693,7 @@ function broadcastToSession(songId: number, message: any, excludeUserId?: number
   });
 }
 
-function generateSongStructure(lyricsAnalysis: any, durationSeconds: number) {
-  const durationMs = durationSeconds * 1000;
-  const sections = ['intro', 'verse', 'chorus', 'verse', 'chorus', 'bridge', 'chorus', 'outro'];
-  const totalSections = sections.length || 4;
-  const sectionDuration = durationMs / totalSections;
 
-  return sections.map((type, index) => ({
-    type,
-    startMs: index * sectionDuration,
-    endMs: (index + 1) * sectionDuration,
-  }));
-}
 
 function generateHarmonies(genre: string, mood: string) {
   const harmonies = {

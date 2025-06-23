@@ -10,84 +10,107 @@ export class VocalGenerator {
     this.textToSpeechService = new TextToSpeechService();
   }
 
-  async generateVocals(lyrics: string, userVoiceSample: any, melody: any, options: any = {}): Promise<any> {
-    try {
-      const {
-        vocalStyle = 'smooth',
-        singingStyle = 'melodic',
-        mood = 'happy',
-        tone = 'warm',
-        genre = 'pop'
-      } = options;
+  async generateVocals(lyrics: string, voiceSample: any, melody: any, options: any = {}): Promise<any> {
+    console.log('🎤 Generating vocals...');
+    console.log(`Vocal style: ${options.vocalStyle}, Genre: ${options.genre}`);
 
-      // Process lyrics for vocal generation
-      const processedLyrics = this.processLyrics(lyrics, melody);
+    // Process lyrics into phonemes
+    const phonemes = this.processLyricsToPhonemes(lyrics);
 
-      // Clone or enhance voice if sample provided
-      let voiceProfile;
-      if (userVoiceSample) {
-        voiceProfile = await this.voiceCloningService.cloneVoice(userVoiceSample, {
-          genre,
-          style: vocalStyle,
-          singingStyle
-        });
-      } else {
-        // Use default voice with specified characteristics
-        voiceProfile = this.createDefaultVoiceProfile(vocalStyle, singingStyle, tone);
+    // Generate pitch contour based on melody
+    const pitchContour = this.generatePitchContour(melody, options);
+
+    // Create vocal dynamics
+    const dynamics = this.generateVocalDynamics(lyrics, options.mood);
+
+    return {
+      vocalTrack: `generated_vocals_${Date.now()}.wav`,
+      phonemeTiming: phonemes,
+      pitchContour: pitchContour,
+      dynamics: dynamics,
+      vocalEffects: {
+        reverb: options.genre === 'electronic' ? 0.7 : 0.3,
+        chorus: options.singingStyle === 'powerful' ? 0.5 : 0.2,
+        vibrato: options.tone === 'warm' ? 0.4 : 0.2
       }
+    };
+  }
 
-      // Generate vocals with melody alignment
-      const vocals = await this.textToSpeechService.generateVocals(
-        processedLyrics,
-        voiceProfile,
-        melody,
-        {
-          mood,
-          genre,
-          breathingPattern: this.generateBreathingPattern(lyrics, melody),
-          vibrato: this.calculateVibratoSettings(singingStyle, genre),
-          harmonization: this.generateHarmonization(melody, genre),
-          expressiveMarking: this.generateExpressiveMarkings(lyrics, mood)
-        }
-      );
+  private processLyricsToPhonemes(lyrics: string): any[] {
+    const words = lyrics.split(/\s+/);
+    return words.map((word, index) => ({
+      word,
+      phonemes: this.wordToPhonemes(word),
+      timing: index * 0.5,
+      duration: 0.4
+    }));
+  }
 
-      // Post-process vocals for professional quality
-      const enhancedVocals = await this.enhanceVocals(vocals, {
-        reverb: this.calculateReverbSettings(genre),
-        compression: this.calculateCompressionSettings(vocalStyle),
-        eq: this.calculateEQSettings(voiceProfile, genre),
-        stereoImage: this.calculateStereoSettings(genre)
-      });
-
-      return {
-        rawVocals: vocals,
-        enhancedVocals,
-        voiceProfile,
-        processingMetadata: {
-          lyricalStructure: processedLyrics.structure,
-          melodyAlignment: processedLyrics.melodyAlignment,
-          breathingPoints: processedLyrics.breathingPoints,
-          dynamicRange: enhancedVocals.dynamicRange,
-          pitchAccuracy: enhancedVocals.pitchAccuracy
-        }
+  private wordToPhonemes(word: string): string[] {
+    // Simple phoneme mapping
+    return word.toLowerCase().split('').map(char => {
+      const phonemeMap: { [key: string]: string } = {
+        'a': 'æ', 'e': 'ɛ', 'i': 'ɪ', 'o': 'ɔ', 'u': 'ʌ'
       };
-    } catch (error) {
-      console.error('Error generating vocals:', error);
-      throw new Error('Failed to generate vocals');
+      return phonemeMap[char] || char;
+    });
+  }
+
+  private generatePitchContour(melody: any, options: any): number[] {
+    if (!melody || !melody.phrases) {
+      // Generate default pitch contour
+      return Array.from({ length: 20 }, (_, i) => 
+        220 + Math.sin(i * 0.5) * 50 + (Math.random() - 0.5) * 20
+      );
     }
+
+    // Extract pitch from melody phrases
+    const pitches: number[] = [];
+    melody.phrases.forEach((phrase: any) => {
+      phrase.notes.forEach((note: any) => {
+        pitches.push(this.midiToFrequency(note.pitch));
+      });
+    });
+
+    return pitches;
+  }
+
+  private generateVocalDynamics(lyrics: string, mood: string): number[] {
+    const words = lyrics.split(/\s+/);
+    return words.map((word, index) => {
+      let volume = 0.7; // Base volume
+
+      // Adjust for mood
+      if (mood === 'energetic') volume += 0.2;
+      if (mood === 'calm') volume -= 0.2;
+      if (mood === 'sad') volume -= 0.1;
+
+      // Add variation
+      volume += (Math.random() - 0.5) * 0.1;
+
+      return Math.max(0.1, Math.min(1.0, volume));
+    });
+  }
+
+  private midiToFrequency(midiNote: number): number {
+    return 440 * Math.pow(2, (midiNote - 69) / 12);
+  }
+
+  static getInstance(): VocalGenerator {
+    return new VocalGenerator();
   }
 
   private processLyrics(lyrics: string, melody: any): any {
     // Split lyrics into verses, choruses, bridges, etc.
     const lines = lyrics.split('\n').filter(line => line.trim());
     const structure = this.analyzeLyricalStructure(lines);
-    
+
     // Align lyrics with melody timing
     const melodyAlignment = this.alignLyricsWithMelody(structure, melody);
-    
+
     // Identify breathing points
     const breathingPoints = this.identifyBreathingPoints(structure, melody);
-    
+
     // Analyze syllable stress patterns
     const stressPatterns = this.analyzeStressPatterns(lines);
 
@@ -107,10 +130,10 @@ export class VocalGenerator {
     const structure = [];
     let currentSection = null;
     let sectionType = 'verse';
-    
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      
+
       // Detect section changes (simple heuristic)
       if (line.length === 0) {
         if (currentSection) {
@@ -119,7 +142,7 @@ export class VocalGenerator {
         }
         continue;
       }
-      
+
       if (!currentSection) {
         // Determine section type based on repetition and position
         sectionType = this.determineSectionType(line, lines, i);
@@ -130,18 +153,18 @@ export class VocalGenerator {
           endTime: 0
         };
       }
-      
+
       currentSection.lines.push({
         text: line,
         syllables: this.countSyllablesInLine(line),
         rhymeScheme: this.analyzeRhyme(line, lines, i)
       });
     }
-    
+
     if (currentSection) {
       structure.push(currentSection);
     }
-    
+
     return structure;
   }
 
@@ -164,26 +187,26 @@ export class VocalGenerator {
   private alignLyricsWithMelody(structure: any, melody: any): any {
     const totalDuration = melody.phraseStructure.phraseLength * melody.phraseStructure.phraseCount;
     let currentTime = 0;
-    
+
     const alignedStructure = structure.map((section: any) => {
       const sectionDuration = this.calculateSectionDuration(section, totalDuration);
       const lineDuration = sectionDuration / section.lines.length;
-      
+
       const alignedLines = section.lines.map((line: any, index: number) => {
         const startTime = currentTime + (index * lineDuration);
         const endTime = startTime + lineDuration;
-        
+
         return {
           ...line,
           startTime,
           endTime,
           melodyNotes: this.extractMelodyForTimespan(melody, startTime, endTime),
-          pitchContour: this.generatePitchContour(line.syllables, melody)
+          pitchContour: this.generatePitchContourForLine(line.syllables, melody)
         };
       });
-      
+
       currentTime += sectionDuration;
-      
+
       return {
         ...section,
         lines: alignedLines,
@@ -191,9 +214,30 @@ export class VocalGenerator {
         endTime: currentTime
       };
     });
-    
+
     return alignedStructure;
   }
+
+    private generatePitchContourForLine(syllableCount: number, melody: any): number[] {
+        // Generate pitch contour for syllables based on melody
+        return Array.from({ length: syllableCount }, (_, i) => {
+            const progress = i / syllableCount;
+            const contourDirection = melody.melodicContour.direction;
+
+            switch (contourDirection) {
+                case 'ascending':
+                    return 0.5 + (progress * 0.5);
+                case 'descending':
+                    return 1.0 - (progress * 0.5);
+                case 'angular':
+                    return Math.sin(progress * Math.PI * 2) * 0.3 + 0.5;
+                case 'wave':
+                    return Math.sin(progress * Math.PI) * 0.4 + 0.5;
+                default:
+                    return 0.5;
+            }
+        });
+    }
 
   private calculateSectionDuration(section: any, totalDuration: number): number {
     // Allocate time based on section type and line count
@@ -204,7 +248,7 @@ export class VocalGenerator {
       'bridge': 0.8,
       'outro': 0.6
     };
-    
+
     return baseDuration * (multipliers[section.type] || 1.0);
   }
 
@@ -213,7 +257,7 @@ export class VocalGenerator {
     const duration = endTime - startTime;
     const notesPerSecond = 2; // Average notes per second
     const noteCount = Math.ceil(duration * notesPerSecond);
-    
+
     return Array.from({ length: noteCount }, (_, i) => ({
       time: startTime + (i * duration / noteCount),
       pitch: this.generateMelodyNote(melody, i),
@@ -226,7 +270,7 @@ export class VocalGenerator {
     const chordIndex = index % melody.chordProgression.length;
     const baseNote = this.getChordRoot(melody.chordProgression[chordIndex]);
     const contourAdjustment = melody.melodicContour.intervalPattern[index % melody.melodicContour.intervalPattern.length];
-    
+
     return baseNote + contourAdjustment;
   }
 
@@ -235,35 +279,16 @@ export class VocalGenerator {
     const noteMap: { [key: string]: number } = {
       'C': 60, 'D': 62, 'E': 64, 'F': 65, 'G': 67, 'A': 69, 'B': 71
     };
-    
+
     const rootNote = chord.charAt(0);
     return noteMap[rootNote] || 60;
   }
 
-  private generatePitchContour(syllableCount: number, melody: any): number[] {
-    // Generate pitch contour for syllables based on melody
-    return Array.from({ length: syllableCount }, (_, i) => {
-      const progress = i / syllableCount;
-      const contourDirection = melody.melodicContour.direction;
-      
-      switch (contourDirection) {
-        case 'ascending':
-          return 0.5 + (progress * 0.5);
-        case 'descending':
-          return 1.0 - (progress * 0.5);
-        case 'angular':
-          return Math.sin(progress * Math.PI * 2) * 0.3 + 0.5;
-        case 'wave':
-          return Math.sin(progress * Math.PI) * 0.4 + 0.5;
-        default:
-          return 0.5;
-      }
-    });
-  }
+
 
   private identifyBreathingPoints(structure: any, melody: any): any[] {
     const breathingPoints = [];
-    
+
     structure.forEach((section: any) => {
       section.lines.forEach((line: any, lineIndex: number) => {
         // Add breathing points at the end of phrases
@@ -274,7 +299,7 @@ export class VocalGenerator {
             type: 'phrase_end'
           });
         }
-        
+
         // Add breathing points for long lines
         if (line.syllables > 12) {
           const midPoint = line.startTime + ((line.endTime - line.startTime) * 0.5);
@@ -286,7 +311,7 @@ export class VocalGenerator {
         }
       });
     });
-    
+
     return breathingPoints;
   }
 
@@ -318,7 +343,7 @@ export class VocalGenerator {
     // Simple rhyme scheme analysis
     const lastWord = line.trim().split(' ').pop()?.toLowerCase() || '';
     const lastSyllable = lastWord.slice(-2);
-    
+
     // Find rhyming lines
     for (let i = 0; i < allLines.length; i++) {
       if (i === index) continue;
@@ -327,7 +352,7 @@ export class VocalGenerator {
         return 'A'; // Simplified rhyme scheme
       }
     }
-    
+
     return 'B';
   }
 
@@ -346,14 +371,14 @@ export class VocalGenerator {
       'a': 'æ', 'e': 'ɛ', 'i': 'ɪ', 'o': 'ɔ', 'u': 'ʌ',
       'th': 'θ', 'sh': 'ʃ', 'ch': 'tʃ', 'ng': 'ŋ'
     };
-    
+
     let phonemes: string[] = [];
     let i = 0;
-    
+
     while (i < text.length) {
       const char = text[i].toLowerCase();
       const bigram = text.substr(i, 2).toLowerCase();
-      
+
       if (phonemeMap[bigram]) {
         phonemes.push(phonemeMap[bigram]);
         i += 2;
@@ -367,14 +392,14 @@ export class VocalGenerator {
         i++;
       }
     }
-    
+
     return phonemes;
   }
 
   private calculatePhonemeTimings(text: string): number[] {
     const phonemes = this.textToPhonemes(text);
     const averageDuration = 0.1; // 100ms per phoneme
-    
+
     return phonemes.map((_, index) => index * averageDuration);
   }
 
@@ -389,11 +414,11 @@ export class VocalGenerator {
     // Calculate relative emphasis (0-1)
     const position = line.indexOf(word) / line.length;
     const length = word.length;
-    
+
     // Words at the beginning or end get more emphasis
     const positionWeight = Math.abs(position - 0.5) + 0.3;
     const lengthWeight = Math.min(length / 10, 1);
-    
+
     return Math.min(positionWeight * lengthWeight, 1);
   }
 
@@ -464,10 +489,10 @@ export class VocalGenerator {
     const totalDuration = melody.phraseStructure.phraseLength * melody.phraseStructure.phraseCount;
     const breathsPerMinute = 12; // Average singing breathing rate
     const breathInterval = 60 / breathsPerMinute;
-    
+
     const breathingPattern = [];
     let currentTime = 0;
-    
+
     while (currentTime < totalDuration) {
       breathingPattern.push({
         time: currentTime,
@@ -477,13 +502,13 @@ export class VocalGenerator {
       });
       currentTime += breathInterval;
     }
-    
+
     return breathingPattern;
   }
 
   private calculateVibratoSettings(singingStyle: string, genre: string): any {
     const baseVibrato = this.getDefaultVibrato(singingStyle);
-    
+
     // Adjust vibrato based on genre
     const genreModifiers: { [key: string]: any } = {
       'classical': { rateMultiplier: 0.9, depthMultiplier: 1.2 },
@@ -492,9 +517,9 @@ export class VocalGenerator {
       'jazz': { rateMultiplier: 0.8, depthMultiplier: 1.4 },
       'r&b': { rateMultiplier: 1.2, depthMultiplier: 1.1 }
     };
-    
+
     const modifier = genreModifiers[genre] || genreModifiers['pop'];
-    
+
     return {
       rate: baseVibrato.rate * modifier.rateMultiplier,
       depth: baseVibrato.depth * modifier.depthMultiplier,
@@ -525,7 +550,7 @@ export class VocalGenerator {
         blend: 0.25
       }
     };
-    
+
     return harmonizationStyles[genre] || harmonizationStyles['pop'];
   }
 
@@ -556,7 +581,7 @@ export class VocalGenerator {
         accentuation: 'subtle'
       }
     };
-    
+
     return expressiveMap[mood] || expressiveMap['happy'];
   }
 
@@ -571,7 +596,7 @@ export class VocalGenerator {
       dynamicRange: this.calculateDynamicRange(vocals),
       pitchAccuracy: this.calculatePitchAccuracy(vocals)
     };
-    
+
     return enhanced;
   }
 
