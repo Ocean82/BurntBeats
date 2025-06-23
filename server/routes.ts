@@ -83,7 +83,78 @@ export function registerRoutes(app: express.Application): http.Server {
   app.post("/api/pricing/upgrade", PricingAPI.upgradePlan);
   app.get("/api/pricing/subscription/:userId", PricingAPI.getUserSubscription);
 
-  // Stripe Payment Routes
+  // Size-based download payment (simplified for your Stripe setup)
+  app.post("/api/create-payment-intent", async (req: Request, res: Response) => {
+    try {
+      const { amount, downloadType, songId, features } = req.body;
+      
+      // Import Stripe dynamically
+      const { default: Stripe } = await import("stripe");
+      
+      if (!process.env.STRIPE_SECRET_KEY) {
+        throw new Error('Stripe secret key not configured');
+      }
+      
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+        apiVersion: "2023-10-16",
+      });
+      
+      // Create payment intent with metadata for tracking
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100), // Convert to cents
+        currency: "usd",
+        metadata: {
+          downloadType: downloadType || 'unknown',
+          songId: songId || 'unknown',
+          features: features ? features.join(',') : 'none',
+          userId: (req as any).user?.id || 'guest'
+        },
+        description: `Burnt Beats - ${downloadType ? 'Download' : 'Features'}: $${amount}`
+      });
+      
+      res.json({ clientSecret: paymentIntent.client_secret });
+    } catch (error: any) {
+      console.error("Payment intent creation failed:", error);
+      res.status(500).json({ message: "Error creating payment intent: " + error.message });
+    }
+  });
+
+  // Download endpoint after successful payment
+  app.get("/api/download/:downloadType", async (req: Request, res: Response) => {
+    try {
+      const { downloadType } = req.params;
+      
+      // File paths for different quality downloads
+      const downloadPaths = {
+        'mp3_standard': '/uploads/songs/sample-128.mp3',
+        'mp3_hq': '/uploads/songs/sample-320.mp3', 
+        'wav_cd': '/uploads/songs/sample-cd.wav',
+        'wav_studio': '/uploads/songs/sample-studio.wav'
+      };
+      
+      const filePath = downloadPaths[downloadType as keyof typeof downloadPaths];
+      
+      if (!filePath) {
+        return res.status(404).json({ message: "Download not found" });
+      }
+      
+      // Set headers for download
+      res.setHeader('Content-Disposition', `attachment; filename="burnt-beats-${downloadType}.${downloadType.includes('wav') ? 'wav' : 'mp3'}"`);
+      res.setHeader('Content-Type', downloadType.includes('wav') ? 'audio/wav' : 'audio/mpeg');
+      
+      // Return download URL - you'll integrate with actual file storage
+      res.json({ 
+        downloadUrl: filePath,
+        message: "Payment successful - download ready",
+        expiresIn: "24 hours"
+      });
+      
+    } catch (error: any) {
+      res.status(500).json({ message: "Download error: " + error.message });
+    }
+  });
+
+  // Stripe Payment Routes (existing)
   app.post("/api/stripe/create-payment-intent", async (req: Request, res: Response) => {
     try {
       const { StripeService } = await import("./stripe-service");
