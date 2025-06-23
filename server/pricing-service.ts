@@ -167,13 +167,13 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
 };
 
 export class PricingService {
-  async checkUsageLimit(userId: number): Promise<{ canCreate: boolean; reason?: string }> {
+  async checkUsageLimit(userId: string): Promise<{ canCreate: boolean; reason?: string }> {
     const user = await storage.getUser(userId);
     if (!user) {
       return { canCreate: false, reason: "User not found" };
     }
 
-    const planLimits = PLAN_LIMITS[user.plan];
+    const planLimits = PLAN_LIMITS[(user.plan as keyof typeof PLAN_LIMITS) || 'free'];
     if (!planLimits) {
       return { canCreate: false, reason: "Invalid plan" };
     }
@@ -197,7 +197,7 @@ export class PricingService {
     return { canCreate: true };
   }
 
-  async incrementUsage(userId: number): Promise<void> {
+  async incrementUsage(userId: string): Promise<void> {
     const user = await storage.getUser(userId);
     if (!user) return;
 

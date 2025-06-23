@@ -32,14 +32,17 @@ export default function SongForm({ onSongGenerated, userPlan, onUpgrade, user }:
   const {
     generateSong,
     isGenerating,
-    progress,
-    currentStep,
-    error: generationError
-  } = useSongGeneration();
+    generationProgress,
+    generationStage,
+    generationError
+  } = useSongGeneration({
+    onGenerationComplete: onSongGenerated,
+    userId: user?.id || 1
+  });
 
   // Define available options based on plan
   const getAvailableGenres = () => {
-    switch (userPlan) {
+    switch (userPlan || "free") {
       case "free":
         return ["Pop", "Rock", "Electronic"];
       case "basic":
@@ -58,7 +61,7 @@ export default function SongForm({ onSongGenerated, userPlan, onUpgrade, user }:
     const songsUsed = user.songsThisMonth || 0;
     const monthlyLimit = user.monthlyLimit || 2;
 
-    if (userPlan === "pro" || userPlan === "enterprise") {
+    if ((userPlan || "free") === "pro" || (userPlan || "free") === "enterprise") {
       return `Songs this month: ${songsUsed} (Unlimited)`;
     }
 
@@ -66,10 +69,10 @@ export default function SongForm({ onSongGenerated, userPlan, onUpgrade, user }:
   };
 
   const canGenerateSong = () => {
-    if (userPlan === "pro" || userPlan === "enterprise") return true;
+    if ((userPlan || "free") === "pro" || (userPlan || "free") === "enterprise") return true;
 
     const songsUsed = user?.songsThisMonth || 0;
-    const monthlyLimit = userPlan === "basic" ? 4 : 2; // Basic: 4, Free: 2
+    const monthlyLimit = (userPlan || "free") === "basic" ? 4 : 2; // Basic: 4, Free: 2
 
     return songsUsed < monthlyLimit;
   };
@@ -82,27 +85,27 @@ export default function SongForm({ onSongGenerated, userPlan, onUpgrade, user }:
     }
 
     try {
-      const song = await generateSong({
+      await generateSong({
+        title: `${genre || "Pop"} Song`,
         lyrics: lyrics.trim(),
         genre: genre || "Pop",
-        style: style || "Upbeat",
-        mood: mood || "Happy"
+        vocalStyle: style || "Upbeat",
+        tempo: 120,
+        songLength: 30
       });
-
-      if (song) {
-        onSongGenerated(song);
-        setLyrics("");
-        setGenre("");
-        setStyle("");
-        setMood("");
-      }
+      
+      // Song will be handled by onGenerationComplete callback
+      setLyrics("");
+      setGenre("");
+      setStyle("");
+      setMood("");
     } catch (error) {
       console.error("Song generation failed:", error);
     }
   };
 
   const getPlanBadgeColor = () => {
-    switch (userPlan) {
+    switch (userPlan || "free") {
       case "basic": return "bg-blue-500";
       case "pro": return "bg-gradient-to-r from-vibrant-orange to-orange-600";
       case "enterprise": return "bg-gradient-to-r from-yellow-400 to-yellow-600 text-black";
@@ -118,12 +121,12 @@ export default function SongForm({ onSongGenerated, userPlan, onUpgrade, user }:
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Badge className={`${getPlanBadgeColor()} text-white`}>
-                {userPlan.charAt(0).toUpperCase() + userPlan.slice(1)} Plan
+                {userPlan ? userPlan.charAt(0).toUpperCase() + userPlan.slice(1) : "Free"} Plan
               </Badge>
               <span className="text-sm text-gray-400">{getUsageInfo()}</span>
             </div>
-            {userPlan !== "enterprise" && (
-              <UpgradeModal currentPlan={userPlan} onUpgrade={onUpgrade}>
+            {(userPlan || "free") !== "enterprise" && (
+              <UpgradeModal currentPlan={userPlan || "free"} onUpgrade={onUpgrade}>
                 <Button variant="outline" size="sm">
                   <Crown className="w-4 h-4 mr-2" />
                   Upgrade
@@ -181,7 +184,7 @@ export default function SongForm({ onSongGenerated, userPlan, onUpgrade, user }:
                   )}
                 </Button>
               ) : (
-                <UpgradeModal currentPlan={userPlan} onUpgrade={onUpgrade}>
+                <UpgradeModal currentPlan={userPlan || "free"} onUpgrade={onUpgrade}>
                   <Button 
                     type="button"
                     className="w-full bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange text-white"
@@ -245,7 +248,7 @@ export default function SongForm({ onSongGenerated, userPlan, onUpgrade, user }:
             {/* Error Display */}
             {generationError && (
               <div className="p-4 bg-red-500/10 border border-red-500 rounded-lg">
-                <p className="text-red-400 text-sm">{generationError}</p>
+                <p className="text-red-400 text-sm">{generationError?.message || 'Generation failed'}</p>
               </div>
             )}
           </form>
@@ -255,8 +258,8 @@ export default function SongForm({ onSongGenerated, userPlan, onUpgrade, user }:
       {/* Progress Display */}
       {isGenerating && (
         <GenerationProgress 
-          progress={progress} 
-          currentStep={currentStep} 
+          generationProgress={generationProgress} 
+          generationStage={generationStage} 
         />
       )}
     </div>

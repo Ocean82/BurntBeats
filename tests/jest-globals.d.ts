@@ -1,15 +1,16 @@
 
-// Jest global type declarations
+/// <reference types="jest" />
+/// <reference types="@testing-library/jest-dom" />
+
+// Jest and Testing Library globals are automatically available
 declare global {
-  var jest: typeof import('@jest/globals').jest;
-  var expect: typeof import('@jest/globals').expect;
-  var describe: typeof import('@jest/globals').describe;
-  var it: typeof import('@jest/globals').it;
-  var beforeEach: typeof import('@jest/globals').beforeEach;
-  var afterEach: typeof import('@jest/globals').afterEach;
-  var beforeAll: typeof import('@jest/globals').beforeAll;
-  var afterAll: typeof import('@jest/globals').afterAll;
-  var test: typeof import('@jest/globals').test;
+  namespace jest {
+    interface Matchers<R> {
+      toBeInTheDocument(): R;
+      toHaveClass(className: string): R;
+      toHaveTextContent(text: string | RegExp): R;
+    }
+  }
 }
 
 export {};

@@ -8,6 +8,8 @@ export const users = pgTable("users", {
   plan: text("plan").default("free"),
   songsGenerated: integer("songs_generated").default(0),
   maxSongs: integer("max_songs").default(3),
+  songsThisMonth: integer("songs_this_month").default(0),
+  lastUsageReset: timestamp("last_usage_reset").defaultNow(),
   stripeCustomerId: text("stripe_customer_id"),
   subscriptionId: text("subscription_id"),
   subscriptionStatus: text("subscription_status"),

@@ -29,5 +29,6 @@ import { customMatchers } from './test-utils';
 // Add custom matchers
 expect.extend(customMatchers);
 
-// Configure Jest globals - these are already available globally in Jest environment
-// No need to explicitly assign them to global object
+// Jest globals are automatically available in the test environment
+// Import testing library matchers
+import '@testing-library/jest-dom';

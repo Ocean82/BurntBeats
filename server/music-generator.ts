@@ -139,7 +139,7 @@ export class MusicGenerator {
 // Export singleton instance
 export const musicGenerator = new MusicGenerator();
 
-const execAsync = promisify(exec);
+// Remove duplicate declaration - already declared at line 11
 
 export async function generateSong(songData: any): Promise<Song> {
   const melodyGenerator = new MelodyGenerator();
@@ -208,8 +208,8 @@ export async function generateSong(songData: any): Promise<Song> {
       }
     };
   } catch (error) {
-    console.error('Error generating song:', error);
-    throw new Error(`Failed to generate song: ${error.message}`);
+    console.error('Error generating song:', error instanceof Error ? error.message : String(error));
+    throw new Error(`Failed to generate song: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -242,7 +242,7 @@ async function generateAudioComposition(songData: any, melody: any, vocals: any)
   try {
     // Generate composition using Node.js for reliability
     const duration = parseSongDuration(songData.songLength || '0:30');
-    const baseFreq = getGenreFrequency(songData.genre);
+    const baseFreq = getGenreBaseFrequency(songData.genre);
     const chordProgression = melody.chordProgression || ['C', 'Am', 'F', 'G'];
     
     // Create layered audio composition
@@ -264,7 +264,7 @@ async function generateAudioComposition(songData: any, melody: any, vocals: any)
       const noteFreqs = melodyNotes.map((note: any) => midiToFrequency(note.pitch));
       
       // Create melody line from actual notes
-      const melodyLayer = noteFreqs.map((freq, i) => {
+      const melodyLayer = noteFreqs.map((freq: number, i: number) => {
         const startTime = i * beatDuration;
         const noteVolume = melodyNotes[i]?.velocity || 80;
         const volume = (noteVolume / 127) * 1.5;
@@ -274,7 +274,7 @@ async function generateAudioComposition(songData: any, melody: any, vocals: any)
       audioCommand = `ffmpeg -f lavfi -i "${melodyLayer}" `;
     } else {
       // Fallback to chord-based composition
-      const chordFreqs = chordProgression.map(chord => getChordFrequency(chord, baseFreq));
+      const chordFreqs = chordProgression.map((chord: string) => getChordFrequency(chord, baseFreq));
       const melodyLayer = `sine=frequency=${chordFreqs[0]}:duration=${duration}`;
       audioCommand = `ffmpeg -f lavfi -i "${melodyLayer}" `;
     }
@@ -298,7 +298,9 @@ async function generateAudioComposition(songData: any, melody: any, vocals: any)
     console.error('Audio generation failed, using fallback:', error);
     
     // Simple fallback composition
-    const fallbackCmd = `ffmpeg -f lavfi -i "sine=frequency=${baseFreq}:duration=${duration}" -f lavfi -i "sine=frequency=${baseFreq/2}:duration=${duration}" -filter_complex "[0][1]amix=inputs=2:duration=first[out]" -map "[out]" -ar 44100 -ac 2 -b:a 128k "${outputPath}" -y`;
+    const fallbackFreq = getGenreBaseFrequency(songData.genre || 'pop');
+    const fallbackDuration = parseSongDuration(songData.songLength || '0:30');
+    const fallbackCmd = `ffmpeg -f lavfi -i "sine=frequency=${fallbackFreq}:duration=${fallbackDuration}" -f lavfi -i "sine=frequency=${fallbackFreq/2}:duration=${fallbackDuration}" -filter_complex "[0][1]amix=inputs=2:duration=first[out]" -map "[out]" -ar 44100 -ac 2 -b:a 128k "${outputPath}" -y`;
     await execAsync(fallbackCmd);
     
     return `/uploads/${audioFileName}`;
@@ -307,6 +309,20 @@ async function generateAudioComposition(songData: any, melody: any, vocals: any)
 
 function midiToFrequency(midiNote: number): number {
   return 440 * Math.pow(2, (midiNote - 69) / 12);
+}
+
+function getGenreBaseFrequency(genre: string): number {
+  const genreFreqs: Record<string, number> = {
+    'pop': 261.63,     // C4
+    'rock': 329.63,    // E4
+    'jazz': 349.23,    // F4
+    'classical': 392.00, // G4
+    'electronic': 261.63, // C4
+    'hip-hop': 261.63,   // C4
+    'country': 392.00,   // G4
+    'r&b': 261.63      // C4
+  };
+  return genreFreqs[genre.toLowerCase()] || 261.63;
 }
 
 function getChordFrequency(chord: string, baseFreq: number): number {
@@ -324,33 +340,7 @@ function getChordFrequency(chord: string, baseFreq: number): number {
   return baseFreq * multiplier;
 }
 
-    console.log('Python music generation completed:', stdout);
-    
-    // Verify output file exists
-    try {
-      await fs.access(outputPath);
-    } catch (error) {
-      console.warn('MIDI file not generated, creating fallback');
-      // Create a simple fallback composition
-      await createFallbackComposition(outputPath, songData, melody);
-    }
-    
-    // Enhanced composition with melody and vocal integration
-    const enhancedComposition = await enhanceCompositionWithAdvancedFeatures(
-      outputPath,
-      melody,
-      vocals,
-      songData
-    );
-
-    return enhancedComposition;
-  } catch (error) {
-    console.error('Error in audio composition generation:', error);
-    // Create fallback composition
-    await createFallbackComposition(outputPath, songData, melody);
-    return outputPath.replace('.mid', '_fallback.mp3');
-  }
-}
+// Remove duplicate function - already defined below
 
 async function createFallbackComposition(outputPath: string, songData: any, melody: any): Promise<void> {
   console.log('Creating fallback composition...');
@@ -801,5 +791,3 @@ function getKeyFromGenre(genre: string): string {
   };
   return genreKeys[genre.toLowerCase()] || 'C';
 }
-<line_number>8</line_number>
-import fs from 'fs/promises';
