@@ -15,6 +15,7 @@ import { VocalGenerator } from "./vocal-generator";
 import { VoiceCloningService } from "./voice-cloning-service";
 import { TextToSpeechService } from "./text-to-speech-service";
 import { EnhancedVoicePipeline } from "./enhanced-voice-pipeline";
+import { WatermarkService } from "./watermark-service";
 import { isAuthenticated } from "./replitAuth";
 import { validateEnvironmentVariables } from "./env-check";
 
@@ -255,9 +256,25 @@ export function registerRoutes(app: express.Application): http.Server {
       if (!purchase) {
         return res.status(404).json({ error: "Purchase not found or payment not completed" });
       }
+
+      // Validate purchase for clean track access
+      const canAccessClean = WatermarkService.validatePurchaseForCleanTrack(sessionId, tier);
       
-      // Get the file path based on tier
-      const filePath = getFilePathForTier(tier, purchase.songId);
+      if (!canAccessClean) {
+        return res.status(403).json({ error: "Purchase validation failed" });
+      }
+      
+      // Generate appropriate version based on tier and purchase
+      const originalPath = getOriginalFilePath(purchase.songId);
+      let filePath: string;
+      
+      if (tier === 'bonus') {
+        // Bonus tier includes watermark but is still purchasable
+        filePath = WatermarkService.generateWatermarkedTrack(originalPath, purchase.songId, purchase.songTitle);
+      } else {
+        // Base and Top tiers get clean versions
+        filePath = WatermarkService.generateCleanTrack(originalPath, tier, purchase.songId);
+      }
       
       if (!filePath || !fs.existsSync(filePath)) {
         return res.status(404).json({ error: "Audio file not found" });
@@ -265,7 +282,11 @@ export function registerRoutes(app: express.Application): http.Server {
       
       // Set download headers
       const fileExtension = tier === 'top' ? 'wav' : 'mp3';
-      res.setHeader('Content-Disposition', `attachment; filename="${purchase.songTitle}_${tier}.${fileExtension}"`);
+      const filename = tier === 'bonus' 
+        ? `${purchase.songTitle}_demo.${fileExtension}`
+        : `${purchase.songTitle}_${tier}_clean.${fileExtension}`;
+        
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', tier === 'top' ? 'audio/wav' : 'audio/mpeg');
       
       // Stream the file
@@ -275,6 +296,33 @@ export function registerRoutes(app: express.Application): http.Server {
     } catch (error: any) {
       console.error("Download error:", error);
       res.status(500).json({ error: "Download failed: " + error.message });
+    }
+  });
+
+  // Preview endpoint - always serves watermarked version
+  app.get("/api/preview/:songId", async (req: Request, res: Response) => {
+    try {
+      const { songId } = req.params;
+      
+      // Get original file path
+      const originalPath = getOriginalFilePath(songId);
+      
+      if (!fs.existsSync(originalPath)) {
+        return res.status(404).json({ error: "Song not found" });
+      }
+      
+      // Always serve watermarked version for preview
+      const watermarkedPath = WatermarkService.generateWatermarkedTrack(originalPath, songId, 'Preview');
+      
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      
+      const fileStream = fs.createReadStream(watermarkedPath);
+      fileStream.pipe(res);
+      
+    } catch (error: any) {
+      console.error("Preview error:", error);
+      res.status(500).json({ error: "Preview failed: " + error.message });
     }
   });
 
@@ -514,12 +562,17 @@ function getFilePathForTier(tier: string, songId: string) {
   const uploadsDir = path.join(process.cwd(), "uploads");
   
   const fileMap = {
-    'bonus': path.join(uploadsDir, `${songId}_bonus_128kbps.mp3`),
-    'base': path.join(uploadsDir, `${songId}_base_320kbps.mp3`),
-    'top': path.join(uploadsDir, `${songId}_top_studio.wav`)
+    'bonus': path.join(uploadsDir, `${songId}_bonus_demo.mp3`),
+    'base': path.join(uploadsDir, `${songId}_base_clean.mp3`),
+    'top': path.join(uploadsDir, `${songId}_top_clean.wav`)
   };
   
   return fileMap[tier as keyof typeof fileMap] || null;
+}
+
+function getOriginalFilePath(songId: string) {
+  const uploadsDir = path.join(process.cwd(), "uploads");
+  return path.join(uploadsDir, `generated_${songId}.mp3`);
 }
 
 export default app;

@@ -13,6 +13,7 @@ import CollaborativeWorkspace from "@/components/collaborative-workspace";
 import MusicTheoryTools from "@/components/music-theory-tools";
 import SocialFeatures from "@/components/social-features";
 import StripeTieredCheckout from "@/components/stripe-tiered-checkout";
+import { WatermarkNotice } from "@/components/watermark-indicator";
 import VoiceRecorder from "@/components/voice-recorder";
 import AdvancedVoiceCloning from "@/components/advanced-voice-cloning";
 import EnhancedTextToSpeech from "@/components/enhanced-text-to-speech";
