@@ -101,6 +101,9 @@ export default function SongGenerator({ user, onLogout }: SongGeneratorProps) {
       case "social":
         setActiveMenu("Social Hub");
         break;
+      case "ai-chat":
+        setActiveMenu("AI Chat");
+        break;
       case "downloads":
         setActiveMenu("Downloads");
         break;
@@ -203,7 +206,7 @@ export default function SongGenerator({ user, onLogout }: SongGeneratorProps) {
                     <Badge variant="outline" className="text-green-400 border-green-400">
                       All Features Unlocked
                     </Badge>
-                    <Button onClick={() => setActiveTab("Downloads")} className="bg-gradient-to-r from-green-400 to-green-600">
+                    <Button onClick={() => setActiveMenu("Downloads")} className="bg-gradient-to-r from-green-400 to-green-600">
                       <Download className="w-4 h-4 mr-2" />
                       Download Options
                     </Button>
