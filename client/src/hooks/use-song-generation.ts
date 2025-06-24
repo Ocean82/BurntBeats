@@ -76,14 +76,27 @@ export const useSongGeneration = ({
       onGenerationStart?.(tempSong);
     },
     onSuccess: (song) => {
-      setGeneratingSong(song);
-      // Start polling for progress
-      startProgressPolling(song.id);
-
-      toast({
-        title: "Song Generation Started",
-        description: "Your song is being generated with real musical compositions",
-      });
+      // Check if song is already completed (immediate generation)
+      if (song.status === "completed") {
+        setGeneratingSong(null);
+        setGenerationProgress(100);
+        
+        onGenerationComplete?.(song);
+        
+        toast({
+          title: "Song Generated Successfully",
+          description: "Your song with authentic musical composition is ready to play!",
+        });
+      } else {
+        // Song is still processing, start polling
+        setGeneratingSong(song);
+        startProgressPolling(song.id);
+        
+        toast({
+          title: "Song Generation Started",
+          description: "Your song is being generated with real musical compositions",
+        });
+      }
 
       // Invalidate songs cache
       queryClient.invalidateQueries({ queryKey: ["/api/songs", userId] });
