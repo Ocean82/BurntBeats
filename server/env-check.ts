@@ -8,7 +8,10 @@ export function validateEnvironmentVariables() {
     'STRIPE_SECRET_KEY',
     'STRIPE_PUBLISHABLE_KEY',
     'STRIPE_WEBHOOK_SECRET',
-    'NODE_ENV'
+    'NODE_ENV',
+    'OPENAI_API_KEY',
+    'ELEVENLABS_API_KEY',
+    'AI_MODEL_PATH'
   ];
 
   const missing = required.filter(key => !process.env[key]);
@@ -28,6 +31,11 @@ export function validateEnvironmentVariables() {
   return {
     database: !!process.env.DATABASE_URL,
     stripe: !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLISHABLE_KEY),
-    webhooks: !!process.env.STRIPE_WEBHOOK_SECRET
+    webhooks: !!process.env.STRIPE_WEBHOOK_SECRET,
+    aiServices: {
+      openai: !!process.env.OPENAI_API_KEY,
+      elevenlabs: !!process.env.ELEVENLABS_API_KEY,
+      localModel: !!process.env.AI_MODEL_PATH
+    }
   };
 }

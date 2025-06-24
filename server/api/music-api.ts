@@ -56,6 +56,19 @@ export class MusicAPI {
         return res.status(400).json({ error: "Title and lyrics are required" });
       }
 
+      // Validate inputs
+      if (typeof title !== 'string' || typeof lyrics !== 'string') {
+        return res.status(400).json({ error: "Title and lyrics must be strings" });
+      }
+
+      if (tempo && (isNaN(tempo) || tempo < 60 || tempo > 200)) {
+        return res.status(400).json({ error: "Tempo must be between 60 and 200 BPM" });
+      }
+
+      if (duration && (isNaN(duration) || duration < 10 || duration > 300)) {
+        return res.status(400).json({ error: "Duration must be between 10 and 300 seconds" });
+      }
+
       console.log("🎵 Generating basic song...");
 
       const outputPath = path.join(MusicAPI.uploadsDir, `song_${Date.now()}.wav`);
@@ -71,7 +84,22 @@ export class MusicAPI {
         `--output_path="${outputPath}"`
       ];
 
-      const { stdout, stderr } = await execAsync(`python "${args[0]}" ${args.slice(1).join(' ')}`);
+      let stdout, stderr;
+      try {
+        const result = await execAsync(`python3 "${args[0]}" ${args.slice(1).join(' ')}`);
+        stdout = result.stdout;
+        stderr = result.stderr;
+      } catch (pythonError) {
+        console.error("Python script execution failed:", pythonError);
+        // Try fallback with python instead of python3
+        try {
+          const fallbackResult = await execAsync(`python "${args[0]}" ${args.slice(1).join(' ')}`);
+          stdout = fallbackResult.stdout;
+          stderr = fallbackResult.stderr;
+        } catch (fallbackError) {
+          throw new Error(`Both python3 and python failed: ${fallbackError.message}`);
+        }
+      }
 
       if (stderr && !stderr.includes('⚠️') && !stderr.includes('🎵')) {
         console.error("Generation stderr:", stderr);

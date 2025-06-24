@@ -1,4 +1,4 @@
-import type { GeneratedMelody, MelodyNote, MelodyPhrase, AudioFeatures } from "@shared/schema";
+import type { GeneratedMelody, MelodyNote, MelodyPhrase, AudioFeatures } from "../shared/schema";
 
 export interface MelodyGenerationConfig {
   lyrics: string;

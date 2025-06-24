@@ -2,7 +2,7 @@ import { MelodyGenerator } from './melody-generator';
 import { VocalGenerator } from './vocal-generator';
 import { VoiceCloningService } from './voice-cloning-service';
 import { TextToSpeechService } from './text-to-speech-service';
-import type { Song } from '@shared/schema';
+import type { Song } from '../shared/schema';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
