@@ -63,6 +63,14 @@ export class VoiceAPI {
         return res.status(400).json({ error: 'Text is required' });
       }
 
+      if (typeof text !== 'string' || text.trim().length === 0) {
+        return res.status(400).json({ error: 'Text must be a non-empty string' });
+      }
+
+      if (text.length > 5000) {
+        return res.status(400).json({ error: 'Text must be less than 5000 characters' });
+      }
+
       console.log('🗣️ Generating text-to-speech...');
 
       // Mock TTS generation
@@ -119,6 +127,18 @@ export class VoiceAPI {
 
       if (!voiceSampleId || !text) {
         return res.status(400).json({ error: 'Voice sample ID and text are required' });
+      }
+
+      if (typeof voiceSampleId !== 'number' || voiceSampleId <= 0) {
+        return res.status(400).json({ error: 'Voice sample ID must be a positive number' });
+      }
+
+      if (typeof text !== 'string' || text.trim().length === 0) {
+        return res.status(400).json({ error: 'Text must be a non-empty string' });
+      }
+
+      if (text.length > 1000) {
+        return res.status(400).json({ error: 'Text for voice cloning must be less than 1000 characters' });
       }
 
       console.log('🎭 Cloning voice...');

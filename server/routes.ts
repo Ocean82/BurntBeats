@@ -19,6 +19,11 @@ import { EnhancedVoicePipeline } from "./enhanced-voice-pipeline";
 import { WatermarkService } from "./watermark-service";
 import { isAuthenticated } from "./replitAuth";
 import { validateEnvironmentVariables } from "./env-check";
+import {
+  musicErrorHandler,
+  validateMusicGenerationInput,
+  validateVoiceInput
+} from './middleware/music-error-handler';
 
 // Add authenticateOptional middleware
 const authenticateOptional = (req: any, res: Response, next: NextFunction) => {
@@ -93,18 +98,18 @@ export function registerRoutes(app: express.Application): http.Server {
   app.post("/api/create-payment-intent", async (req: Request, res: Response) => {
     try {
       const { amount, downloadType, songId, features } = req.body;
-      
+
       // Import Stripe dynamically
       const { default: Stripe } = await import("stripe");
-      
+
       if (!process.env.STRIPE_SECRET_KEY) {
         throw new Error('Stripe secret key not configured');
       }
-      
+
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
         apiVersion: "2023-10-16",
       });
-      
+
       // Create payment intent with metadata for tracking
       const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round(amount * 100), // Convert to cents
@@ -117,7 +122,7 @@ export function registerRoutes(app: express.Application): http.Server {
         },
         description: `Burnt Beats - ${downloadType ? 'Download' : 'Features'}: $${amount}`
       });
-      
+
       res.json({ clientSecret: paymentIntent.client_secret });
     } catch (error: any) {
       console.error("Payment intent creation failed:", error);
@@ -129,32 +134,32 @@ export function registerRoutes(app: express.Application): http.Server {
   app.get("/api/download/:downloadType", async (req: Request, res: Response) => {
     try {
       const { downloadType } = req.params;
-      
+
       // File paths for different quality downloads
       const downloadPaths = {
         'mp3_standard': '/uploads/songs/sample-128.mp3',
-        'mp3_hq': '/uploads/songs/sample-320.mp3', 
+        'mp3_hq': '/uploads/songs/sample-320.mp3',
         'wav_cd': '/uploads/songs/sample-cd.wav',
         'wav_studio': '/uploads/songs/sample-studio.wav'
       };
-      
+
       const filePath = downloadPaths[downloadType as keyof typeof downloadPaths];
-      
+
       if (!filePath) {
         return res.status(404).json({ message: "Download not found" });
       }
-      
+
       // Set headers for download
       res.setHeader('Content-Disposition', `attachment; filename="burnt-beats-${downloadType}.${downloadType.includes('wav') ? 'wav' : 'mp3'}"`);
       res.setHeader('Content-Type', downloadType.includes('wav') ? 'audio/wav' : 'audio/mpeg');
-      
+
       // Return download URL - you'll integrate with actual file storage
-      res.json({ 
+      res.json({
         downloadUrl: filePath,
         message: "Payment successful - download ready",
         expiresIn: "24 hours"
       });
-      
+
     } catch (error: any) {
       res.status(500).json({ message: "Download error: " + error.message });
     }
@@ -187,18 +192,18 @@ export function registerRoutes(app: express.Application): http.Server {
   app.post("/api/stripe/webhook", express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
     try {
       const { default: Stripe } = await import("stripe");
-      
+
       if (!process.env.STRIPE_SECRET_KEY) {
         throw new Error('Stripe secret key not configured');
       }
-      
+
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
         apiVersion: "2023-10-16",
       });
-      
+
       const signature = req.headers['stripe-signature'] as string;
       let event;
-      
+
       try {
         // Verify webhook signature (you'll need to set STRIPE_WEBHOOK_SECRET)
         const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -212,23 +217,23 @@ export function registerRoutes(app: express.Application): http.Server {
         console.error('Webhook signature verification failed:', err.message);
         return res.status(400).send(`Webhook Error: ${err.message}`);
       }
-      
+
       // Handle successful payment completion
       if (event.type === 'checkout.session.completed') {
         const session = event.data.object;
         const clientReferenceId = session.client_reference_id;
-        
+
         if (clientReferenceId) {
           // Parse the client reference ID to get purchase details
           const [songId, tier, songTitle] = clientReferenceId.split('_');
-          
+
           // Generate the appropriate file based on tier
           await generateFileForTier(songId, tier, songTitle);
-          
+
           // Send download link to customer (you could email this or store in database)
           console.log(`Payment completed for song ${songId}, tier ${tier}`);
           console.log(`Customer email: ${session.customer_details?.email}`);
-          
+
           // Store purchase record in database
           await storePurchaseRecord({
             sessionId: session.id,
@@ -242,7 +247,7 @@ export function registerRoutes(app: express.Application): http.Server {
           });
         }
       }
-      
+
       res.json({ received: true });
     } catch (error) {
       console.error("Webhook processing failed:", error);
@@ -254,25 +259,25 @@ export function registerRoutes(app: express.Application): http.Server {
   app.get("/api/download/:sessionId/:tier", async (req: Request, res: Response) => {
     try {
       const { sessionId, tier } = req.params;
-      
+
       // Verify the session exists and payment was successful
       const purchase = await verifyPurchaseSession(sessionId);
-      
+
       if (!purchase) {
         return res.status(404).json({ error: "Purchase not found or payment not completed" });
       }
 
       // Validate purchase for clean track access
       const canAccessClean = WatermarkService.validatePurchaseForCleanTrack(sessionId, tier);
-      
+
       if (!canAccessClean) {
         return res.status(403).json({ error: "Purchase validation failed" });
       }
-      
+
       // Generate appropriate version based on tier and purchase
       const originalPath = getOriginalFilePath(purchase.songId);
       let filePath: string;
-      
+
       if (tier === 'bonus') {
         // Bonus tier includes watermark but is still purchasable
         filePath = WatermarkService.generateWatermarkedTrack(originalPath, purchase.songId, purchase.songTitle);
@@ -280,24 +285,24 @@ export function registerRoutes(app: express.Application): http.Server {
         // Base and Top tiers get clean versions
         filePath = WatermarkService.generateCleanTrack(originalPath, tier, purchase.songId);
       }
-      
+
       if (!filePath || !fs.existsSync(filePath)) {
         return res.status(404).json({ error: "Audio file not found" });
       }
-      
+
       // Set download headers
       const fileExtension = tier === 'top' ? 'wav' : 'mp3';
-      const filename = tier === 'bonus' 
+      const filename = tier === 'bonus'
         ? `${purchase.songTitle}_demo.${fileExtension}`
         : `${purchase.songTitle}_${tier}_clean.${fileExtension}`;
-        
+
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', tier === 'top' ? 'audio/wav' : 'audio/mpeg');
-      
+
       // Stream the file
       const fileStream = fs.createReadStream(filePath);
       fileStream.pipe(res);
-      
+
     } catch (error: any) {
       console.error("Download error:", error);
       res.status(500).json({ error: "Download failed: " + error.message });
@@ -308,23 +313,23 @@ export function registerRoutes(app: express.Application): http.Server {
   app.get("/api/preview/:songId", async (req: Request, res: Response) => {
     try {
       const { songId } = req.params;
-      
+
       // Get original file path
       const originalPath = getOriginalFilePath(songId);
-      
+
       if (!fs.existsSync(originalPath)) {
         return res.status(404).json({ error: "Song not found" });
       }
-      
+
       // Always serve watermarked version for preview
       const watermarkedPath = WatermarkService.generateWatermarkedTrack(originalPath, songId, 'Preview');
-      
+
       res.setHeader('Content-Type', 'audio/mpeg');
       res.setHeader('Cache-Control', 'public, max-age=3600');
-      
+
       const fileStream = fs.createReadStream(watermarkedPath);
       fileStream.pipe(res);
-      
+
     } catch (error: any) {
       console.error("Preview error:", error);
       res.status(500).json({ error: "Preview failed: " + error.message });
@@ -497,21 +502,21 @@ export function registerRoutes(app: express.Application): http.Server {
 async function generateFileForTier(songId: string, tier: string, songTitle: string) {
   try {
     console.log(`Generating ${tier} quality file for song ${songId}`);
-    
+
     const qualityMap = {
       'bonus': 'MP3 128kbps',
-      'base': 'MP3 320kbps', 
+      'base': 'MP3 320kbps',
       'top': 'WAV 24-bit/96kHz'
     };
-    
+
     console.log(`File generation requested: ${qualityMap[tier as keyof typeof qualityMap]} for "${songTitle}"`);
-    
+
     // In a real implementation, you'd:
     // 1. Get the original song file
     // 2. Convert/encode it to the appropriate quality
     // 3. Save it with a unique filename
     // 4. Return the file path
-    
+
     return `uploads/generated_${songId}_${tier}.${tier === 'top' ? 'wav' : 'mp3'}`;
   } catch (error) {
     console.error('File generation failed:', error);
@@ -529,7 +534,7 @@ async function storePurchaseRecord(purchaseData: any) {
       amount: purchaseData.amount / 100, // Convert from cents
       timestamp: new Date().toISOString()
     });
-    
+
     const purchaseRecord = {
       id: purchaseData.sessionId,
       ...purchaseData,
@@ -537,7 +542,7 @@ async function storePurchaseRecord(purchaseData: any) {
       downloadCount: 0,
       downloadExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
     };
-    
+
     return purchaseRecord;
   } catch (error) {
     console.error('Failed to store purchase record:', error);
@@ -548,7 +553,7 @@ async function storePurchaseRecord(purchaseData: any) {
 async function verifyPurchaseSession(sessionId: string) {
   try {
     console.log(`Verifying purchase session: ${sessionId}`);
-    
+
     return {
       sessionId,
       songId: 'demo_song',
@@ -565,13 +570,13 @@ async function verifyPurchaseSession(sessionId: string) {
 
 function getFilePathForTier(tier: string, songId: string) {
   const uploadsDir = path.join(process.cwd(), "uploads");
-  
+
   const fileMap = {
     'bonus': path.join(uploadsDir, `${songId}_bonus_demo.mp3`),
     'base': path.join(uploadsDir, `${songId}_base_clean.mp3`),
     'top': path.join(uploadsDir, `${songId}_top_clean.wav`)
   };
-  
+
   return fileMap[tier as keyof typeof fileMap] || null;
 }
 

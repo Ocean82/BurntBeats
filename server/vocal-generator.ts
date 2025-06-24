@@ -1,6 +1,32 @@
 import { VoiceCloningService } from './voice-cloning-service';
 import { TextToSpeechService } from './text-to-speech-service';
 
+interface MelodyPhrase {
+  notes: Array<{
+    pitch: number;
+    duration: number;
+    velocity: number;
+    syllable: string;
+    timestamp: number;
+  }>;
+  startTime: number;
+  emotionWeight: number;
+  lyricLine: string;
+}
+
+interface Melody {
+  phrases?: MelodyPhrase[];
+  phraseStructure?: {
+    phraseLength: number;
+    phraseCount: number;
+  };
+  chordProgression?: string[];
+  melodicContour?: {
+    direction: string;
+    intervalPattern: number[];
+  };
+}
+
 export class VocalGenerator {
   private voiceCloningService: VoiceCloningService;
   private textToSpeechService: TextToSpeechService;
@@ -10,7 +36,7 @@ export class VocalGenerator {
     this.textToSpeechService = new TextToSpeechService();
   }
 
-  async generateVocals(lyrics: string, voiceSample: any, melody: any, options: any = {}): Promise<any> {
+  async generateVocals(lyrics: string, voiceSample: any, melody: Melody, options: any = {}): Promise<any> {
     console.log('🎤 Generating vocals...');
     console.log(`Vocal style: ${options.vocalStyle}, Genre: ${options.genre}`);
 
@@ -261,8 +287,10 @@ export class VocalGenerator {
     return occurrences > 1;
   }
 
-  private alignLyricsWithMelody(structure: any, melody: any): any {
-    const totalDuration = melody.phraseStructure.phraseLength * melody.phraseStructure.phraseCount;
+  private alignLyricsWithMelody(structure: any, melody: Melody): any {
+    const totalDuration = melody.phraseStructure 
+      ? melody.phraseStructure.phraseLength * melody.phraseStructure.phraseCount 
+      : 30; // Default 30 seconds
     let currentTime = 0;
 
     const alignedStructure = structure.map((section: any) => {
@@ -278,7 +306,7 @@ export class VocalGenerator {
           startTime,
           endTime,
           melodyNotes: this.extractMelodyForTimespan(melody, startTime, endTime),
-          pitchContour: this.generatePitchContourForLine(line.syllables, melody)
+          pitchContour: this.generatePitchContourForLine(line.syllables, melody || { melodicContour: { direction: 'stable' } })
         };
       });
 
@@ -299,7 +327,7 @@ export class VocalGenerator {
         // Generate pitch contour for syllables based on melody
         return Array.from({ length: syllableCount }, (_, i) => {
             const progress = i / syllableCount;
-            const contourDirection = melody.melodicContour.direction;
+            const contourDirection = melody?.melodicContour?.direction || 'stable';
 
             switch (contourDirection) {
                 case 'ascending':
@@ -562,8 +590,10 @@ export class VocalGenerator {
     return resonanceMap[tone] || resonanceMap['warm'];
   }
 
-  private generateBreathingPattern(lyrics: string, melody: any): any {
-    const totalDuration = melody.phraseStructure.phraseLength * melody.phraseStructure.phraseCount;
+  private generateBreathingPattern(lyrics: string, melody: Melody): any {
+    const totalDuration = melody.phraseStructure 
+      ? melody.phraseStructure.phraseLength * melody.phraseStructure.phraseCount 
+      : 30;
     const breathsPerMinute = 12; // Average singing breathing rate
     const breathInterval = 60 / breathsPerMinute;
 

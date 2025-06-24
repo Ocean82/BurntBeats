@@ -16,6 +16,11 @@ export interface AIGenerationOptions {
   temperature?: number;
 }
 
+interface PythonScriptError extends Error {
+  code?: number;
+  stderr?: string;
+}
+
 export interface AIGenerationResult {
   audioPath: string;
   metadata: {
@@ -216,7 +221,9 @@ export class AIMusicService {
 
   private executePythonScript(args: string[]): Promise<string> {
     return new Promise((resolve, reject) => {
-      const python = spawn('python3', args);
+      // Try python3 first, then fallback to python
+      const pythonCommand = 'python3';
+      const python = spawn(pythonCommand, args);
       let stdout = '';
       let stderr = '';
 
@@ -227,14 +234,66 @@ export class AIMusicService {
 
       python.stderr.on('data', (data) => {
         stderr += data.toString();
-        console.error(data.toString());
+        // Only log errors, not warnings
+        if (!data.toString().includes('WARNING')) {
+          console.error(data.toString());
+        }
       });
 
       python.on('close', (code) => {
         if (code === 0) {
           resolve(stdout);
         } else {
-          reject(new Error(`Python script failed with code ${code}: ${stderr}`));
+          // Try fallback with python command
+          if (pythonCommand === 'python3') {
+            console.log('python3 failed, trying python...');
+            this.executePythonScriptFallback(args).then(resolve).catch(reject);
+          } else {
+            const error = new Error(`Python script failed with code ${code}: ${stderr}`) as PythonScriptError;
+            error.code = code;
+            error.stderr = stderr;
+            reject(error);
+          }
+        }
+      });
+
+      python.on('error', (error) => {
+        if (pythonCommand === 'python3') {
+          console.log('python3 command not found, trying python...');
+          this.executePythonScriptFallback(args).then(resolve).catch(reject);
+        } else {
+          reject(new Error(`Failed to start Python script: ${error.message}`));
+        }
+      });
+    });
+  }
+
+  private executePythonScriptFallback(args: string[]): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const python = spawn('python', args);
+      let stdout = '';
+      let stderr = '';
+
+      python.stdout.on('data', (data) => {
+        stdout += data.toString();
+        console.log(data.toString());
+      });
+
+      python.stderr.on('data', (data) => {
+        stderr += data.toString();
+        if (!data.toString().includes('WARNING')) {
+          console.error(data.toString());
+        }
+      });
+
+      python.on('close', (code) => {
+        if (code === 0) {
+          resolve(stdout);
+        } else {
+          const error = new Error(`Python script failed with code ${code}: ${stderr}`) as PythonScriptError;
+          error.code = code;
+          error.stderr = stderr;
+          reject(error);
         }
       });
 
