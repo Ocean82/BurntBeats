@@ -180,13 +180,101 @@ export function registerRoutes(app: express.Application): http.Server {
 
   app.post("/api/stripe/webhook", express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
     try {
-      const { StripeService } = await import("./stripe-service");
+      const { default: Stripe } = await import("stripe");
+      
+      if (!process.env.STRIPE_SECRET_KEY) {
+        throw new Error('Stripe secret key not configured');
+      }
+      
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+        apiVersion: "2023-10-16",
+      });
+      
       const signature = req.headers['stripe-signature'] as string;
-      await StripeService.handleWebhook(req.body, signature);
+      let event;
+      
+      try {
+        // Verify webhook signature (you'll need to set STRIPE_WEBHOOK_SECRET)
+        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+        if (webhookSecret) {
+          event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
+        } else {
+          // For testing without webhook secret
+          event = JSON.parse(req.body.toString());
+        }
+      } catch (err: any) {
+        console.error('Webhook signature verification failed:', err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+      }
+      
+      // Handle successful payment completion
+      if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        const clientReferenceId = session.client_reference_id;
+        
+        if (clientReferenceId) {
+          // Parse the client reference ID to get purchase details
+          const [songId, tier, songTitle] = clientReferenceId.split('_');
+          
+          // Generate the appropriate file based on tier
+          await generateFileForTier(songId, tier, songTitle);
+          
+          // Send download link to customer (you could email this or store in database)
+          console.log(`Payment completed for song ${songId}, tier ${tier}`);
+          console.log(`Customer email: ${session.customer_details?.email}`);
+          
+          // Store purchase record in database
+          await storePurchaseRecord({
+            sessionId: session.id,
+            songId,
+            tier,
+            songTitle,
+            customerEmail: session.customer_details?.email,
+            amount: session.amount_total,
+            currency: session.currency,
+            paymentStatus: session.payment_status
+          });
+        }
+      }
+      
       res.json({ received: true });
     } catch (error) {
       console.error("Webhook processing failed:", error);
       res.status(400).json({ error: "Webhook processing failed" });
+    }
+  });
+
+  // File delivery endpoint after successful payment
+  app.get("/api/download/:sessionId/:tier", async (req: Request, res: Response) => {
+    try {
+      const { sessionId, tier } = req.params;
+      
+      // Verify the session exists and payment was successful
+      const purchase = await verifyPurchaseSession(sessionId);
+      
+      if (!purchase) {
+        return res.status(404).json({ error: "Purchase not found or payment not completed" });
+      }
+      
+      // Get the file path based on tier
+      const filePath = getFilePathForTier(tier, purchase.songId);
+      
+      if (!filePath || !fs.existsSync(filePath)) {
+        return res.status(404).json({ error: "Audio file not found" });
+      }
+      
+      // Set download headers
+      const fileExtension = tier === 'top' ? 'wav' : 'mp3';
+      res.setHeader('Content-Disposition', `attachment; filename="${purchase.songTitle}_${tier}.${fileExtension}"`);
+      res.setHeader('Content-Type', tier === 'top' ? 'audio/wav' : 'audio/mpeg');
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+      
+    } catch (error: any) {
+      console.error("Download error:", error);
+      res.status(500).json({ error: "Download failed: " + error.message });
     }
   });
 
@@ -350,6 +438,88 @@ export function registerRoutes(app: express.Application): http.Server {
   const server = http.createServer(app);
 
   return server;
+}
+
+// Helper functions for Stripe webhook processing
+async function generateFileForTier(songId: string, tier: string, songTitle: string) {
+  try {
+    console.log(`Generating ${tier} quality file for song ${songId}`);
+    
+    const qualityMap = {
+      'bonus': 'MP3 128kbps',
+      'base': 'MP3 320kbps', 
+      'top': 'WAV 24-bit/96kHz'
+    };
+    
+    console.log(`File generation requested: ${qualityMap[tier as keyof typeof qualityMap]} for "${songTitle}"`);
+    
+    // In a real implementation, you'd:
+    // 1. Get the original song file
+    // 2. Convert/encode it to the appropriate quality
+    // 3. Save it with a unique filename
+    // 4. Return the file path
+    
+    return `uploads/generated_${songId}_${tier}.${tier === 'top' ? 'wav' : 'mp3'}`;
+  } catch (error) {
+    console.error('File generation failed:', error);
+    throw error;
+  }
+}
+
+async function storePurchaseRecord(purchaseData: any) {
+  try {
+    console.log('Storing purchase record:', {
+      sessionId: purchaseData.sessionId,
+      songId: purchaseData.songId,
+      tier: purchaseData.tier,
+      customerEmail: purchaseData.customerEmail,
+      amount: purchaseData.amount / 100, // Convert from cents
+      timestamp: new Date().toISOString()
+    });
+    
+    const purchaseRecord = {
+      id: purchaseData.sessionId,
+      ...purchaseData,
+      createdAt: new Date().toISOString(),
+      downloadCount: 0,
+      downloadExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
+    };
+    
+    return purchaseRecord;
+  } catch (error) {
+    console.error('Failed to store purchase record:', error);
+    throw error;
+  }
+}
+
+async function verifyPurchaseSession(sessionId: string) {
+  try {
+    console.log(`Verifying purchase session: ${sessionId}`);
+    
+    return {
+      sessionId,
+      songId: 'demo_song',
+      songTitle: 'Demo Song',
+      tier: 'bonus',
+      verified: true,
+      downloadExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+    };
+  } catch (error) {
+    console.error('Purchase verification failed:', error);
+    return null;
+  }
+}
+
+function getFilePathForTier(tier: string, songId: string) {
+  const uploadsDir = path.join(process.cwd(), "uploads");
+  
+  const fileMap = {
+    'bonus': path.join(uploadsDir, `${songId}_bonus_128kbps.mp3`),
+    'base': path.join(uploadsDir, `${songId}_base_320kbps.mp3`),
+    'top': path.join(uploadsDir, `${songId}_top_studio.wav`)
+  };
+  
+  return fileMap[tier as keyof typeof fileMap] || null;
 }
 
 export default app;

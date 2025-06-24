@@ -12,6 +12,7 @@ import CollaborationTools from "@/components/collaboration-tools";
 import CollaborativeWorkspace from "@/components/collaborative-workspace";
 import MusicTheoryTools from "@/components/music-theory-tools";
 import SocialFeatures from "@/components/social-features";
+import StripeTieredCheckout from "@/components/stripe-tiered-checkout";
 import VoiceRecorder from "@/components/voice-recorder";
 import AdvancedVoiceCloning from "@/components/advanced-voice-cloning";
 import EnhancedTextToSpeech from "@/components/enhanced-text-to-speech";
@@ -168,27 +169,17 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
         return <SocialFeatures userId={user?.id || 1} />;
       case "Downloads":
         return completedSong ? (
-          showCheckout ? (
-            <SizeBasedCheckout 
-              song={completedSong}
-              onCancel={() => setShowCheckout(false)}
-              onSuccess={(downloadUrl) => {
-                setShowCheckout(false);
-                window.open(downloadUrl, '_blank');
-              }}
-            />
-          ) : (
-            <div className="text-center p-8">
-              <h3 className="text-2xl font-bold text-white mb-4">Ready to Download?</h3>
-              <p className="text-gray-300 mb-6">Pay only for what you download - $0.05 per MB</p>
-              <Button 
-                onClick={() => setShowCheckout(true)}
-                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-              >
-                Choose Download Options
-              </Button>
-            </div>
-          )
+          <StripeTieredCheckout 
+            songId={completedSong.id.toString()}
+            songTitle={completedSong.title}
+            onPurchaseComplete={(tier) => {
+              console.log(`Purchased ${tier} tier for song: ${completedSong.title}`);
+              toast({
+                title: "Purchase Successful!",
+                description: `Your ${tier} quality download will be available shortly.`,
+              });
+            }}
+          />
         ) : (
           <div className="text-center text-gray-400">No songs available for download</div>
         );
