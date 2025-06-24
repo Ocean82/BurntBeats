@@ -14,16 +14,13 @@ import UpgradeModal from "./upgrade-modal";
 
 interface SongFormProps {
   onSongGenerated: (song: any) => void;
-  userPlan: string;
-  onUpgrade: () => void;
   user?: {
     id?: number;
-    songsThisMonth?: number;
-    monthlyLimit?: number;
+    totalSongsCreated?: number;
   };
 }
 
-export default function SongForm({ onSongGenerated, userPlan, onUpgrade, user }: SongFormProps) {
+export default function SongForm({ onSongGenerated, user }: SongFormProps) {
   const [lyrics, setLyrics] = useState("");
   const [genre, setGenre] = useState("");
   const [style, setStyle] = useState("");
@@ -42,47 +39,21 @@ export default function SongForm({ onSongGenerated, userPlan, onUpgrade, user }:
 
   // Define available options based on plan
   const getAvailableGenres = () => {
-    switch (userPlan || "free") {
-      case "free":
-        return ["Pop", "Rock", "Electronic"];
-      case "basic":
-        return ["Pop", "Rock", "Electronic", "Jazz", "Classical"];
-      case "pro":
-      case "enterprise":
-        return ["Pop", "Rock", "Electronic", "Jazz", "Classical", "Hip-Hop", "Country", "R&B"];
-      default:
-        return ["Pop", "Rock", "Electronic"];
-    }
+    // All genres available to everyone
+    return ["Pop", "Rock", "Electronic", "Jazz", "Classical", "Hip-Hop", "Country", "R&B"];
   };
 
   const getUsageInfo = () => {
     if (!user) return null;
-
-    const songsUsed = user.songsThisMonth || 0;
-    const monthlyLimit = user.monthlyLimit || 2;
-
-    if ((userPlan || "free") === "pro" || (userPlan || "free") === "enterprise") {
-      return `Songs this month: ${songsUsed} (Unlimited)`;
-    }
-
-    return `Songs this month: ${songsUsed}/${monthlyLimit}`;
+    const songsCreated = user.totalSongsCreated || 0;
+    return `Songs created: ${songsCreated} (Unlimited)`;
   };
 
-  const canGenerateSong = () => {
-    if ((userPlan || "free") === "pro" || (userPlan || "free") === "enterprise") return true;
-
-    const songsUsed = user?.songsThisMonth || 0;
-    const monthlyLimit = (userPlan || "free") === "basic" ? 4 : 2; // Basic: 4, Free: 2
-
-    return songsUsed < monthlyLimit;
-  };
+  // Everyone can generate unlimited songs - no restrictions
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!canGenerateSong()) {
-      return;
-    }
+    // No limits - everyone can generate unlimited songs
 
     try {
       await generateSong({
@@ -105,34 +76,24 @@ export default function SongForm({ onSongGenerated, userPlan, onUpgrade, user }:
   };
 
   const getPlanBadgeColor = () => {
-    switch (userPlan || "free") {
-      case "basic": return "bg-blue-500";
-      case "pro": return "bg-gradient-to-r from-vibrant-orange to-orange-600";
-      case "enterprise": return "bg-gradient-to-r from-yellow-400 to-yellow-600 text-black";
-      default: return "bg-gray-500";
-    }
+    return "bg-gradient-to-r from-green-400 to-green-600";
   };
 
   return (
     <div className="space-y-6">
-      {/* Plan Status */}
+      {/* Status */}
       <Card className="bg-dark-card border-gray-800">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Badge className={`${getPlanBadgeColor()} text-white`}>
-                {userPlan ? userPlan.charAt(0).toUpperCase() + userPlan.slice(1) : "Free"} Plan
+                All Features Unlocked
               </Badge>
               <span className="text-sm text-gray-400">{getUsageInfo()}</span>
             </div>
-            {(userPlan || "free") !== "enterprise" && (
-              <UpgradeModal currentPlan={userPlan || "free"} onUpgrade={onUpgrade}>
-                <Button variant="outline" size="sm">
-                  <Crown className="w-4 h-4 mr-2" />
-                  Upgrade
-                </Button>
-              </UpgradeModal>
-            )}
+            <span className="text-sm text-green-400 font-medium">
+              Pay only to download
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -163,37 +124,25 @@ export default function SongForm({ onSongGenerated, userPlan, onUpgrade, user }:
               </p>
             </div>
 
-            {/* Generate Button - Moved directly under lyrics */}
+            {/* Generate Button */}
             <div className="pt-2">
-              {canGenerateSong() ? (
-                <Button 
-                  type="submit" 
-                  disabled={isGenerating || !lyrics.trim()}
-                  className="w-full bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange text-white"
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Generating Song...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Generate Song
-                    </>
-                  )}
-                </Button>
-              ) : (
-                <UpgradeModal currentPlan={userPlan || "free"} onUpgrade={onUpgrade}>
-                  <Button 
-                    type="button"
-                    className="w-full bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange text-white"
-                  >
-                    <Crown className="w-4 h-4 mr-2" />
-                    Monthly Limit Reached - Upgrade to Continue
-                  </Button>
-                </UpgradeModal>
-              )}
+              <Button 
+                type="submit" 
+                disabled={isGenerating || !lyrics.trim()}
+                className="w-full bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating Song...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Generate Song (Free)
+                  </>
+                )}
+              </Button>
             </div>
 
             {/* Advanced Options */}

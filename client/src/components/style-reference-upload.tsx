@@ -19,7 +19,6 @@ import { useToast } from "@/hooks/use-toast";
 
 interface StyleReferenceUploadProps {
   onStyleExtracted: (styleData: any) => void;
-  userPlan: string;
 }
 
 interface AnalyzedStyle {
@@ -32,7 +31,7 @@ interface AnalyzedStyle {
   confidence: number;
 }
 
-export default function StyleReferenceUpload({ onStyleExtracted, userPlan }: StyleReferenceUploadProps) {
+export default function StyleReferenceUpload({ onStyleExtracted }: StyleReferenceUploadProps) {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
@@ -173,27 +172,7 @@ export default function StyleReferenceUpload({ onStyleExtracted, userPlan }: Sty
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (userPlan === "free") {
-    return (
-      <Card className="bg-dark-card border-gray-800">
-        <CardHeader>
-          <CardTitle className="text-lg font-medium text-white">
-            Style Reference Upload (Pro Feature)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-center py-8">
-          <Upload className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-300 mb-2">What did you expect from the free plan?</h3>
-          <p className="text-sm text-gray-400 mb-6 max-w-md mx-auto">
-            I'd love to analyze your style reference, but you've got to take me somewhere that doesn't involve a value meal first. This AI magic costs more than free!
-          </p>
-          <Button className="bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange">
-            Upgrade to Basic - $6.99/mo
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Style reference upload now available to everyone
 
   return (
     <Card className="bg-dark-card border-gray-800">
