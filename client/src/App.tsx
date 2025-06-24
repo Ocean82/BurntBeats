@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import SongGenerator from "@/pages/song-generator";
+import PurchaseSuccess from "@/pages/purchase-success";
 import NotFound from "@/pages/not-found";
 import LandingPage from "@/components/landing-page";
 import PaymentForm from "@/components/payment-form";
