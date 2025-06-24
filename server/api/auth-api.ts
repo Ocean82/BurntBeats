@@ -17,18 +17,17 @@ export class AuthAPI {
         id: 1,
         username: username,
         email: `${username}@example.com`,
-        plan: "free",
-        songsGenerated: 0,
-        maxSongs: 3,
+        totalSongsCreated: 0,
+        totalDownloads: 0,
         features: {
-          voiceCloning: false,
-          advancedEditing: false,
-          collaboration: false,
-          analytics: false,
-          versionControl: false,
-          socialFeatures: false,
-          prioritySupport: false,
-          customization: false
+          voiceCloning: true,
+          advancedEditing: true,
+          collaboration: true,
+          analytics: true,
+          versionControl: true,
+          socialFeatures: true,
+          musicTheoryTools: true,
+          allFeaturesUnlocked: true
         }
       };
 
@@ -83,18 +82,17 @@ export class AuthAPI {
         id: 1,
         username: "demo_user",
         email: "demo@example.com",
-        plan: "free",
-        songsGenerated: 0,
-        maxSongs: 3,
+        totalSongsCreated: 0,
+        totalDownloads: 0,
         features: {
-          voiceCloning: false,
-          advancedEditing: false,
-          collaboration: false,
-          analytics: false,
-          versionControl: false,
-          socialFeatures: false,
-          prioritySupport: false,
-          customization: false
+          voiceCloning: true,
+          advancedEditing: true,
+          collaboration: true,
+          analytics: true,
+          versionControl: true,
+          socialFeatures: true,
+          musicTheoryTools: true,
+          allFeaturesUnlocked: true
         }
       };
       res.json(user);

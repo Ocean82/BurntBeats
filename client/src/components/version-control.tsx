@@ -22,8 +22,6 @@ import type { Song } from "@shared/schema";
 
 interface VersionControlProps {
   song?: Song;
-  userPlan: string;
-  onUpgrade: () => void;
 }
 
 interface Version {
@@ -35,35 +33,11 @@ interface Version {
   branch: string;
 }
 
-export default function VersionControl({ song, userPlan, onUpgrade }: VersionControlProps) {
+export default function VersionControl({ song }: VersionControlProps) {
   const [commitMessage, setCommitMessage] = useState("");
   const [selectedBranch, setSelectedBranch] = useState("main");
 
-  // Pricing wall for Pro tier requirement
-  if (userPlan === "free" || userPlan === "basic") {
-    return (
-      <Card className="bg-dark-card border-gray-800">
-        <CardHeader>
-          <CardTitle className="text-lg font-medium text-white">
-            Version Control (Pro Feature)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-center py-8">
-          <GitBranch className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-300 mb-2">Git-like Version Control</h3>
-          <p className="text-sm text-gray-400 mb-6 max-w-md mx-auto">
-            Track changes, create branches, commit versions, and collaborate with git-like version control for your songs. Available with Pro plan and above.
-          </p>
-          <UpgradeModal currentPlan={userPlan} onUpgrade={onUpgrade}>
-            <Button className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white">
-              <Crown className="w-4 h-4 mr-2" />
-              Upgrade to Pro - $12.99/mo
-            </Button>
-          </UpgradeModal>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Version control now available to everyone
 
   if (!song) {
     return (

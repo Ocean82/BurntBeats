@@ -21,7 +21,7 @@ import PricingPlans from "@/components/pricing-plans";
 import SizeBasedCheckout from "@/components/size-based-checkout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Music, HelpCircle, Settings, User, Crown, LogOut } from "lucide-react";
+import { Music, HelpCircle, Settings, User, Crown, LogOut, Download } from "lucide-react";
 import type { Song } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useErrorHandler } from "@/hooks/use-error-handler";
@@ -39,14 +39,14 @@ interface SongGeneratorProps {
   onLogout: () => void;
 }
 
-export default function SongGenerator({ user, onUpgrade, onLogout }: SongGeneratorProps) {
+export default function SongGenerator({ user, onLogout }: SongGeneratorProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [generatingSong, setGeneratingSong] = useState<Song | null>(null);
   const [completedSong, setCompletedSong] = useState<Song | null>(null);
   const [activeMenu, setActiveMenu] = useState("New Song");
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
-  const userPlan = user?.plan || "free";
+  // No plans needed - everyone can create, pay only for downloads
 
   const handleSongGenerated = (song: Song) => {
     setGeneratingSong(song);
@@ -147,10 +147,10 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
       case "Text-to-Speech":
         return <EnhancedTextToSpeech userId={user?.id || 1} />;
       case "Analytics":
-        return <AnalyticsDashboard userPlan={userPlan} onUpgrade={onUpgrade} />;
+        return <AnalyticsDashboard />;
       case "Version Control":
         return completedSong ? (
-          <VersionControl song={completedSong} userPlan={userPlan} onUpgrade={onUpgrade} />
+          <VersionControl song={completedSong} />
         ) : (
           <div className="text-center text-gray-400">No songs available for version control</div>
         );
@@ -186,12 +186,12 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
         );
       case "Song Editor":
         return editingSong ? (
-          <SongEditor song={editingSong} onSongUpdated={handleSongUpdated} userPlan={userPlan} onUpgrade={onUpgrade} />
+          <SongEditor song={editingSong} onSongUpdated={handleSongUpdated} />
         ) : (
           <div className="text-center text-gray-400">No song selected for editing</div>
         );
       case "Pricing":
-        return <PricingPlans userId={user?.id || 1} currentPlan={userPlan} onUpgrade={onUpgrade} user={user} />;
+        return <StripeTieredCheckout songId="demo" songTitle="Choose Your Plan" />;
       default:
         return (
           <div className="h-full p-8 overflow-auto">
@@ -200,12 +200,12 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
                 <div className="flex items-center justify-between mb-6">
                   <h1 className="text-3xl font-bold text-white">Create Your Next Hit</h1>
                   <div className="flex items-center space-x-4">
-                    <Badge variant="outline" className="text-yellow-400 border-yellow-400">
-                      {userPlan ? userPlan.charAt(0).toUpperCase() + userPlan.slice(1) : "Free"} Plan
+                    <Badge variant="outline" className="text-green-400 border-green-400">
+                      All Features Unlocked
                     </Badge>
-                    <Button onClick={onUpgrade} className="bg-gradient-to-r from-yellow-400 to-yellow-600">
-                      <Crown className="w-4 h-4 mr-2" />
-                      Upgrade
+                    <Button onClick={() => setActiveTab("Downloads")} className="bg-gradient-to-r from-green-400 to-green-600">
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Options
                     </Button>
                   </div>
                 </div>
@@ -240,13 +240,11 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
                 <SongForm
                   onSongGenerated={handleGenerationComplete}
                   user={user}
-                  userPlan={userPlan || "free"}
-                  onUpgrade={onUpgrade}
                 />
               ) : currentStep === 3 && completedSong ? (
                 <div className="space-y-6">
                   <AudioPlayer song={completedSong} />
-                  <SongEditor song={completedSong} onSongUpdated={handleSongUpdated} userPlan={userPlan || "free"} onUpgrade={onUpgrade} />
+                  <SongEditor song={completedSong} onSongUpdated={handleSongUpdated} />
                   <DownloadOptions song={completedSong} />
                 </div>
               ) : (
@@ -272,11 +270,11 @@ export default function SongGenerator({ user, onUpgrade, onLogout }: SongGenerat
         <Button
           variant="ghost"
           size="icon"
-          className="w-12 h-12 text-gray-400 hover:text-yellow-400 hover:bg-yellow-400/10 transition-all duration-200 rounded-lg"
-          onClick={() => setActiveMenu("Pricing")}
-          title="Upgrade Plan"
+          className="w-12 h-12 text-gray-400 hover:text-green-400 hover:bg-green-400/10 transition-all duration-200 rounded-lg"
+          onClick={() => setActiveTab("Downloads")}
+          title="Download Options"
         >
-          <Crown className="w-6 h-6" />
+          <Download className="w-6 h-6" />
         </Button>
         <Button
           variant="ghost"

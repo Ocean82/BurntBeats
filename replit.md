@@ -2,9 +2,9 @@
 
 ## Overview
 
-Burnt Beats is a comprehensive music creation ecosystem that transforms text into professional-quality songs. The platform features advanced AI-powered song generation, voice cloning, collaborative editing, analytics, version control, and social features. With tiered subscription plans (Free with 3 songs/month and Pro at $4.99/month), it serves both casual users and professional music creators with industry-standard tools for composition, production, and collaboration.
+Burnt Beats is a comprehensive music creation ecosystem that transforms text into professional-quality songs. The platform features advanced AI-powered song generation, voice cloning, collaborative editing, analytics, version control, and social features. With a pay-per-download model (no subscriptions required), users can create unlimited songs for free and pay only when they want to download high-quality versions ($2.99-$9.99 per track).
 
-**Status: Production Ready with Live Stripe Integration**
+**Status: Production Ready with Pay-Per-Download System**
 
 ## System Architecture
 
@@ -48,63 +48,36 @@ The application uses three main database tables:
 
 ### Core Features
 
-#### Free Plan Features
-- **3 Songs per Month**: 30-second songs with basic text-to-lyrics conversion
-- **Limited Genre Selection**: Access to Pop, Rock, and Electronic genres
-- **Basic Vocal Styles**: Male, Female, and Instrumental options
-- **Standard Audio Quality**: MP3 downloads at 128kbps
-- **Simple Interface**: Core song creation workflow
-- **Song Library**: Basic library to view and manage created songs
+#### Unlimited Free Creation
+- **Unlimited Song Generation**: Create as many songs as you want, completely free
+- **All Genres Available**: Pop, Rock, Jazz, Electronic, Classical, Hip-Hop, Country, R&B
+- **Full Feature Access**: Voice cloning, text-to-speech, analytics, collaboration, version control
+- **Advanced Editing Tools**: Professional song editing with section-specific controls
+- **Music Theory Tools**: Scale builders, chord progressions, AI suggestions
+- **Social Features**: Community interaction, collaboration workspace
+- **Real-time Collaboration**: Live editing with multiple users and team management
+- **Voice Samples**: Upload and manage multiple voice profiles
+- **Preview Quality**: Stream watermarked previews of all generated content
 
-#### Basic Plan Features ($6.99/month)
-- **3 Songs per Month**: Full-length songs up to 5:30 minutes
-- **Voice Cloning**: Upload voice samples and convert them to singing voices
-- **Text-to-Speech**: Enhanced voice generation with basic controls
-- **Advanced Editing**: Professional song editing tools with section-specific controls
-- **Extended Genre Access**: Pop, Rock, Electronic, Jazz, Classical
-- **Enhanced Audio Quality**: MP3 320kbps downloads
-- **Advanced Vocal Controls**: Basic singing style, mood, and tone selection
-
-#### Pro Plan Features ($12.99/month)
-- **50 Songs per Month**: Generate up to 50 full-length songs monthly
-- **All Basic Plan Features**: Complete access to Basic tier functionality
-- **Analytics Dashboard**: Comprehensive insights with charts and performance metrics
-  - Play count tracking and trends
-  - Genre distribution analysis
-  - Weekly/monthly growth charts
-  - Performance insights and recommendations
-- **Version Control System**: Git-like versioning for songs
-  - Commit changes with messages
-  - Branch creation for experimentation
-  - Version history and rollback capabilities
-- **Collaboration Tools**: Team-based song creation
-  - Basic collaboration features
-  - Comment system with feedback
-  - Team member management
-- **Multiple Voice Samples**: Upload and manage multiple voice profiles
-- **High-Quality Downloads**: WAV format support
-- **All Genres**: Pop, Rock, Jazz, Electronic, Classical, Hip-Hop, Country, R&B
-
-#### Enterprise Plan Features ($39.99/month)
-- **Unlimited Songs**: No monthly limits on song generation
-- **All Pro Plan Features**: Complete access to Pro tier functionality
-- **Real-time Collaborative Workspace**: Live editing with multiple users
-  - Real-time presence indicators
-  - Instant collaboration updates
-  - Advanced team management with role-based permissions
-- **Music Theory Tools**: Professional music creation assistance
-  - Scale and chord progression builders
-  - Tempo and rhythm pattern guides
-  - AI-powered music suggestions
-- **Enhanced Social Features**: Community and networking tools
-  - Advanced profile with achievements
-  - Social posting with song attachments
-  - Following system and interaction
-- **Commercial Use Rights**: License to use generated songs commercially
-- **Priority Support**: Dedicated support channels with faster response
-- **API Access**: Developer access to BangerGPT's API
-- **Custom Integrations**: Connect with other music production software
-- **Premium Audio Quality**: FLAC format support for studio-grade output
+#### Pay-Per-Download Tiers
+- **Bonus Tier ($2.99)**: Demo version with watermark - perfect for samples and sharing
+  - MP3 128kbps quality
+  - Contains Burnt Beats watermark
+  - Great for demos and previews
+  - Same musical quality as clean versions
+  
+- **Base Tier ($4.99)**: Clean high-quality version with no watermarks  
+  - MP3 320kbps quality
+  - Completely clean - no watermarks
+  - Personal use license
+  - Crystal clear audio
+  
+- **Top Tier ($9.99)**: Studio-quality master with commercial rights
+  - WAV 24-bit/96kHz studio quality
+  - No watermarks - completely clean
+  - Commercial use license
+  - Multitrack stems included
+  - Professional studio quality
 
 ### API Endpoints
 - `POST /api/voice-samples` - Upload voice samples with file handling
@@ -258,15 +231,23 @@ The application uses three main database tables:
 - ❌ Pre-launch marketing materials
 - ❌ Launch announcement strategy
 
-## Current Status: 85% Complete - Production Ready
+## Current Status: 90% Complete - Production Ready
 
-**Ready for Launch:** Core music generation, payments, authentication, and basic features
-**Next Priority:** Voice processing refinement, advanced analytics, security hardening
-**Launch Readiness:** Platform is functional and can serve users immediately
+**Ready for Launch:** Core music generation, pay-per-download system, watermark system, all features unlocked
+**Next Priority:** Enhanced audio watermarking, performance optimization, marketing materials  
+**Launch Readiness:** Platform is fully functional with no subscription barriers
 
 ## Changelog
 
 Changelog:
+- June 24, 2025 (Complete Pay-Per-Download System). Removed all subscription barriers and implemented pay-per-download model:
+  * **SUBSCRIPTION-FREE PLATFORM**: Eliminated all free/pro/enterprise plan restrictions
+  * **UNLIMITED FREE CREATION**: All users can create unlimited songs with all features unlocked
+  * **WATERMARK SYSTEM**: Automatic watermarks on previews, clean versions available for purchase
+  * **THREE-TIER DOWNLOADS**: Bonus ($2.99 demo), Base ($4.99 clean), Top ($9.99 studio)
+  * **NO MONTHLY LIMITS**: Removed songs per month, upgrade prompts, plan validation
+  * **ALL FEATURES UNLOCKED**: Voice cloning, analytics, collaboration, music theory tools available to everyone
+  * **STRIPE INTEGRATION**: Seamless purchase flow for high-quality downloads only
 - June 23, 2025 (Deployment Configuration Complete). Fixed all deployment issues and created comprehensive build pipeline:
   * **DEPLOYMENT SCRIPTS FIXED**: Added missing build:client, build:server, and start scripts for production deployment
   * **ESBUILD OPTIMIZATION**: Server bundling with proper external dependency handling and 1.3MB optimized output

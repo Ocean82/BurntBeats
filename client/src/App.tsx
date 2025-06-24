@@ -44,7 +44,6 @@ function Router() {
       <Route path="/">
         <SongGenerator 
           user={user}
-          onUpgrade={() => setShowPayment(true)}
           onLogout={() => window.location.href = "/api/logout"}
         />
       </Route>
