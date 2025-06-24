@@ -9,6 +9,7 @@ import { AuthAPI } from "./api/auth-api";
 import { MusicAPI } from "./api/music-api";
 import { VoiceAPI } from "./api/voice-api";
 import { PricingAPI } from "./api/pricing-api";
+import { AIChatService } from "./ai-chat-service";
 import { HealthAPI } from "./api/health-api";
 // Audio service imports removed temporarily
 import { VocalGenerator } from "./vocal-generator";
@@ -83,6 +84,10 @@ export function registerRoutes(app: express.Application): http.Server {
   app.post("/api/pricing/check-limitations", PricingAPI.checkPlanLimitations);
   app.post("/api/pricing/upgrade", PricingAPI.upgradePlan);
   app.get("/api/pricing/subscription/:userId", PricingAPI.getUserSubscription);
+
+  // AI Chat API Routes
+  app.post("/api/ai-chat", AIChatService.handleChat);
+  app.get("/api/ai-advice", AIChatService.getRandomAdvice);
 
   // Size-based download payment (simplified for your Stripe setup)
   app.post("/api/create-payment-intent", async (req: Request, res: Response) => {
