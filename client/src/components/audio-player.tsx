@@ -5,16 +5,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Progress } from "@/components/ui/progress"
-import { Play, Pause, Volume2, VolumeX } from "lucide-react"
+import { Play, Pause, Volume2, VolumeX, Download } from "lucide-react"
 import type { Song } from "@shared/schema"
 import { formatTime } from "@/lib/utils"
+import WatermarkIndicator from "./watermark-indicator"
 
 interface AudioPlayerProps {
   song: Song;
   className?: string;
+  onUpgrade?: () => void;
 }
 
-export default function AudioPlayer({ song, className = "" }: AudioPlayerProps) {
+export default function AudioPlayer({ song, className = "", onUpgrade }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);

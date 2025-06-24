@@ -83,9 +83,14 @@ export class MusicAPI {
 
       // The simple generator creates WAV files directly, no MIDI conversion needed
       const audioPath = outputPath;
+      const songId = Date.now();
+
+      // Generate watermarked preview version
+      const { WatermarkService } = await import("../watermark-service");
+      const watermarkedPath = WatermarkService.generateWatermarkedTrack(audioPath, songId.toString(), title);
 
       const song = {
-        id: Date.now(),
+        id: songId,
         title,
         lyrics,
         genre: genre || 'pop',
@@ -95,8 +100,11 @@ export class MusicAPI {
         status: "completed" as const,
         generationProgress: 100,
         generatedAudioPath: `/uploads/${path.basename(audioPath)}`,
-        audioUrl: `/uploads/${path.basename(audioPath)}`,
+        audioUrl: `/uploads/${path.basename(watermarkedPath)}`, // Always serve watermarked version by default
+        previewUrl: `/uploads/${path.basename(watermarkedPath)}`,
+        originalAudioPath: `/uploads/${path.basename(audioPath)}`, // Store clean version path
         midiUrl: `/uploads/${path.basename(outputPath)}`,
+        hasWatermark: true,
         sections: null,
         settings: null,
         planRestricted: false,

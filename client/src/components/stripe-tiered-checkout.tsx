@@ -28,71 +28,75 @@ const pricingTiers = [
   {
     id: 'bonus',
     name: 'Bonus',
-    description: 'Standard quality for casual listening',
+    description: 'Demo version with watermark - perfect for samples',
     price: 2.99,
     buyButtonId: 'buy_btn_1RdOETP5PtizRku7GPX5AMSF', // Your actual Stripe buy button
     features: [
       'MP3 128kbps',
-      '3-5 MB file size',
-      'Standard audio quality',
-      'Instant download'
+      'Contains Burnt Beats watermark',
+      'Perfect for demos & samples',
+      'Instant download',
+      'Same great music quality'
     ],
     metadata: {
       tier: 'bonus',
-      quality: 'standard',
+      quality: 'demo',
       format: 'mp3',
       bitrate: '128',
-      fileSize: '3-5MB'
+      hasWatermark: true
     },
     icon: <Music className="h-6 w-6" />,
-    popular: false
+    popular: false,
+    badge: 'Demo Version'
   },
   {
     id: 'base',
     name: 'Base',
-    description: 'High quality for music lovers',
+    description: 'Clean version - no watermarks, high quality',
     price: 4.99,
     buyButtonId: 'buy_btn_1RdOETP5PtizRku7GPX5AMSF', // Using same for demo - create separate ones
     features: [
       'MP3 320kbps',
-      '8-12 MB file size',
-      'High audio quality',
+      'NO watermarks or overlays',
+      'Crystal clear audio',
       'Instant download',
-      'Extended license'
+      'Personal use license'
     ],
     metadata: {
       tier: 'base',
       quality: 'high',
       format: 'mp3',
       bitrate: '320',
-      fileSize: '8-12MB'
+      hasWatermark: false
     },
     icon: <Star className="h-6 w-6" />,
-    popular: true
+    popular: true,
+    badge: 'Most Popular'
   },
   {
     id: 'top',
     name: 'Top',
-    description: 'Studio quality for professionals',
+    description: 'Premium studio quality - completely clean',
     price: 9.99,
     buyButtonId: 'buy_btn_1RdOETP5PtizRku7GPX5AMSF', // Using same for demo - create separate ones
     features: [
       'WAV 24-bit/96kHz',
-      '25-40 MB file size',
-      'Studio audio quality',
+      'NO watermarks - studio clean',
+      'Professional studio quality',
       'Instant download',
-      'Commercial license',
-      'Stems included'
+      'Commercial use license',
+      'Multitrack stems included'
     ],
     metadata: {
       tier: 'top',
       quality: 'studio',
       format: 'wav',
       bitrate: '24bit96khz',
-      fileSize: '25-40MB'
+      hasWatermark: false
     },
     icon: <Crown className="h-6 w-6" />,
-    popular: false
+    popular: false,
+    badge: 'Pro Studio'
   }
 ];
 
@@ -137,6 +141,11 @@ export default function StripeTieredCheckout({ songId, songTitle, onPurchaseComp
         <p className="text-gray-600 dark:text-gray-400">
           Get your song "{songTitle}" in the perfect quality for your needs
         </p>
+        <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+          <p className="text-amber-800 dark:text-amber-200 text-sm font-medium">
+            🎵 All free previews include a watermark. Purchase Base or Top tier for completely clean versions!
+          </p>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
@@ -147,9 +156,13 @@ export default function StripeTieredCheckout({ songId, songTitle, onPurchaseComp
               tier.popular ? 'ring-2 ring-blue-500 scale-105' : ''
             }`}
           >
-            {tier.popular && (
-              <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500">
-                Most Popular
+            {tier.badge && (
+              <Badge className={`absolute -top-3 left-1/2 transform -translate-x-1/2 ${
+                tier.popular ? 'bg-blue-500' : 
+                tier.id === 'bonus' ? 'bg-orange-500' :
+                'bg-purple-500'
+              }`}>
+                {tier.badge}
               </Badge>
             )}
             
