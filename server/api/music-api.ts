@@ -1,4 +1,3 @@
-
 import { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -25,7 +24,7 @@ export class MusicAPI {
         const numSamples = sampleRate * duration;
         const bufferSize = 44 + numSamples * 2;
         const buffer = Buffer.alloc(bufferSize);
-        
+
         buffer.write('RIFF', 0);
         buffer.writeUInt32LE(bufferSize - 8, 4);
         buffer.write('WAVE', 8);
@@ -39,7 +38,7 @@ export class MusicAPI {
         buffer.writeUInt16LE(16, 34);
         buffer.write('data', 36);
         buffer.writeUInt32LE(numSamples * 2, 40);
-        
+
         fs.writeFileSync(silencePath, buffer);
       }
       fs.copyFileSync(silencePath, audioPath);
@@ -281,7 +280,7 @@ export class MusicAPI {
   static async getSong(req: Request, res: Response) {
     try {
       const songId = parseInt(req.params.id);
-      
+
       const song = {
         id: songId,
         title: "Generated Song",
