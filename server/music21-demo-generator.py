@@ -12,25 +12,95 @@ Demonstrates all core Music21 concepts:
 import sys
 import json
 import os
-from music21 import stream, note, chord, meter, tempo, key, duration, pitch, scale, interval
-from music21 import roman, bar, expressions, dynamics, articulations
-from music21.midi import MidiFile
-import random
-import math
+import logging
+import traceback
+from pathlib import Path
+import time
+
+# Dependency validation with detailed error handling
+try:
+    from music21 import stream, note, chord, meter, tempo, key, duration, pitch, scale, interval
+    from music21 import roman, bar, expressions, dynamics, articulations, instrument
+    from music21.midi import MidiFile
+    print("✅ Music21 core modules imported successfully")
+except ImportError as e:
+    print(f"❌ Critical error: Music21 core modules not available: {e}")
+    print("Please install music21: pip install music21")
+    sys.exit(1)
+
+try:
+    import random
+    import math
+    import numpy as np
+    print("✅ Mathematical libraries imported successfully")
+except ImportError as e:
+    print(f"⚠️ Some mathematical libraries missing: {e}")
+    # Continue with basic functionality
+
+# Configure logging for better debugging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('music_generation.log', mode='a')
+    ]
+)
 
 class Music21DemoGenerator:
     def __init__(self, key_sig='C', time_sig='4/4', tempo_bpm=120):
-        """Initialize with basic musical parameters"""
-        self.key = key.Key(key_sig)
-        self.time_signature = meter.TimeSignature(time_sig)
-        self.tempo = tempo.TempoIndication(number=tempo_bpm)
-        self.scale_notes = self.key.scale.pitches
+        """Initialize with basic musical parameters and validation"""
+        
+        # Validate input parameters
+        if not isinstance(key_sig, str) or len(key_sig.strip()) == 0:
+            raise ValueError("Key signature must be a non-empty string")
+        
+        if not isinstance(time_sig, str) or len(time_sig.strip()) == 0:
+            raise ValueError("Time signature must be a non-empty string")
+        
+        if not isinstance(tempo_bpm, (int, float)) or tempo_bpm < 40 or tempo_bpm > 300:
+            raise ValueError("Tempo must be a number between 40 and 300 BPM")
+        
+        try:
+            self.key = key.Key(key_sig.strip())
+            logging.info(f"Key signature set to: {self.key}")
+        except Exception as e:
+            raise ValueError(f"Invalid key signature '{key_sig}': {e}")
+        
+        try:
+            self.time_signature = meter.TimeSignature(time_sig.strip())
+            logging.info(f"Time signature set to: {self.time_signature}")
+        except Exception as e:
+            raise ValueError(f"Invalid time signature '{time_sig}': {e}")
+        
+        try:
+            self.tempo = tempo.TempoIndication(number=int(tempo_bpm))
+            logging.info(f"Tempo set to: {self.tempo.number} BPM")
+        except Exception as e:
+            raise ValueError(f"Invalid tempo '{tempo_bpm}': {e}")
+        
+        try:
+            self.scale_notes = self.key.scale.pitches
+            if not self.scale_notes or len(self.scale_notes) == 0:
+                raise ValueError("Scale notes are empty")
+            logging.info(f"Scale notes: {[str(p) for p in self.scale_notes]}")
+        except Exception as e:
+            raise ValueError(f"Failed to generate scale notes: {e}")
+        
+        # Validate scale integrity
+        if len(self.scale_notes) < 7:
+            logging.warning(f"Scale has fewer than 7 notes: {len(self.scale_notes)}")
+        
+        logging.info("Music21DemoGenerator initialized successfully with all validations passed")
         
     def create_note_objects(self):
         """1. DEFINE MUSICAL ELEMENTS - Create Note objects with specific attributes"""
         print("🎵 Creating Note objects with specific pitch, duration, and attributes...")
+        logging.info("Starting note object creation stage")
         
         notes = []
+        
+        try:
         
         # Create notes with specific pitches using different methods
         note1 = note.Note('C4', quarterLength=1.0)  # String notation
@@ -57,7 +127,12 @@ class Music21DemoGenerator:
         note4.volume.velocity = 90
         notes.append(note4)
         
+        logging.info(f"Successfully created {len(notes)} note objects")
         return notes
+        
+        except Exception as e:
+            logging.error(f"Error creating note objects: {e}")
+            raise RuntimeError(f"Note creation failed: {e}")
     
     def create_chord_objects(self):
         """1. DEFINE MUSICAL ELEMENTS - Create Chord objects"""
@@ -482,29 +557,82 @@ class Music21DemoGenerator:
         return instruments.get(instrument_type, instrument.Piano())
     
     def export_music(self, score, base_path, formats=['midi', 'musicxml']):
-        """4. EXPORT GENERATED MUSIC - Save as MIDI and MusicXML"""
+        """4. EXPORT GENERATED MUSIC - Save as MIDI and MusicXML with retry logic"""
         print("💾 Exporting generated music to files...")
         
         exported_files = []
+        max_retries = 3
         
         for format_type in formats:
-            if format_type == 'midi':
-                midi_path = base_path.replace('.mid', '.mid')
-                try:
-                    score.write('midi', fp=midi_path)
-                    exported_files.append(midi_path)
-                    print(f"✅ MIDI exported: {midi_path}")
-                except Exception as e:
-                    print(f"❌ MIDI export failed: {e}")
+            success = False
+            last_error = None
             
-            elif format_type == 'musicxml':
-                xml_path = base_path.replace('.mid', '.musicxml')
+            for attempt in range(max_retries):
                 try:
-                    score.write('musicxml', fp=xml_path)
-                    exported_files.append(xml_path)
-                    print(f"✅ MusicXML exported: {xml_path}")
+                    if format_type == 'midi':
+                        midi_path = base_path.replace('.mid', '.mid')
+                        
+                        # Validate directory exists
+                        os.makedirs(os.path.dirname(midi_path), exist_ok=True)
+                        
+                        # Validate score before export
+                        if not score or len(score.parts) == 0:
+                            raise ValueError("Score is empty or invalid")
+                        
+                        # Network/file operation with timeout simulation
+                        score.write('midi', fp=midi_path)
+                        
+                        # Verify file was created and has content
+                        if not os.path.exists(midi_path) or os.path.getsize(midi_path) == 0:
+                            raise RuntimeError(f"MIDI file not created or empty: {midi_path}")
+                        
+                        exported_files.append(midi_path)
+                        print(f"✅ MIDI exported: {midi_path} (attempt {attempt + 1})")
+                        success = True
+                        break
+                        
+                    elif format_type == 'musicxml':
+                        xml_path = base_path.replace('.mid', '.musicxml')
+                        
+                        # Validate directory exists
+                        os.makedirs(os.path.dirname(xml_path), exist_ok=True)
+                        
+                        # Validate score before export
+                        if not score or len(score.parts) == 0:
+                            raise ValueError("Score is empty or invalid")
+                        
+                        score.write('musicxml', fp=xml_path)
+                        
+                        # Verify file was created
+                        if not os.path.exists(xml_path) or os.path.getsize(xml_path) == 0:
+                            raise RuntimeError(f"MusicXML file not created or empty: {xml_path}")
+                        
+                        exported_files.append(xml_path)
+                        print(f"✅ MusicXML exported: {xml_path} (attempt {attempt + 1})")
+                        success = True
+                        break
+                        
+                except (IOError, OSError) as e:
+                    last_error = f"File system error: {e}"
+                    logging.warning(f"Export attempt {attempt + 1} failed for {format_type}: {last_error}")
+                    
+                except ValueError as e:
+                    last_error = f"Validation error: {e}"
+                    logging.error(f"Export failed for {format_type}: {last_error}")
+                    break  # Don't retry validation errors
+                    
                 except Exception as e:
-                    print(f"❌ MusicXML export failed: {e}")
+                    last_error = f"Unexpected error: {e}"
+                    logging.warning(f"Export attempt {attempt + 1} failed for {format_type}: {last_error}")
+                
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 0.5
+                    print(f"⏳ Retrying {format_type} export in {wait_time}s...")
+                    time.sleep(wait_time)
+            
+            if not success:
+                print(f"❌ {format_type} export failed after {max_retries} attempts: {last_error}")
+                logging.error(f"Final export failure for {format_type}: {last_error}")
         
         return exported_files
     
@@ -559,24 +687,99 @@ class Music21DemoGenerator:
             }
         return {"lowest": 0, "highest": 0, "range_semitones": 0}
 
+def validate_and_prepare_paths(output_path):
+    """Validate paths and ensure directories exist"""
+    try:
+        # Convert to Path object for better handling
+        output_path = Path(output_path)
+        
+        # Ensure output directory exists
+        output_dir = output_path.parent
+        if not output_dir.exists():
+            print(f"📁 Creating output directory: {output_dir}")
+            output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Validate write permissions
+        if not os.access(output_dir, os.W_OK):
+            raise PermissionError(f"No write permission for directory: {output_dir}")
+        
+        # Ensure proper file extension
+        if not str(output_path).endswith('.mid'):
+            output_path = output_path.with_suffix('.mid')
+        
+        return str(output_path)
+        
+    except Exception as e:
+        logging.error(f"Path validation failed: {e}")
+        raise
+
+def cleanup_resources(temp_files=None, temp_dirs=None):
+    """Clean up temporary files and resources"""
+    if temp_files:
+        for temp_file in temp_files:
+            try:
+                if os.path.exists(temp_file):
+                    os.remove(temp_file)
+                    logging.info(f"🧹 Cleaned up temporary file: {temp_file}")
+            except Exception as e:
+                logging.warning(f"Failed to clean up {temp_file}: {e}")
+    
+    if temp_dirs:
+        for temp_dir in temp_dirs:
+            try:
+                if os.path.exists(temp_dir) and os.path.isdir(temp_dir):
+                    os.rmdir(temp_dir)
+                    logging.info(f"🧹 Cleaned up temporary directory: {temp_dir}")
+            except Exception as e:
+                logging.warning(f"Failed to clean up {temp_dir}: {e}")
+
 def main():
+    temp_files = []
+    temp_dirs = []
+    
     if len(sys.argv) < 3:
         print("Usage: python music21-demo-generator.py <output_path> [--demo-type=<basic|advanced|generative>]")
         sys.exit(1)
     
     try:
-        output_path = sys.argv[1]
+        # Validate input data thoroughly
+        raw_output_path = sys.argv[1]
+        if not raw_output_path or len(raw_output_path.strip()) == 0:
+            raise ValueError("Output path cannot be empty")
+        
+        output_path = validate_and_prepare_paths(raw_output_path.strip())
         demo_type = 'basic'
         
-        # Parse demo type
+        # Parse demo type with validation
         for arg in sys.argv[2:]:
             if arg.startswith('--demo-type='):
-                demo_type = arg.split('=')[1]
+                demo_type = arg.split('=')[1].strip().lower()
+                if demo_type not in ['basic', 'advanced', 'generative']:
+                    raise ValueError(f"Invalid demo type: {demo_type}. Must be basic, advanced, or generative")
         
         print(f"🎼 Starting Music21 Demo Generator - {demo_type} demo")
         
-        # Initialize generator
-        generator = Music21DemoGenerator('C', '4/4', 120)
+        # Performance tracking
+        start_time = time.time()
+        logging.info(f"Starting {demo_type} demo generation")
+        
+        # Memory usage monitoring (if psutil is available)
+        try:
+            import psutil
+            process = psutil.Process()
+            initial_memory = process.memory_info().rss / 1024 / 1024  # MB
+            logging.info(f"Initial memory usage: {initial_memory:.2f} MB")
+        except ImportError:
+            logging.info("psutil not available - memory monitoring disabled")
+            initial_memory = None
+        
+        # Initialize generator with error checking
+        try:
+            generator = Music21DemoGenerator('C', '4/4', 120)
+            logging.info("Music21DemoGenerator initialized successfully")
+        except Exception as e:
+            logging.error(f"Failed to initialize generator: {e}")
+            raise
         
         if demo_type == 'basic':
             # Basic demo: Create and organize musical elements
@@ -639,12 +842,57 @@ def main():
             json.dump(analysis, f, indent=2)
         
         print(f"\n📊 Analysis saved: {analysis_path}")
+        # Performance metrics
+        end_time = time.time()
+        total_time = end_time - start_time
+        
+        if initial_memory:
+            try:
+                final_memory = process.memory_info().rss / 1024 / 1024  # MB
+                memory_used = final_memory - initial_memory
+                logging.info(f"Final memory usage: {final_memory:.2f} MB (used: {memory_used:.2f} MB)")
+            except:
+                pass
+        
         print(f"🎉 Music21 demo completed! Generated {len(exported_files)} files")
         print(f"🎵 Composition contains {analysis['basic_info']['total_notes']} notes across {analysis['basic_info']['parts']} parts")
+        print(f"⏱️ Generation time: {total_time:.2f} seconds")
+        logging.info(f"Demo completed successfully in {total_time:.2f} seconds")
+        
+    except ValueError as e:
+        error_msg = f"Validation error: {e}"
+        print(f"❌ {error_msg}", file=sys.stderr)
+        logging.error(error_msg)
+        sys.exit(1)
+        
+    except FileNotFoundError as e:
+        error_msg = f"File not found: {e}"
+        print(f"❌ {error_msg}", file=sys.stderr)
+        logging.error(error_msg)
+        sys.exit(1)
+        
+    except PermissionError as e:
+        error_msg = f"Permission denied: {e}"
+        print(f"❌ {error_msg}", file=sys.stderr)
+        logging.error(error_msg)
+        sys.exit(1)
+        
+    except ImportError as e:
+        error_msg = f"Missing dependency: {e}"
+        print(f"❌ {error_msg}", file=sys.stderr)
+        logging.error(error_msg)
+        sys.exit(1)
         
     except Exception as e:
-        print(f"❌ Error in Music21 demo: {e}", file=sys.stderr)
+        error_msg = f"Unexpected error in Music21 demo: {e}"
+        print(f"❌ {error_msg}", file=sys.stderr)
+        logging.error(f"{error_msg}\n{traceback.format_exc()}")
         sys.exit(1)
+        
+    finally:
+        # Clean up any temporary resources
+        cleanup_resources(temp_files, temp_dirs)
+        logging.info("Resource cleanup completed")
 
 if __name__ == '__main__':
     main()
