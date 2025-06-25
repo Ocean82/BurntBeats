@@ -49,13 +49,13 @@ export default function AudioPlayer({
   // Validate audio URL helper function
   function validateAudioUrl(url: string | null | undefined): string | null {
     if (!url) return null;
-    
+
     // Handle relative URLs by making them absolute
     if (url.startsWith('/uploads/') || url.startsWith('/songs/')) {
       const baseUrl = window.location.origin;
       return `${baseUrl}${url}`;
     }
-    
+
     // Validate URL format
     try {
       new URL(url);
@@ -83,7 +83,7 @@ export default function AudioPlayer({
       setDuration(audio.duration);
       setIsReady(true);
       setIsLoading(false);
-      
+
       // Attempt autoplay if enabled and user has interacted
       if (autoPlay && hasUserInteracted) {
         audio.play().catch(err => {
@@ -99,7 +99,7 @@ export default function AudioPlayer({
     const handleTimeUpdate = () => {
       if (audio.duration && !isNaN(audio.duration)) {
         setCurrentTime(audio.currentTime);
-        
+
         // Update current section based on playback time
         if (song.sections && Array.isArray(song.sections)) {
           const currentSec = song.sections.find(section => 
@@ -114,7 +114,7 @@ export default function AudioPlayer({
 
     const handleEnded = () => {
       setIsPlaying(false);
-      
+
       if (loop) {
         audio.currentTime = 0;
         audio.play().catch(console.error);
@@ -130,7 +130,7 @@ export default function AudioPlayer({
     const handleError = (e: Event) => {
       const errorTarget = e.target as HTMLAudioElement;
       const errorCode = errorTarget.error?.code;
-      
+
       let errorMessage = 'Failed to load audio';
       switch (errorCode) {
         case MediaError.MEDIA_ERR_ABORTED:
@@ -146,7 +146,7 @@ export default function AudioPlayer({
           errorMessage = 'Audio format not supported';
           break;
       }
-      
+
       setError(errorMessage);
       setIsLoading(false);
       setIsReady(false);
@@ -197,7 +197,7 @@ export default function AudioPlayer({
       } catch (error) {
         const err = error as Error;
         console.error('Error playing audio:', err);
-        
+
         if (err.name === 'NotAllowedError') {
           setError('Playback blocked by browser. Please interact with the page first.');
         } else if (err.name === 'NotSupportedError') {
@@ -212,7 +212,7 @@ export default function AudioPlayer({
   const handleSeek = (value: number[]) => {
     const audio = audioRef.current;
     if (!audio || !isReady || !duration) return;
-    
+
     const seekTime = Math.min(Math.max(value[0], 0), duration);
     audio.currentTime = seekTime;
     setCurrentTime(seekTime);
@@ -221,7 +221,7 @@ export default function AudioPlayer({
   const handleVolumeChange = (value: number[]) => {
     const audio = audioRef.current;
     const newVolume = value[0];
-    
+
     if (audio) {
       audio.volume = newVolume;
     }
@@ -245,14 +245,14 @@ export default function AudioPlayer({
   const jumpToSection = (startTime: number) => {
     const audio = audioRef.current;
     if (!audio || !isReady) return;
-    
+
     if (!hasUserInteracted) {
       setHasUserInteracted(true);
     }
-    
+
     audio.currentTime = startTime;
     setCurrentTime(startTime);
-    
+
     if (!isPlaying) {
       togglePlay();
     }
@@ -306,7 +306,7 @@ export default function AudioPlayer({
           preload="metadata"
           loop={loop}
         />
-        
+
         <div className="space-y-4">
           {/* Song Info */}
           <div className="text-center">
@@ -360,7 +360,7 @@ export default function AudioPlayer({
                 <Play className="h-6 w-6" />
               )}
             </Button>
-            
+
             {/* Next button if callback provided */}
             {onNext && (
               <Button
@@ -414,7 +414,7 @@ export default function AudioPlayer({
                   {showSectionList ? 'Hide' : 'Show'} Sections
                 </Button>
               </div>
-              
+
               {showSectionList && (
                 <div className="grid grid-cols-2 gap-2">
                   {song.sections.map((section, index) => (
@@ -446,6 +446,29 @@ export default function AudioPlayer({
             </div>
           )}
         </div>
+
+        {/* Song Sections Navigation */}
+        {song?.sections && song.sections.length > 0 && (
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-gray-300 mb-2">Song Sections</h4>
+            <div className="flex flex-wrap gap-2">
+              {song.sections.map((section: any, index: number) => (
+                <button
+                  key={index}
+                  onClick={() => jumpToSection(section.startTime || 0)}
+                  className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                    currentTime >= (section.startTime || 0) && 
+                    currentTime < (section.endTime || duration)
+                      ? 'bg-green-500/20 border-green-500 text-green-400'
+                      : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {section.type || `Section ${index + 1}`}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

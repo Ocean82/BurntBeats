@@ -61,8 +61,11 @@ export default function SongForm({ onSongGenerated, user }: SongFormProps) {
         lyrics: lyrics.trim(),
         genre: genre || "Pop",
         vocalStyle: style || "Upbeat",
+        mood: mood || "Happy",
         tempo: 120,
-        songLength: 30
+        duration: 30,
+        singingStyle: "melodic",
+        tone: "warm"
       });
 
       // Song will be handled by onGenerationComplete callback
