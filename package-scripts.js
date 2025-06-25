@@ -1,5 +1,5 @@
 
-#!/usr/bin/env node
+// Build scripts for deployment
 
 /**
  * Enhanced Build Scripts for Deployment

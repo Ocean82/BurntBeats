@@ -73,14 +73,6 @@ export function checkPlanAccess(requirement: PlanRequirement) {
   };
 }
 
-export const checkPlanQuota = (minPlan: 'free' | 'basic' | 'pro' | 'enterprise') => 
-  checkPlanAccess({ minPlan, quotaType: 'songsPerMonth' });
-
-export const requireFeature = (feature: string) => 
-  checkPlanAccess({ feature });
-
-export const requirePlan = (minPlan: 'free' | 'basic' | 'pro' | 'enterprise') => 
-  checkPlanAccess({ minPlan });
 import { Request, Response, NextFunction } from 'express';
 import { pricingService } from '../pricing-service';
 import { ErrorHandler } from '../utils/error-handler';

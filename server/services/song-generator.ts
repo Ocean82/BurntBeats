@@ -1,5 +1,5 @@
 
-import { generateSong as generateAdvancedSong } from '../music-generator';
+import { MusicGenerator } from '../music-generator';
 import { pricingService } from '../pricing-service';
 import { storage } from '../storage';
 import { fileCleanupService } from '../file-cleanup-service';
@@ -114,7 +114,7 @@ export class SongGenerator {
 
   private static async generateBasic(songData: any): Promise<Song> {
     console.log(`🎵 Generating basic song: ${songData.title}`);
-    return await generateAdvancedSong(songData);
+    return await MusicGenerator.generateSong(songData);
   }
 
   private static async generateAIEnhanced(songData: any): Promise<Song> {
@@ -131,7 +131,7 @@ export class SongGenerator {
       }
     };
 
-    return await generateAdvancedSong(aiEnhancedData);
+    return await MusicGenerator.generateSong(aiEnhancedData);
   }
 
   private static async generateMusic21Demo(songData: any): Promise<Song> {
@@ -150,7 +150,7 @@ export class SongGenerator {
       }
     };
 
-    return await generateAdvancedSong(music21Data);
+    return await MusicGenerator.generateSong(music21Data);
   }
 
   private static calculateDurationFromLyrics(lyrics: string): string {
@@ -189,7 +189,7 @@ export class SongGenerator {
     return Math.round(baseTime * lyricsMultiplier * durationMultiplier);
   }
 }
-import { generateSong as generateAdvancedSong } from '../music-generator';
+import { MusicGenerator } from '../music-generator';
 import { storage } from '../storage';
 import { pricingService } from '../pricing-service';
 import { fileCleanupService } from '../file-cleanup-service';
@@ -225,7 +225,7 @@ interface GenerationResult {
   jobId?: string;
 }
 
-export class SongGenerator {
+export class SongGeneratorService {
   static async generate(
     songData: any, 
     options: SongGenerationOptions = { type: 'basic', quality: 'standard' }
@@ -318,7 +318,7 @@ export class SongGenerator {
 
   private static async generateBasic(songData: any): Promise<Song> {
     console.log(`🎵 Generating basic song: ${songData.title}`);
-    return await generateAdvancedSong(songData);
+    return await MusicGenerator.generateSong(songData);
   }
 
   private static async generateAIEnhanced(songData: any): Promise<Song> {
@@ -335,7 +335,7 @@ export class SongGenerator {
       }
     };
 
-    return await generateAdvancedSong(aiEnhancedData);
+    return await MusicGenerator.generateSong(aiEnhancedData);
   }
 
   private static async generateMusic21Demo(songData: any): Promise<Song> {
@@ -354,7 +354,7 @@ export class SongGenerator {
       }
     };
 
-    return await generateAdvancedSong(music21Data);
+    return await MusicGenerator.generateSong(music21Data);
   }
 
   private static calculateDurationFromLyrics(lyrics: string): string {
