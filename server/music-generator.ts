@@ -207,6 +207,11 @@ export async function generateSong(songData: any): Promise<Song> {
       }
     );
 
+    // Validate vocals return format
+    if (!vocals || !vocals.audioUrl) {
+      throw new Error('Vocal generation failed - no audio URL returned');
+    }
+
     // Stage 3: Generate audio using Python music21 integration
     console.log('Stage 3: Generating audio composition...');
     const audioPath = await generateAudioComposition(songData, melody, vocals);
