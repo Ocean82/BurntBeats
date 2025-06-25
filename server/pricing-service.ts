@@ -1,4 +1,3 @@
-
 import { storage } from "./storage";
 import type { User } from "@shared/schema";
 
@@ -21,6 +20,10 @@ export interface PlanLimits {
     prioritySupport: boolean;
     apiAccess: boolean;
     customIntegrations: boolean;
+    neuralSynthesis: boolean;
+    multilingualTTS: boolean;
+    realTimePreview: boolean;
+    professionalVocoding: boolean;
   };
   audioQuality: {
     mp3_128: boolean;
@@ -55,6 +58,10 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
       prioritySupport: true,
       apiAccess: true,
       customIntegrations: true,
+      neuralSynthesis: false,
+      multilingualTTS: false,
+      realTimePreview: false,
+      professionalVocoding: false,
     },
     audioQuality: {
       mp3_128: true,
@@ -87,6 +94,10 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
       prioritySupport: false,
       apiAccess: false,
       customIntegrations: false,
+      neuralSynthesis: false,
+      multilingualTTS: false,
+      realTimePreview: false,
+      professionalVocoding: false,
     },
     audioQuality: {
       mp3_128: true,
@@ -119,6 +130,10 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
       prioritySupport: false,
       apiAccess: false,
       customIntegrations: false,
+      neuralSynthesis: true,
+      multilingualTTS: false,
+      realTimePreview: false,
+      professionalVocoding: false,
     },
     audioQuality: {
       mp3_128: true,
@@ -151,6 +166,10 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
       prioritySupport: true,
       apiAccess: true,
       customIntegrations: true,
+      neuralSynthesis: true,
+      multilingualTTS: true,
+      realTimePreview: true,
+      professionalVocoding: true,
     },
     audioQuality: {
       mp3_128: true,
@@ -209,7 +228,7 @@ export class PricingService {
   async resetMonthlyUsageIfNeeded(user: User): Promise<void> {
     const now = new Date();
     const lastReset = user.lastUsageReset ? new Date(user.lastUsageReset) : new Date(0);
-    
+
     // Check if it's a new month
     if (now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear()) {
       await storage.updateUser(user.id, {
