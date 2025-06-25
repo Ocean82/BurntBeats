@@ -239,6 +239,15 @@ The application uses three main database tables:
 
 ## Changelog
 
+### Deployment Crash Loop Fix (June 25, 2025)
+- **DEPLOYMENT ISSUE RESOLVED**: Fixed critical crash loop in production deployment caused by esbuild ES module compatibility issues
+- **COMMONJS BUILD FORMAT**: Switched from ESM to CommonJS bundle format for better Node.js compatibility in production environment
+- **CORRECTED RUN COMMAND**: Updated deployment configuration from `node dist/index.js` to `node dist/index.cjs` to match build output
+- **ESBUILD OPTIMIZATION**: Removed problematic `--packages=external` and Node.js built-in externals that caused dynamic require errors
+- **PRODUCTION READY**: Server now starts successfully in production with all services initialized correctly
+- **DEPLOYMENT VALIDATION**: Added comprehensive build validation to ensure all required files exist before deployment
+- **HEALTH CHECK**: Confirmed production build passes health checks and runs without crashes
+
 ### Enhanced Voice Pipeline Testing Suite (June 25, 2025)
 - **COMPREHENSIVE TEST IMPLEMENTATION**: Added comprehensive test suite for enhanced voice pipeline with all requested test cases
 - **ADAPTIVE FILTERING TESTS**: Added tests to verify adaptive filtering metadata changes and parameter tracking with `expect(result.metadata.adaptiveFilteringApplied).toBe(true)` assertions
