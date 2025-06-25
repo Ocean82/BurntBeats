@@ -23,7 +23,9 @@ import {
   musicErrorHandler,
   validateMusicGenerationInput,
   validateVoiceInput,
-  enforceUsageLimits
+  validateTTSInput,
+  sanitizeRequest,
+  createRateLimiter
 } from './middleware/music-error-handler';
 import { fileCleanupService } from "./file-cleanup-service";
 
@@ -65,12 +67,25 @@ export function registerRoutes(app: express.Application): http.Server {
   app.get("/api/login", (req, res) => res.redirect("/?auth=success"));
   app.get("/api/logout", (req, res) => res.redirect("/"));
 
+  // Define rate limiters
+  const generalRateLimit = createRateLimiter({
+    windowMs: 60 * 1000, // 1 minute
+    max: 20,
+    message: "Too many requests, please try again later."
+  });
+
+  const musicGenerationRateLimit = createRateLimiter({
+    windowMs: 60 * 1000, // 1 minute
+    max: 5,
+    message: "Too many music generation requests, please try again later."
+  });
+
   // Music Generation API Routes (protected in production)
-  app.post("/api/music/generate", requireAuth, enforceUsageLimits, validateMusicGenerationInput, MusicAPI.generateSong);
-  app.post("/api/music/ai-generate", requireAuth, enforceUsageLimits, validateMusicGenerationInput, MusicAPI.generateAIMusic);
-  app.post("/api/music/demo", optionalAuth, MusicAPI.generateMusic21Demo);
-  app.get("/api/music/:id", optionalAuth, MusicAPI.getSong);
-  app.get("/api/music", requireAuth, MusicAPI.getUserSongs);
+  app.post("/api/music/generate", musicGenerationRateLimit, optionalAuth, validateMusicGenerationInput, MusicAPI.generateSong);
+  app.post("/api/music/ai-generate", musicGenerationRateLimit, optionalAuth, validateMusicGenerationInput, MusicAPI.generateAIMusic);
+  app.post("/api/music/demo", generalRateLimit, optionalAuth, MusicAPI.generateMusic21Demo);
+  app.get("/api/music/:id", generalRateLimit, MusicAPI.getSong);
+  app.get("/api/music", generalRateLimit, optionalAuth, MusicAPI.getUserSongs);
 
   // Legacy music routes for compatibility
   app.post("/api/songs/generate", requireAuth, enforceUsageLimits, validateMusicGenerationInput, MusicAPI.generateSong);
@@ -146,10 +161,10 @@ export function registerRoutes(app: express.Application): http.Server {
   });
 
   // Voice and Audio API Routes
-  app.post("/api/voice/upload", requireAuth, VoiceAPI.uploadMiddleware, VoiceAPI.uploadVoiceSample);
-  app.get("/api/voice/samples", requireAuth, VoiceAPI.getVoiceSamples);
-  app.post("/api/voice/tts", requireAuth, VoiceAPI.generateTTS);
-  app.post("/api/voice/clone", requireAuth, VoiceAPI.cloneVoice);
+  app.post("/api/voice/upload", generalRateLimit, validateVoiceInput, VoiceAPI.uploadMiddleware, VoiceAPI.uploadVoiceSample);
+  app.get("/api/voice/samples", generalRateLimit, VoiceAPI.getVoiceSamples);
+  app.post("/api/voice/tts", musicGenerationRateLimit, validateTTSInput, VoiceAPI.generateTTS);
+  app.post("/api/voice/clone", musicGenerationRateLimit, validateVoiceInput, VoiceAPI.cloneVoice);
 
   // Pricing and Plans API Routes
   app.get("/api/pricing/plans", PricingAPI.getPricingPlans);
@@ -480,7 +495,7 @@ export function registerRoutes(app: express.Application): http.Server {
 
       const files = fs.readdirSync(uploadsDir);
       let totalSize = 0;
-      
+
       files.forEach(file => {
         const filePath = path.join(uploadsDir, file);
         const stats = fs.statSync(filePath);

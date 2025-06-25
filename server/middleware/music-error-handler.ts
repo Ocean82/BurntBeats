@@ -1,217 +1,255 @@
+
 import { Request, Response, NextFunction } from 'express';
+import { 
+  MusicGenerationSchema, 
+  VoiceUploadSchema, 
+  TextToSpeechSchema,
+  WebSocketMessageSchema,
+  validateAndTransform,
+  safeValidate
+} from '../validation/schemas';
 
-export interface MusicGenerationError extends Error {
-  code?: string;
-  statusCode?: number;
-  details?: any;
-}
+// Enhanced music generation validation
+export const validateMusicGenerationInput = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Add user context for better tracking
+    if (req.user) {
+      req.body.userId = req.user.id;
+    } else {
+      req.body.userId = 'guest';
+    }
 
-export function createMusicError(message: string, code: string, statusCode: number = 500, details?: any): MusicGenerationError {
-  const error = new Error(message) as MusicGenerationError;
-  error.code = code;
-  error.statusCode = statusCode;
-  error.details = details;
-  return error;
-}
+    // Validate and transform the request body
+    const validation = safeValidate(MusicGenerationSchema, req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({
+        error: "Validation Error",
+        message: validation.error,
+        code: "INVALID_INPUT"
+      });
+    }
 
-export function musicErrorHandler(error: MusicGenerationError, req: Request, res: Response, next: NextFunction) {
-  console.error('Music Generation Error:', {
-    message: error.message,
-    code: error.code,
-    statusCode: error.statusCode,
-    details: error.details,
-    stack: error.stack
+    // Replace request body with validated and transformed data
+    req.body = validation.data;
+    next();
+
+  } catch (error) {
+    console.error('Music generation validation error:', error);
+    res.status(400).json({
+      error: "Validation Error",
+      message: error.message,
+      code: "VALIDATION_FAILED"
+    });
+  }
+};
+
+// Voice input validation
+export const validateVoiceInput = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (req.user) {
+      req.body.userId = req.user.id;
+    }
+
+    const validation = safeValidate(VoiceUploadSchema, req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({
+        error: "Voice Validation Error",
+        message: validation.error,
+        code: "INVALID_VOICE_INPUT"
+      });
+    }
+
+    req.body = validation.data;
+    next();
+
+  } catch (error) {
+    console.error('Voice validation error:', error);
+    res.status(400).json({
+      error: "Voice Validation Error",
+      message: error.message,
+      code: "VOICE_VALIDATION_FAILED"
+    });
+  }
+};
+
+// Text-to-Speech validation
+export const validateTTSInput = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const validation = safeValidate(TextToSpeechSchema, req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({
+        error: "TTS Validation Error",
+        message: validation.error,
+        code: "INVALID_TTS_INPUT"
+      });
+    }
+
+    req.body = validation.data;
+    next();
+
+  } catch (error) {
+    console.error('TTS validation error:', error);
+    res.status(400).json({
+      error: "TTS Validation Error",
+      message: error.message,
+      code: "TTS_VALIDATION_FAILED"
+    });
+  }
+};
+
+// WebSocket message validation helper
+export const validateWebSocketMessage = (message: string): { success: boolean; data?: any; error?: string } => {
+  try {
+    const parsed = JSON.parse(message);
+    const validation = safeValidate(WebSocketMessageSchema, parsed);
+    
+    return validation.success 
+      ? { success: true, data: validation.data }
+      : { success: false, error: validation.error };
+      
+  } catch (error) {
+    return { 
+      success: false, 
+      error: `Invalid JSON: ${error.message}` 
+    };
+  }
+};
+
+// Global music error handler
+export const musicErrorHandler = (error: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error('Music API Error:', {
+    error: error.message,
+    stack: error.stack,
+    url: req.url,
+    method: req.method,
+    body: req.body,
+    user: req.user?.id || 'guest',
+    timestamp: new Date().toISOString()
   });
-
-  // Default error response
-  let statusCode = error.statusCode || 500;
-  let message = error.message || 'Internal server error';
-  let code = error.code || 'UNKNOWN_ERROR';
 
   // Handle specific error types
-  switch (error.code) {
-    case 'PYTHON_SCRIPT_ERROR':
-      statusCode = 500;
-      message = 'Music generation service temporarily unavailable';
-      break;
-    case 'INVALID_LYRICS':
-      statusCode = 400;
-      message = 'Invalid lyrics format or content';
-      break;
-    case 'UNSUPPORTED_GENRE':
-      statusCode = 400;
-      message = 'Unsupported music genre';
-      break;
-    case 'TEMPO_OUT_OF_RANGE':
-      statusCode = 400;
-      message = 'Tempo must be between 60 and 200 BPM';
-      break;
-    case 'DURATION_OUT_OF_RANGE':
-      statusCode = 400;
-      message = 'Duration must be between 10 and 300 seconds';
-      break;
-    case 'VOICE_SAMPLE_NOT_FOUND':
-      statusCode = 404;
-      message = 'Voice sample not found';
-      break;
-    case 'VOICE_PROCESSING_ERROR':
-      statusCode = 500;
-      message = 'Voice processing failed';
-      break;
-    case 'MELODY_GENERATION_ERROR':
-      statusCode = 500;
-      message = 'Melody generation failed';
-      break;
-    case 'VOCAL_GENERATION_ERROR':
-      statusCode = 500;
-      message = 'Vocal generation failed';
-      break;
-    case 'AUDIO_EXPORT_ERROR':
-      statusCode = 500;
-      message = 'Audio file generation failed';
-      break;
+  if (error.name === 'ValidationError') {
+    return res.status(400).json({
+      error: 'Validation Error',
+      message: error.message,
+      code: 'VALIDATION_FAILED'
+    });
   }
 
-  res.status(statusCode).json({
-    error: {
-      message,
-      code,
-      ...(process.env.NODE_ENV === 'development' && { 
-        details: error.details,
-        stack: error.stack 
-      })
-    }
+  if (error.message.includes('ENOENT')) {
+    return res.status(404).json({
+      error: 'File Not Found',
+      message: 'Required file or resource not found',
+      code: 'FILE_NOT_FOUND'
+    });
+  }
+
+  if (error.message.includes('timeout')) {
+    return res.status(408).json({
+      error: 'Request Timeout',
+      message: 'Operation took too long to complete',
+      code: 'TIMEOUT'
+    });
+  }
+
+  // Generic server error
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: 'An unexpected error occurred',
+    code: 'INTERNAL_ERROR',
+    timestamp: new Date().toISOString()
   });
-}
+};
 
-export const enforceUsageLimits = async (req: any, res: any, next: any) => {
+// Request sanitization middleware
+export const sanitizeRequest = (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Skip usage checks for demo endpoints
-    if (req.path.includes('/demo')) {
-      return next();
+    // Sanitize strings in request body
+    if (req.body && typeof req.body === 'object') {
+      req.body = sanitizeObject(req.body);
     }
-
-    // Skip in development mode
-    if (process.env.NODE_ENV === 'development') {
-      return next();
+    
+    // Sanitize query parameters
+    if (req.query && typeof req.query === 'object') {
+      req.query = sanitizeObject(req.query);
     }
-
-    // Require user for production usage tracking
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({
-        error: "Authentication required",
-        message: "Please log in to generate songs"
-      });
-    }
-
-    const { pricingService } = await import("../pricing-service");
-    const usageCheck = await pricingService.checkUsageLimit(req.user.id.toString());
-
-    if (!usageCheck.canCreate) {
-      return res.status(429).json({
-        error: "Usage limit exceeded",
-        message: usageCheck.reason,
-        code: "USAGE_LIMIT_EXCEEDED"
-      });
-    }
-
+    
     next();
   } catch (error) {
-    console.error('Usage limit check failed:', error);
-    next(error);
+    console.error('Request sanitization error:', error);
+    res.status(400).json({
+      error: 'Invalid Request',
+      message: 'Request contains invalid data',
+      code: 'SANITIZATION_FAILED'
+    });
   }
 };
 
-export const validateMusicGenerationInput = (req: any, res: any, next: any) => {
-  const { title, lyrics, genre, tempo, duration } = req.body;
-
-  // Add user context for better tracking
-  if (req.user) {
-    req.body.userId = req.user.id;
-  } else {
-    req.body.userId = 'guest';
+// Helper function to sanitize object properties
+function sanitizeObject(obj: any): any {
+  if (typeof obj !== 'object' || obj === null) {
+    return obj;
   }
 
-  // Basic validation
-  if (!title || typeof title !== 'string' || title.trim().length === 0) {
-    return res.status(400).json({
-      error: "Validation Error",
-      message: "Title is required and must be a non-empty string"
-    });
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeObject);
   }
 
-  if (!lyrics || typeof lyrics !== 'string' || lyrics.trim().length === 0) {
-    return res.status(400).json({
-      error: "Validation Error", 
-      message: "Lyrics are required and must be a non-empty string"
-    });
-  }
-
-  // Validate title length
-  if (title.length > 100) {
-    return res.status(400).json({
-      error: "Title must be less than 100 characters",
-      code: "TITLE_TOO_LONG"
-    });
-  }
-
-  // Validate lyrics length
-  if (lyrics.length > 5000) {
-    return res.status(400).json({
-      error: "Lyrics must be less than 5000 characters",
-      code: "LYRICS_TOO_LONG"
-    });
-  }
-
-  if (tempo && (isNaN(tempo) || tempo < 60 || tempo > 200)) {
-    return res.status(400).json({
-      error: "Tempo must be between 60 and 200 BPM",
-      code: "INVALID_TEMPO"
-    });
-  }
-
-  if (duration && (isNaN(duration) || duration < 5 || duration > 300)) {
-    return res.status(400).json({
-      error: "Duration must be between 5 and 300 seconds",
-      code: "INVALID_DURATION"
-    });
-  }
-
-  // Validate genre
-  const validGenres = ['pop', 'rock', 'jazz', 'classical', 'electronic', 'hip-hop', 'country', 'r&b'];
-  if (genre && !validGenres.includes(genre.toLowerCase())) {
-    return res.status(400).json({
-      error: `Genre must be one of: ${validGenres.join(', ')}`,
-      code: "INVALID_GENRE"
-    });
-  }
-
-  // Add user ID if available from session
-  if (req.user?.id) {
-    req.body.userId = req.user.id;
-  }
-
-  next();
-};
-
-export function validateVoiceInput(req: Request, res: Response, next: NextFunction) {
-  const { text, voiceSampleId } = req.body;
-
-  try {
-    if (!text || typeof text !== 'string' || text.trim().length === 0) {
-      throw createMusicError('Text is required and must be a non-empty string', 'INVALID_TEXT', 400);
+  const sanitized: any = {};
+  
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string') {
+      // Remove potential script tags and dangerous HTML
+      sanitized[key] = value
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/javascript:/gi, '')
+        .replace(/on\w+\s*=/gi, '')
+        .trim();
+    } else if (typeof value === 'object') {
+      sanitized[key] = sanitizeObject(value);
+    } else {
+      sanitized[key] = value;
     }
-
-    if (text.length > 5000) {
-      throw createMusicError('Text must be less than 5,000 characters', 'TEXT_TOO_LONG', 400);
-    }
-
-    if (voiceSampleId && (typeof voiceSampleId !== 'number' || voiceSampleId <= 0)) {
-      throw createMusicError('Voice sample ID must be a positive number', 'INVALID_VOICE_SAMPLE_ID', 400);
-    }
-
-    next();
-  } catch (error) {
-    next(error);
   }
+  
+  return sanitized;
 }
+
+// Rate limiting helper
+export const createRateLimiter = (windowMs: number, maxRequests: number) => {
+  const requests = new Map<string, { count: number; resetTime: number }>();
+  
+  return (req: Request, res: Response, next: NextFunction) => {
+    const clientId = req.ip || req.user?.id || 'anonymous';
+    const now = Date.now();
+    const windowStart = now - windowMs;
+    
+    // Clean up old entries
+    for (const [id, data] of requests.entries()) {
+      if (data.resetTime < windowStart) {
+        requests.delete(id);
+      }
+    }
+    
+    // Check current client
+    const clientData = requests.get(clientId);
+    
+    if (!clientData) {
+      requests.set(clientId, { count: 1, resetTime: now + windowMs });
+      next();
+    } else if (clientData.count < maxRequests) {
+      clientData.count++;
+      next();
+    } else {
+      res.status(429).json({
+        error: 'Too Many Requests',
+        message: `Rate limit exceeded. Try again in ${Math.ceil(windowMs / 1000)} seconds.`,
+        code: 'RATE_LIMIT_EXCEEDED',
+        retryAfter: Math.ceil((clientData.resetTime - now) / 1000)
+      });
+    }
+  };
+};

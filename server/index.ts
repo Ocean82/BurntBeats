@@ -7,6 +7,8 @@ import { validateEnvironmentVariables } from "./env-check";
 import path from "path";
 import fs from "fs";
 import rateLimit from "express-rate-limit";
+import { WebSocket, WebSocketServer } from 'ws';
+import { IncomingMessage } from 'http';
 
 const app = express();
 const port = 5000;
@@ -117,3 +119,154 @@ app.use('/uploads', (req, res, next) => {
 
 // Export middleware for use in routes
 export { requireAuth, optionalAuth };
+
+// WebSocket handling for real-time features with heartbeat
+const server = createServer(app);
+const wss = new WebSocketServer({ server });
+const HEARTBEAT_INTERVAL = 30000; // 30 seconds
+const CLIENT_TIMEOUT = 60000; // 60 seconds
+
+interface ExtendedWebSocket extends WebSocket {
+  isAlive?: boolean;
+  lastSeen?: number;
+  clientId?: string;
+}
+
+wss.on('connection', (ws: ExtendedWebSocket, req: IncomingMessage) => {
+  console.log('🔌 WebSocket client connected');
+
+  // Initialize client state
+  ws.isAlive = true;
+  ws.lastSeen = Date.now();
+  ws.clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  // Send welcome message with heartbeat info
+  ws.send(JSON.stringify({
+    type: 'connection_established',
+    clientId: ws.clientId,
+    heartbeatInterval: HEARTBEAT_INTERVAL
+  }));
+
+  ws.on('message', async (message: Buffer) => {
+    try {
+      ws.lastSeen = Date.now();
+
+      // Validate WebSocket message
+      const { validateWebSocketMessage } = await import('./middleware/music-error-handler');
+      const validation = validateWebSocketMessage(message.toString());
+
+      if (!validation.success) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          message: `Message validation failed: ${validation.error}`,
+          code: 'INVALID_MESSAGE'
+        }));
+        return;
+      }
+
+      const data = validation.data;
+
+      // Handle different message types
+      switch (data.type) {
+        case 'ping':
+          // Respond to client ping with pong
+          ws.send(JSON.stringify({
+            type: 'pong',
+            timestamp: Date.now()
+          }));
+          break;
+
+        case 'pong':
+          // Client responded to our ping
+          ws.isAlive = true;
+          break;
+
+        case 'progress_request':
+          // Send progress updates for song generation
+          ws.send(JSON.stringify({
+            type: 'progress_update',
+            songId: data.songId,
+            progress: 75,
+            stage: 'finalizing'
+          }));
+          break;
+
+        case 'collaboration_event':
+          // Broadcast to other clients (future feature)
+          wss.clients.forEach((client: ExtendedWebSocket) => {
+            if (client !== ws && client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({
+                type: 'collaboration_update',
+                event: data.event,
+                userId: data.userId,
+                timestamp: Date.now()
+              }));
+            }
+          });
+          break;
+
+        default:
+          console.log('Unknown WebSocket message type:', data.type);
+      }
+    } catch (error) {
+      console.error('WebSocket message parsing error:', error);
+      ws.send(JSON.stringify({
+        type: 'error',
+        message: 'Invalid message format'
+      }));
+    }
+  });
+
+  ws.on('close', () => {
+    console.log(`🔌 WebSocket client ${ws.clientId} disconnected`);
+  });
+
+  ws.on('error', (error: Error) => {
+    console.error(`WebSocket error for client ${ws.clientId}:`, error);
+  });
+
+  // Handle pong messages to track client responsiveness
+  ws.on('pong', () => {
+    ws.isAlive = true;
+    ws.lastSeen = Date.now();
+  });
+});
+
+// Heartbeat mechanism to detect and clean up dead connections
+const heartbeatInterval = setInterval(() => {
+  const now = Date.now();
+
+  wss.clients.forEach((ws: ExtendedWebSocket) => {
+    // Check if client is responsive
+    if (ws.isAlive === false || (ws.lastSeen && now - ws.lastSeen > CLIENT_TIMEOUT)) {
+      console.log(`🔌 Terminating unresponsive client ${ws.clientId}`);
+      return ws.terminate();
+    }
+
+    // Send ping to check if client is alive
+    ws.isAlive = false;
+    try {
+      ws.ping();
+      ws.send(JSON.stringify({
+        type: 'ping',
+        timestamp: now
+      }));
+    } catch (error) {
+      console.error(`Failed to ping client ${ws.clientId}:`, error);
+      ws.terminate();
+    }
+  });
+}, HEARTBEAT_INTERVAL);
+
+// Clean up heartbeat interval on server shutdown
+process.on('SIGTERM', () => {
+  clearInterval(heartbeatInterval);
+});
+
+process.on('SIGINT', () => {
+  clearInterval(heartbeatInterval);
+});
+
+server.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
