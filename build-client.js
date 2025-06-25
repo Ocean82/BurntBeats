@@ -2,9 +2,11 @@
 #!/usr/bin/env node
 
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, statSync, unlinkSync, writeFileSync } from 'fs';
-import { mkdir, writeFile } from 'fs/promises';
+import { existsSync, mkdirSync, statSync, unlinkSync, writeFileSync, readdirSync } from 'fs';
+import { mkdir, writeFile, readdir, stat, copyFile } from 'fs/promises';
 import path from 'path';
+import { createHash } from 'crypto';
+import { glob } from 'glob';
 
 console.log('🏗️  Building client application...');
 
@@ -141,8 +143,129 @@ async function generateBuildReport() {
   }
 }
 
+// Get Git commit hash
+function getGitCommit() {
+  try {
+    const gitCommit = execSync('git rev-parse --short HEAD', { 
+      stdio: 'pipe',
+      encoding: 'utf8' 
+    }).toString().trim();
+    return gitCommit;
+  } catch (error) {
+    console.warn('⚠️  Could not get git commit hash:', error.message);
+    return 'unknown';
+  }
+}
+
+// Calculate file hash for versioning
+function calculateFileHash(filePath) {
+  try {
+    const fileBuffer = require('fs').readFileSync(filePath);
+    return createHash('md5').update(fileBuffer).digest('hex').substring(0, 8);
+  } catch (error) {
+    console.warn(`⚠️  Could not hash file ${filePath}:`, error.message);
+    return Date.now().toString(36);
+  }
+}
+
+// Enhanced asset handling with globby
+async function handleAssets() {
+  console.log('📦 Processing assets with glob patterns...');
+  
+  const assetDirs = [
+    'client/public',
+    'attached_assets'
+  ];
+  
+  let copiedFiles = 0;
+  let totalSize = 0;
+  
+  for (const assetDir of assetDirs) {
+    if (existsSync(assetDir)) {
+      try {
+        // Use glob for robust cross-platform file matching
+        const pattern = path.join(assetDir, '**/*').replace(/\\/g, '/');
+        const files = await glob(pattern, { 
+          nodir: true,
+          dot: false 
+        });
+        
+        for (const file of files) {
+          try {
+            const relativePath = path.relative(assetDir, file);
+            const destPath = path.join('dist/public', relativePath);
+            
+            // Ensure destination directory exists
+            await mkdir(path.dirname(destPath), { recursive: true });
+            
+            // Optional: Add hash suffix for long-term caching
+            const shouldHash = args.includes('--hash-assets');
+            let finalDestPath = destPath;
+            
+            if (shouldHash && !relativePath.includes('index.html')) {
+              const fileHash = calculateFileHash(file);
+              const ext = path.extname(relativePath);
+              const nameWithoutExt = path.basename(relativePath, ext);
+              const dir = path.dirname(destPath);
+              finalDestPath = path.join(dir, `${nameWithoutExt}.${fileHash}${ext}`);
+            }
+            
+            await copyFile(file, finalDestPath);
+            
+            const stats = await stat(finalDestPath);
+            totalSize += stats.size;
+            copiedFiles++;
+            
+          } catch (fileError) {
+            console.warn(`⚠️  Could not copy ${file}:`, fileError.message);
+          }
+        }
+        
+        console.log(`✅ Copied ${files.length} files from ${assetDir}`);
+        
+      } catch (error) {
+        console.warn(`⚠️  Could not process assets from ${assetDir}:`, error.message);
+      }
+    }
+  }
+  
+  return { copiedFiles, totalSize };
+}
+
+// Calculate build size summary
+async function calculateBuildSize() {
+  const distPath = 'dist/public';
+  if (!existsSync(distPath)) {
+    return { totalSizeKB: 0, numFiles: 0 };
+  }
+  
+  try {
+    const files = await glob(path.join(distPath, '**/*').replace(/\\/g, '/'), { 
+      nodir: true 
+    });
+    
+    let totalSize = 0;
+    for (const file of files) {
+      try {
+        const stats = await stat(file);
+        totalSize += stats.size;
+      } catch (error) {
+        console.warn(`⚠️  Could not stat ${file}:`, error.message);
+      }
+    }
+    
+    return {
+      totalSizeKB: Math.round(totalSize / 1024),
+      numFiles: files.length
+    };
+  } catch (error) {
+    console.warn('⚠️  Could not calculate build size:', error.message);
+    return { totalSizeKB: 0, numFiles: 0 };
+  }
+}
+
 // Validate build output
-function validateBuildOutput() {
+async function validateBuildOutput() {
   const requiredFiles = [
     'dist/public/index.html'
   ];
@@ -160,48 +283,44 @@ function validateBuildOutput() {
   }
   
   console.log('✅ Build output validated');
-  console.log(`📊 Build size: ${Math.round(stats.size / 1024)}KB`);
+  
+  // Calculate and log build size summary
+  const { totalSizeKB, numFiles } = await calculateBuildSize();
+  console.log(`🚢 Final artifact: dist/public (est. ${totalSizeKB}KB across ${numFiles} files)`);
+  
+  return { totalSizeKB, numFiles };
 }
 
-// Enhanced asset handling
-async function handleAssets() {
-  console.log('📦 Processing assets...');
-  
-  // Copy any additional assets if they exist
-  const assetDirs = [
-    'client/public',
-    'attached_assets'
-  ];
-  
-  for (const assetDir of assetDirs) {
-    if (existsSync(assetDir)) {
-      try {
-        execSync(`cp -r ${assetDir}/* dist/public/ 2>/dev/null || true`, { stdio: 'pipe' });
-        console.log(`✅ Copied assets from ${assetDir}`);
-      } catch (error) {
-        console.warn(`⚠️  Could not copy assets from ${assetDir}`);
-      }
-    }
-  }
-}
-
-// Create build manifest
+// Create enhanced build manifest with git commit
 async function createBuildManifest() {
+  const gitCommit = getGitCommit();
+  const { totalSizeKB, numFiles } = await calculateBuildSize();
+  
   const manifest = {
     buildTime: new Date().toISOString(),
     version: process.env.npm_package_version || '1.0.0',
+    gitCommit,
     nodeVersion: process.version,
     platform: process.platform,
     environment: 'production',
+    buildStats: {
+      totalSizeKB,
+      numFiles,
+      reportGenerated: shouldGenerateReport
+    },
     features: {
       reportGenerated: shouldGenerateReport,
       assetsProcessed: true,
-      qualityChecksRun: true
+      qualityChecksRun: true,
+      assetHashing: args.includes('--hash-assets')
     }
   };
   
   await writeFile('dist/public/build-manifest.json', JSON.stringify(manifest, null, 2));
   console.log('📋 Build manifest created');
+  console.log(`📊 Git commit: ${gitCommit}`);
+  
+  return manifest;
 }
 
 try {
@@ -229,20 +348,27 @@ try {
     });
   }
   
-  // Step 5: Handle additional assets
-  await handleAssets();
+  // Step 5: Handle additional assets with glob
+  const assetStats = await handleAssets();
+  console.log(`📁 Asset processing: ${assetStats.copiedFiles} files (${Math.round(assetStats.totalSize / 1024)}KB)`);
   
-  // Step 6: Create build manifest
-  await createBuildManifest();
+  // Step 6: Create enhanced build manifest
+  const manifest = await createBuildManifest();
   
-  // Step 7: Validate output
-  validateBuildOutput();
+  // Step 7: Validate output and show summary
+  await validateBuildOutput();
   
   console.log('✅ Client build completed successfully');
   
   if (shouldGenerateReport) {
     console.log('📊 Build report available at: dist/reports/build-report.html');
   }
+  
+  // Final build summary
+  console.log('\n🎯 Build Summary:');
+  console.log(`   Version: ${manifest.version} (${manifest.gitCommit})`);
+  console.log(`   Size: ${manifest.buildStats.totalSizeKB}KB across ${manifest.buildStats.numFiles} files`);
+  console.log(`   Features: ${Object.entries(manifest.features).filter(([, enabled]) => enabled).map(([key]) => key).join(', ')}`);
   
 } catch (error) {
   console.error('❌ Client build failed:', error.message);
