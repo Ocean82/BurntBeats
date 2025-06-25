@@ -1,4 +1,3 @@
-
 import { Request, Response, NextFunction } from 'express';
 
 export interface MusicGenerationError extends Error {
@@ -85,50 +84,70 @@ export function musicErrorHandler(error: MusicGenerationError, req: Request, res
   });
 }
 
-export function validateMusicGenerationInput(req: Request, res: Response, next: NextFunction) {
+export const validateMusicGenerationInput = (req: Request, res: Response, next: NextFunction) => {
   const { title, lyrics, genre, tempo, duration } = req.body;
 
-  try {
-    // Required fields
-    if (!title || typeof title !== 'string' || title.trim().length === 0) {
-      throw createMusicError('Title is required and must be a non-empty string', 'INVALID_TITLE', 400);
-    }
-
-    if (!lyrics || typeof lyrics !== 'string' || lyrics.trim().length === 0) {
-      throw createMusicError('Lyrics are required and must be a non-empty string', 'INVALID_LYRICS', 400);
-    }
-
-    // Validate genre
-    const supportedGenres = ['pop', 'rock', 'jazz', 'electronic', 'classical', 'hip-hop', 'country', 'r&b'];
-    if (genre && !supportedGenres.includes(genre.toLowerCase())) {
-      throw createMusicError(`Unsupported genre. Supported genres: ${supportedGenres.join(', ')}`, 'UNSUPPORTED_GENRE', 400);
-    }
-
-    // Validate tempo
-    if (tempo && (isNaN(tempo) || tempo < 60 || tempo > 200)) {
-      throw createMusicError('Tempo must be a number between 60 and 200 BPM', 'TEMPO_OUT_OF_RANGE', 400);
-    }
-
-    // Validate duration
-    if (duration && (isNaN(duration) || duration < 10 || duration > 300)) {
-      throw createMusicError('Duration must be a number between 10 and 300 seconds', 'DURATION_OUT_OF_RANGE', 400);
-    }
-
-    // Validate lyrics length
-    if (lyrics.length > 10000) {
-      throw createMusicError('Lyrics must be less than 10,000 characters', 'LYRICS_TOO_LONG', 400);
-    }
-
-    // Validate title length
-    if (title.length > 200) {
-      throw createMusicError('Title must be less than 200 characters', 'TITLE_TOO_LONG', 400);
-    }
-
-    next();
-  } catch (error) {
-    next(error);
+  // Basic validation
+  if (!title || !lyrics) {
+    return res.status(400).json({ 
+      error: "Title and lyrics are required",
+      code: "MISSING_REQUIRED_FIELDS"
+    });
   }
-}
+
+  if (typeof title !== 'string' || typeof lyrics !== 'string') {
+    return res.status(400).json({
+      error: "Title and lyrics must be strings",
+      code: "INVALID_INPUT_TYPE"
+    });
+  }
+
+  // Validate title length
+  if (title.length > 100) {
+    return res.status(400).json({
+      error: "Title must be less than 100 characters",
+      code: "TITLE_TOO_LONG"
+    });
+  }
+
+  // Validate lyrics length
+  if (lyrics.length > 5000) {
+    return res.status(400).json({
+      error: "Lyrics must be less than 5000 characters",
+      code: "LYRICS_TOO_LONG"
+    });
+  }
+
+  if (tempo && (isNaN(tempo) || tempo < 60 || tempo > 200)) {
+    return res.status(400).json({
+      error: "Tempo must be between 60 and 200 BPM",
+      code: "INVALID_TEMPO"
+    });
+  }
+
+  if (duration && (isNaN(duration) || duration < 5 || duration > 300)) {
+    return res.status(400).json({
+      error: "Duration must be between 5 and 300 seconds",
+      code: "INVALID_DURATION"
+    });
+  }
+
+  // Validate genre
+  const validGenres = ['pop', 'rock', 'jazz', 'classical', 'electronic', 'hip-hop', 'country', 'r&b'];
+  if (genre && !validGenres.includes(genre.toLowerCase())) {
+    return res.status(400).json({
+      error: `Genre must be one of: ${validGenres.join(', ')}`,
+      code: "INVALID_GENRE"
+    });
+  }
+
+  // Add user ID if available from session
+  if (req.user?.id) {
+    req.body.userId = req.user.id;
+  }
+
+  next();
+};
 
 export function validateVoiceInput(req: Request, res: Response, next: NextFunction) {
   const { text, voiceSampleId } = req.body;
