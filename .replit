@@ -9,7 +9,7 @@ packages = ["ffmpeg", "glibcLocales", "libxcrypt", "pkg-config", "portmidi", "xs
 [deployment]
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
-run = ["sh", "-c", "node quick-deploy.js start"]
+run = ["sh", "-c", "node start-production.js"]
 
 [[ports]]
 localPort = 5000
