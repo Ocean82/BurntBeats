@@ -25,15 +25,14 @@ import {
   validateVoiceInput
 } from './middleware/music-error-handler';
 
-// Add authenticateOptional middleware
-const authenticateOptional = (req: any, res: Response, next: NextFunction) => {
-  // Optional authentication - doesn't require user to be logged in
-  // but adds user info if available
-  if (req.session?.user) {
-    req.user = req.session.user;
-  }
-  next();
-};
+// Import auth middleware from index
+import { requireAuth, optionalAuth } from "./index";
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 const app = express();
 
@@ -64,19 +63,85 @@ export function registerRoutes(app: express.Application): http.Server {
   app.get("/api/login", (req, res) => res.redirect("/?auth=success"));
   app.get("/api/logout", (req, res) => res.redirect("/"));
 
-  // Music Generation API Routes
-  app.post("/api/music/generate", MusicAPI.generateSong);
-  app.post("/api/music/ai-generate", MusicAPI.generateAIMusic);
-  app.post("/api/music/demo", MusicAPI.generateMusic21Demo);
+  // Music Generation API Routes (protected in production)
+  app.post("/api/music/generate", optionalAuth, validateMusicGenerationInput, MusicAPI.generateSong);
+  app.post("/api/music/ai-generate", optionalAuth, validateMusicGenerationInput, MusicAPI.generateAIMusic);
+  app.post("/api/music/demo", optionalAuth, MusicAPI.generateMusic21Demo);
   app.get("/api/music/:id", MusicAPI.getSong);
-  app.get("/api/music", MusicAPI.getUserSongs);
+  app.get("/api/music", optionalAuth, MusicAPI.getUserSongs);
 
   // Legacy music routes for compatibility
-  app.post("/api/songs/generate", MusicAPI.generateSong);
-  app.post("/api/generate-ai-music", MusicAPI.generateAIMusic);
-  app.post("/api/demo-music21", MusicAPI.generateMusic21Demo);
+  app.post("/api/songs/generate", optionalAuth, validateMusicGenerationInput, MusicAPI.generateSong);
+  app.post("/api/generate", optionalAuth, validateMusicGenerationInput, MusicAPI.generateSong); // Main generate endpoint
+  app.post("/api/generate-ai-music", optionalAuth, validateMusicGenerationInput, MusicAPI.generateAIMusic);
+  app.post("/api/demo-music21", optionalAuth, MusicAPI.generateMusic21Demo);
   app.get("/api/songs/single/:id", MusicAPI.getSong);
-  app.get("/api/songs", MusicAPI.getUserSongs);
+  app.get("/api/songs", optionalAuth, MusicAPI.getUserSongs);
+
+  // Audio streaming endpoint with proper headers
+  app.get("/api/audio/:songId", async (req: Request, res: Response) => {
+    try {
+      const { songId } = req.params;
+
+      // Get song info to find audio file
+      const { storage } = await import("./storage");
+      const song = await storage.getSong(parseInt(songId));
+
+      if (!song || !song.generatedAudioPath) {
+        return res.status(404).json({ error: "Audio file not found" });
+      }
+
+      // Clean the path - remove leading slash if present
+      const cleanPath = song.generatedAudioPath.startsWith('/') 
+        ? song.generatedAudioPath.slice(1) 
+        : song.generatedAudioPath;
+
+      const audioPath = path.join(process.cwd(), cleanPath);
+
+      if (!fs.existsSync(audioPath)) {
+        return res.status(404).json({ error: "Audio file not found on disk" });
+      }
+
+      // Set proper headers for audio streaming
+      const ext = path.extname(audioPath).toLowerCase();
+      const contentType = {
+        '.mp3': 'audio/mpeg',
+        '.wav': 'audio/wav',
+        '.m4a': 'audio/mp4',
+        '.ogg': 'audio/ogg'
+      }[ext] || 'audio/mpeg';
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Accept-Ranges', 'bytes');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+
+      // Handle range requests for audio seeking
+      const stat = fs.statSync(audioPath);
+      const range = req.headers.range;
+
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
+        const chunksize = (end - start) + 1;
+
+        res.status(206);
+        res.setHeader('Content-Range', `bytes ${start}-${end}/${stat.size}`);
+        res.setHeader('Content-Length', chunksize);
+
+        const stream = fs.createReadStream(audioPath, { start, end });
+        stream.pipe(res);
+      } else {
+        res.setHeader('Content-Length', stat.size);
+        const stream = fs.createReadStream(audioPath);
+        stream.pipe(res);
+      }
+
+    } catch (error) {
+      console.error("Audio streaming error:", error);
+      res.status(500).json({ error: "Failed to stream audio" });
+    }
+  });
 
   // Voice and Audio API Routes
   app.post("/api/voice/upload", VoiceAPI.uploadMiddleware, VoiceAPI.uploadVoiceSample);

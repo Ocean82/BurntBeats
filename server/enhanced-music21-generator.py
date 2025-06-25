@@ -16,6 +16,69 @@ import glob
 from pathlib import Path
 import pickle
 
+def validate_key_signature(key_input):
+    """Validate and normalize key signature input"""
+    if not key_input or not isinstance(key_input, str):
+        raise ValueError("Key signature must be a non-empty string")
+    
+    # Normalize input
+    key_input = key_input.strip().replace(' ', '')
+    
+    # Common key mappings
+    key_mappings = {
+        # Major keys
+        'C': 'C', 'Cmaj': 'C', 'C major': 'C',
+        'G': 'G', 'Gmaj': 'G', 'G major': 'G',
+        'D': 'D', 'Dmaj': 'D', 'D major': 'D',
+        'A': 'A', 'Amaj': 'A', 'A major': 'A',
+        'E': 'E', 'Emaj': 'E', 'E major': 'E',
+        'B': 'B', 'Bmaj': 'B', 'B major': 'B',
+        'F#': 'F#', 'F#maj': 'F#', 'F# major': 'F#',
+        'C#': 'C#', 'C#maj': 'C#', 'C# major': 'C#',
+        'F': 'F', 'Fmaj': 'F', 'F major': 'F',
+        'Bb': 'B-', 'Bmaj': 'B-', 'Bb major': 'B-',
+        'Eb': 'E-', 'Ebmaj': 'E-', 'Eb major': 'E-',
+        'Ab': 'A-', 'Abmaj': 'A-', 'Ab major': 'A-',
+        'Db': 'D-', 'Dbmaj': 'D-', 'Db major': 'D-',
+        'Gb': 'G-', 'Gbmaj': 'G-', 'Gb major': 'G-',
+        
+        # Minor keys
+        'Am': 'a', 'Amin': 'a', 'A minor': 'a',
+        'Em': 'e', 'Emin': 'e', 'E minor': 'e',
+        'Bm': 'b', 'Bmin': 'b', 'B minor': 'b',
+        'F#m': 'f#', 'F#min': 'f#', 'F# minor': 'f#',
+        'C#m': 'c#', 'C#min': 'c#', 'C# minor': 'c#',
+        'G#m': 'g#', 'G#min': 'g#', 'G# minor': 'g#',
+        'D#m': 'd#', 'D#min': 'd#', 'D# minor': 'd#',
+        'A#m': 'a#', 'A#min': 'a#', 'A# minor': 'a#',
+        'Dm': 'd', 'Dmin': 'd', 'D minor': 'd',
+        'Gm': 'g', 'Gmin': 'g', 'G minor': 'g',
+        'Cm': 'c', 'Cmin': 'c', 'C minor': 'c',
+        'Fm': 'f', 'Fmin': 'f', 'F minor': 'f',
+        'Bbm': 'b-', 'Bbmin': 'b-', 'Bb minor': 'b-',
+        'Ebm': 'e-', 'Ebmin': 'e-', 'Eb minor': 'e-'
+    }
+    
+    # Try exact match first
+    if key_input in key_mappings:
+        return key_mappings[key_input]
+    
+    # Try case-insensitive match
+    for key, value in key_mappings.items():
+        if key_input.lower() == key.lower():
+            return value
+    
+    # Try direct music21 validation
+    try:
+        test_key = key.Key(key_input)
+        return key_input  # If it works, use original
+    except:
+        pass
+    
+    # Default fallback
+    print(f"⚠️ Invalid key signature '{key_input}', defaulting to C major")
+    return 'C'
+
 def main():
     if len(sys.argv) < 8:
         print("Usage: python enhanced-music21-generator.py <title> <lyrics> <genre> <tempo> <key> <duration> <output_path> [--train-data=<path>] [--format=<midi|musicxml|both>]")
@@ -24,21 +87,27 @@ def main():
     # Parse additional arguments
     train_data_path = None
     output_format = "midi"
+    melody_data_path = None
 
     for arg in sys.argv[8:]:
         if arg.startswith("--train-data="):
             train_data_path = arg.split("=", 1)[1]
         elif arg.startswith("--format="):
             output_format = arg.split("=", 1)[1]
+        elif arg.startswith("--melody-data="):
+            melody_data_path = arg.split("=", 1)[1]
 
     try:
         title = sys.argv[1].strip('"')
         lyrics = sys.argv[2].strip('"')
         genre = sys.argv[3].strip('"')
         tempo_bpm = int(sys.argv[4])
-        key_sig = sys.argv[5].strip('"')
+        raw_key_sig = sys.argv[5].strip('"')
         duration_seconds = int(sys.argv[6])
         output_path = sys.argv[7].strip('"')
+        
+        # Validate and normalize key signature
+        key_sig = validate_key_signature(raw_key_sig)
 
         print(f"🎵 Generating enhanced composition: {title}")
         print(f"Genre: {genre}, Tempo: {tempo_bpm} BPM, Duration: {duration_seconds}s")
@@ -48,6 +117,13 @@ def main():
         if train_data_path:
             print(f"🎼 Loading training data from: {train_data_path}")
             musical_patterns = load_and_analyze_training_data(train_data_path, genre)
+
+        # Load melody data if provided
+        melody_data = None
+        if melody_data_path and os.path.exists(melody_data_path):
+            print(f"🎵 Loading melody data from: {melody_data_path}")
+            with open(melody_data_path, 'r') as f:
+                melody_data = json.load(f)
 
         # Create the composition with lyrics integration and training patterns
         score = create_enhanced_composition(title, lyrics, genre, tempo_bpm, key_sig, duration_seconds, musical_patterns)
@@ -452,12 +528,24 @@ def analyze_lyrics_for_music(lyrics):
     """Enhanced lyrics analysis for musical generation"""
     lines = [line.strip() for line in lyrics.split('\n') if line.strip()]
 
-    # Emotional word mappings
+    # Expanded emotional word mappings
     emotion_weights = {
+        # Positive emotions
         'love': 0.9, 'joy': 0.8, 'happy': 0.7, 'beautiful': 0.6,
         'amazing': 0.7, 'wonderful': 0.8, 'dream': 0.5, 'bright': 0.5,
+        'sunshine': 0.8, 'freedom': 0.7, 'hope': 0.6, 'smile': 0.5,
+        'dance': 0.8, 'fly': 0.7, 'soar': 0.9, 'celebrate': 0.8,
+        'peace': 0.6, 'harmony': 0.7, 'bliss': 0.8, 'ecstasy': 0.9,
+        
+        # Negative emotions
         'sad': -0.7, 'pain': -0.8, 'hurt': -0.6, 'broken': -0.7,
-        'dark': -0.5, 'lonely': -0.6, 'tears': -0.6, 'goodbye': -0.5
+        'dark': -0.5, 'lonely': -0.6, 'tears': -0.6, 'goodbye': -0.5,
+        'lost': -0.6, 'empty': -0.7, 'cold': -0.4, 'fear': -0.8,
+        'anger': -0.7, 'hate': -0.9, 'despair': -0.9, 'sorrow': -0.8,
+        
+        # Intensity modifiers
+        'very': 1.3, 'so': 1.2, 'really': 1.2, 'deeply': 1.4,
+        'little': 0.7, 'slightly': 0.6, 'somewhat': 0.8
     }
 
     analysis = {
@@ -465,34 +553,274 @@ def analyze_lyrics_for_music(lyrics):
         'emotion_arc': [],
         'syllable_counts': [],
         'complexity_levels': [],
-        'musical_phrases': []
+        'musical_phrases': [],
+        'song_structure': detect_song_structure(lines),
+        'rhyme_scheme': analyze_rhyme_scheme(lines),
+        'tempo_suggestions': [],
+        'dynamic_markings': []
     }
 
-    for line in lines:
+    for i, line in enumerate(lines):
         words = line.lower().split()
 
-        # Emotional analysis
-        line_emotion = sum(emotion_weights.get(word, 0.0) for word in words) / max(len(words), 1)
+        # Enhanced emotional analysis with context
+        line_emotion = calculate_line_emotion(words, emotion_weights)
         analysis['emotion_arc'].append(line_emotion)
 
-        # Syllable analysis
-        syllable_count = sum(estimate_syllables(word) for word in words)
-        analysis['syllable_counts'].append(syllable_count)
+        # Syllable analysis with stress patterns
+        syllable_data = analyze_line_syllables_detailed(line)
+        analysis['syllable_counts'].append(syllable_data['total_syllables'])
 
         # Complexity analysis
-        complexity = 'high' if len(words) > 8 else 'medium' if len(words) > 4 else 'low'
+        complexity = determine_lyrical_complexity(line, words)
         analysis['complexity_levels'].append(complexity)
 
-        # Musical phrase mapping
+        # Tempo suggestions based on syllable density
+        tempo_suggestion = suggest_tempo_from_syllables(syllable_data, line_emotion)
+        analysis['tempo_suggestions'].append(tempo_suggestion)
+
+        # Dynamic markings based on emotion and position
+        dynamic_marking = suggest_dynamics(line_emotion, i, len(lines))
+        analysis['dynamic_markings'].append(dynamic_marking)
+
+        # Enhanced musical phrase mapping
         analysis['musical_phrases'].append({
             'text': line,
             'emotion': line_emotion,
-            'syllables': syllable_count,
-            'suggested_rhythm': get_rhythm_from_syllables(syllable_count),
-            'melodic_direction': 'ascending' if line_emotion > 0.3 else 'descending' if line_emotion < -0.3 else 'wave'
+            'syllables': syllable_data['total_syllables'],
+            'syllable_pattern': syllable_data['stress_pattern'],
+            'suggested_rhythm': get_enhanced_rhythm_from_syllables(syllable_data),
+            'melodic_direction': determine_melodic_direction(line_emotion, i, len(lines)),
+            'harmonic_suggestion': suggest_harmony_from_emotion(line_emotion),
+            'section_type': analysis['song_structure'][i] if i < len(analysis['song_structure']) else 'verse',
+            'rhyme_info': analysis['rhyme_scheme'][i] if i < len(analysis['rhyme_scheme']) else None,
+            'tempo_modifier': tempo_suggestion,
+            'dynamic_level': dynamic_marking
         })
 
     return analysis
+
+def detect_song_structure(lines):
+    """Detect song structure (verse, chorus, bridge) from lyrics"""
+    structure = []
+    
+    for i, line in enumerate(lines):
+        line_lower = line.lower()
+        
+        # Simple heuristics for song structure
+        if i == 0:
+            structure.append('intro')
+        elif 'chorus' in line_lower or (i > 0 and line == lines[i-2] if i >= 2 else False):
+            structure.append('chorus')
+        elif 'bridge' in line_lower or (i > len(lines) * 0.6 and i < len(lines) * 0.8):
+            structure.append('bridge')
+        elif i == len(lines) - 1:
+            structure.append('outro')
+        else:
+            structure.append('verse')
+    
+    return structure
+
+def analyze_rhyme_scheme(lines):
+    """Analyze rhyme scheme of lyrics"""
+    rhyme_scheme = []
+    rhyme_groups = {}
+    current_letter = 'A'
+    
+    for line in lines:
+        # Get last word for rhyme analysis
+        words = line.strip().split()
+        if not words:
+            rhyme_scheme.append(None)
+            continue
+            
+        last_word = words[-1].lower().strip('.,!?;:')
+        rhyme_sound = get_rhyme_sound(last_word)
+        
+        # Check if this rhyme sound exists
+        found_group = None
+        for letter, sound in rhyme_groups.items():
+            if sound == rhyme_sound:
+                found_group = letter
+                break
+        
+        if found_group:
+            rhyme_scheme.append(found_group)
+        else:
+            rhyme_groups[current_letter] = rhyme_sound
+            rhyme_scheme.append(current_letter)
+            current_letter = chr(ord(current_letter) + 1)
+    
+    return rhyme_scheme
+
+def get_rhyme_sound(word):
+    """Get rhyme sound from word (simplified phonetic analysis)"""
+    # Simplified rhyme detection based on ending sounds
+    word = word.lower()
+    
+    # Common rhyme endings
+    if word.endswith('ing'):
+        return 'ing'
+    elif word.endswith('tion'):
+        return 'tion'
+    elif word.endswith('ly'):
+        return 'ly'
+    elif word.endswith('ed'):
+        return 'ed'
+    elif word.endswith('er'):
+        return 'er'
+    elif word.endswith('ay') or word.endswith('ey'):
+        return 'ay'
+    elif word.endswith('ight'):
+        return 'ight'
+    else:
+        # Use last 2-3 characters as approximation
+        return word[-2:] if len(word) > 2 else word
+
+def calculate_line_emotion(words, emotion_weights):
+    """Calculate emotional weight with context and modifiers"""
+    total_emotion = 0.0
+    modifier = 1.0
+    
+    for i, word in enumerate(words):
+        # Check for intensity modifiers
+        if word in emotion_weights and emotion_weights[word] > 1.0:
+            modifier = emotion_weights[word]
+            continue
+            
+        # Apply emotion weight with modifier
+        if word in emotion_weights:
+            emotion_value = emotion_weights[word] * modifier
+            total_emotion += emotion_value
+            modifier = 1.0  # Reset modifier after use
+    
+    return total_emotion / max(len(words), 1)
+
+def analyze_line_syllables_detailed(line):
+    """Detailed syllable analysis with stress patterns"""
+    words = line.split()
+    total_syllables = 0
+    stress_pattern = []
+    
+    for word in words:
+        word_syllables = estimate_syllables(word)
+        total_syllables += word_syllables
+        
+        # Simple stress pattern (first syllable stressed for most words)
+        if word_syllables == 1:
+            stress_pattern.append(True)
+        elif word_syllables == 2:
+            stress_pattern.extend([True, False])  # Trochaic
+        else:
+            # Alternate pattern for longer words
+            for i in range(word_syllables):
+                stress_pattern.append(i % 2 == 0)
+    
+    return {
+        'total_syllables': total_syllables,
+        'stress_pattern': stress_pattern,
+        'words': len(words)
+    }
+
+def determine_lyrical_complexity(line, words):
+    """Determine complexity based on multiple factors"""
+    word_count = len(words)
+    avg_word_length = sum(len(word) for word in words) / max(word_count, 1)
+    
+    if word_count > 10 or avg_word_length > 6:
+        return 'high'
+    elif word_count > 6 or avg_word_length > 4:
+        return 'medium'
+    else:
+        return 'low'
+
+def suggest_tempo_from_syllables(syllable_data, emotion):
+    """Suggest tempo modifications based on syllable density and emotion"""
+    syllable_density = syllable_data['total_syllables'] / max(syllable_data['words'], 1)
+    
+    base_modifier = 1.0
+    
+    # Adjust for syllable density
+    if syllable_density > 3:
+        base_modifier *= 0.9  # Slower for dense lyrics
+    elif syllable_density < 2:
+        base_modifier *= 1.1  # Faster for sparse lyrics
+    
+    # Adjust for emotion
+    if emotion > 0.5:
+        base_modifier *= 1.1  # Faster for happy emotions
+    elif emotion < -0.5:
+        base_modifier *= 0.9  # Slower for sad emotions
+    
+    return base_modifier
+
+def suggest_dynamics(emotion, line_index, total_lines):
+    """Suggest dynamic markings based on emotion and song position"""
+    # Base dynamics on emotion
+    if emotion > 0.6:
+        base_dynamic = 'f'  # forte
+    elif emotion > 0.2:
+        base_dynamic = 'mf'  # mezzo-forte
+    elif emotion > -0.2:
+        base_dynamic = 'mp'  # mezzo-piano
+    elif emotion > -0.6:
+        base_dynamic = 'p'  # piano
+    else:
+        base_dynamic = 'pp'  # pianissimo
+    
+    # Adjust for song position (crescendo/diminuendo)
+    position_ratio = line_index / max(total_lines - 1, 1)
+    
+    if 0.2 < position_ratio < 0.4:  # Building section
+        return base_dynamic + ' crescendo'
+    elif 0.6 < position_ratio < 0.8:  # Climax section
+        return 'ff' if emotion > 0 else 'f'
+    elif position_ratio > 0.9:  # Ending section
+        return base_dynamic + ' diminuendo'
+    
+    return base_dynamic
+
+def determine_melodic_direction(emotion, line_index, total_lines):
+    """Determine melodic direction based on emotion and song structure"""
+    position_ratio = line_index / max(total_lines - 1, 1)
+    
+    if emotion > 0.4:
+        return 'ascending'
+    elif emotion < -0.4:
+        return 'descending'
+    elif position_ratio < 0.3:
+        return 'ascending'  # Building up
+    elif position_ratio > 0.7:
+        return 'descending'  # Winding down
+    else:
+        return 'wave'
+
+def suggest_harmony_from_emotion(emotion):
+    """Suggest harmonic content based on emotional weight"""
+    if emotion > 0.5:
+        return 'major_with_extensions'  # Bright major chords with 7ths, 9ths
+    elif emotion > 0.2:
+        return 'major'  # Simple major chords
+    elif emotion > -0.2:
+        return 'modal'  # Modal harmonies (Dorian, Mixolydian)
+    elif emotion > -0.5:
+        return 'minor'  # Minor chords
+    else:
+        return 'minor_with_tensions'  # Minor with b9, b13 for darkness
+
+def get_enhanced_rhythm_from_syllables(syllable_data):
+    """Generate enhanced rhythm patterns based on syllable structure"""
+    total_syllables = syllable_data['total_syllables']
+    stress_pattern = syllable_data['stress_pattern']
+    
+    if total_syllables <= 4:
+        return 'simple_quarter_notes'
+    elif total_syllables <= 8:
+        return 'mixed_quarters_eighths'
+    elif total_syllables <= 12:
+        return 'eighth_note_heavy'
+    else:
+        return 'complex_subdivisions'
 
 def estimate_syllables(word):
     """Estimate syllable count for a word"""

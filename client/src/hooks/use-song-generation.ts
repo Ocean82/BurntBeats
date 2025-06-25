@@ -47,7 +47,22 @@ export const useSongGeneration = ({
   // Generate song mutation
   const generateSongMutation = useMutation({
     mutationFn: async (songData: InsertSong) => {
-      const response = await apiRequest("POST", "/api/songs/generate", songData);
+      const response = await fetch("/api/songs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: songData.title,
+          lyrics: songData.lyrics,
+          genre: songData.genre,
+          tempo: parseInt(songData.tempo?.toString() || '120'),
+          key: songData.key,
+          duration: parseInt(songData.duration?.toString() || '30'),
+          userId: songData.userId
+        }),
+      });
+      
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || 'Failed to generate song');

@@ -49,7 +49,7 @@ export class MusicAPI {
   // Generate basic song
   static async generateSong(req: Request, res: Response) {
     try {
-      const { title, lyrics, genre, tempo, key, duration } = req.body;
+      const { title, lyrics, genre, tempo, key, duration, userId, vocalStyle, singingStyle, mood, tone } = req.body;
 
       if (!title || !lyrics) {
         return res.status(400).json({ error: "Title and lyrics are required" });
@@ -68,56 +68,69 @@ export class MusicAPI {
         return res.status(400).json({ error: "Duration must be between 10 and 300 seconds" });
       }
 
-      console.log("🎵 Generating basic song...");
+      console.log("🎵 Generating song with full MelodyGenerator + VocalGenerator pipeline...");
 
-      const outputPath = path.join(MusicAPI.uploadsDir, `song_${Date.now()}.wav`);
+      // Import the full music generation system
+      const { generateSong } = await import("../music-generator");
 
-      const args = [
-        path.join(process.cwd(), "server/music-generator.py"),
-        `--title="${title}"`,
-        `--lyrics="${lyrics}"`,
-        `--genre="${genre || 'pop'}"`,
-        `--tempo=${tempo || 120}`,
-        `--key="${key || 'C'}"`,
-        `--duration=${duration || 30}`,
-        `--output_path="${outputPath}"`
-      ];
+      const songData = {
+        title,
+        lyrics,
+        genre: genre || 'pop',
+        tempo: tempo || 120,
+        key: key || 'C',
+        duration: duration || 30,
+        userId: userId || 'guest',
+        mood: mood || 'happy',
+        vocalStyle: vocalStyle || 'smooth',
+        singingStyle: singingStyle || 'melodic',
+        tone: tone || 'warm',
+        songLength: `0:${Math.floor((duration || 30) / 60)}:${String((duration || 30) % 60).padStart(2, '0')}`
+      };
 
-      let stdout, stderr;
+      console.log("🎼 Starting MelodyGenerator + VocalGenerator pipeline...");
+      const generationResult = await generateSong(songData);
+
+      // Store song in database if storage is available
+      let storedSong = null;
       try {
-        const result = await execAsync(`python3 "${args[0]}" ${args.slice(1).join(' ')}`);
-        stdout = result.stdout;
-        stderr = result.stderr;
-      } catch (pythonError) {
-        console.error("Python script execution failed:", pythonError);
-        // Try fallback with python instead of python3
-        try {
-          const fallbackResult = await execAsync(`python "${args[0]}" ${args.slice(1).join(' ')}`);
-          stdout = fallbackResult.stdout;
-          stderr = fallbackResult.stderr;
-        } catch (fallbackError) {
-          throw new Error(`Both python3 and python failed: ${fallbackError.message}`);
+        const { storage } = await import("../storage");
+        storedSong = await storage.createSong({
+          title,
+          lyrics,
+          genre: genre || 'pop',
+          tempo: tempo || 120,
+          key: key || 'C',
+          duration: duration || 30,
+          generatedAudioPath: generationResult.generatedAudioPath,
+          userId: userId || 'guest',
+          status: 'completed',
+          generationProgress: 100
+        });
+      } catch (dbError) {
+        console.warn("Could not store song in database:", dbError.message);
+      }
+
+      // Calculate file size if audio file exists
+      let fileSize = 0;
+      try {
+        if (generationResult.generatedAudioPath) {
+          const cleanPath = generationResult.generatedAudioPath.startsWith('/') 
+            ? generationResult.generatedAudioPath.slice(1) 
+            : generationResult.generatedAudioPath;
+          const fullPath = path.join(process.cwd(), cleanPath);
+          if (fs.existsSync(fullPath)) {
+            const stats = fs.statSync(fullPath);
+            fileSize = stats.size;
+          }
         }
+      } catch (error) {
+        console.warn("Could not calculate file size:", error);
       }
 
-      if (stderr && !stderr.includes('⚠️') && !stderr.includes('🎵')) {
-        console.error("Generation stderr:", stderr);
-      }
-
-      if (!fs.existsSync(outputPath)) {
-        throw new Error("Song generation failed - no output file created");
-      }
-
-      // The simple generator creates WAV files directly, no MIDI conversion needed
-      const audioPath = outputPath;
-      const songId = Date.now();
-
-      // Generate watermarked preview version
-      const { WatermarkService } = await import("../watermark-service");
-      const watermarkedPath = WatermarkService.generateWatermarkedTrack(audioPath, songId.toString(), title);
-
+      // Return complete Song object with proper URLs
       const song = {
-        id: songId,
+        id: storedSong?.id || Date.now(),
         title,
         lyrics,
         genre: genre || 'pop',
@@ -126,24 +139,27 @@ export class MusicAPI {
         duration: duration || 30,
         status: "completed" as const,
         generationProgress: 100,
-        generatedAudioPath: `/uploads/${path.basename(audioPath)}`,
-        audioUrl: `/uploads/${path.basename(watermarkedPath)}`, // Always serve watermarked version by default
-        previewUrl: `/uploads/${path.basename(watermarkedPath)}`,
-        originalAudioPath: `/uploads/${path.basename(audioPath)}`, // Store clean version path
-        midiUrl: `/uploads/${path.basename(outputPath)}`,
-        hasWatermark: true,
-        sections: null,
-        settings: null,
+        generatedAudioPath: generationResult.generatedAudioPath,
+        audioUrl: `/api/audio/${storedSong?.id || Date.now()}`, // Use streaming endpoint
+        previewUrl: generationResult.generatedAudioPath, // Direct file access for preview
+        downloadUrl: generationResult.generatedAudioPath, // Direct file access for download
+        hasWatermark: false,
+        fileSize,
+        sections: generationResult.sections || null,
+        settings: generationResult.settings || null,
+        melody: generationResult.melody || null,
+        vocals: generationResult.vocals || null,
         planRestricted: false,
         playCount: 0,
         likes: 0,
         rating: 4,
         createdAt: new Date(),
         updatedAt: new Date(),
-        userId: req.body.userId || 1
+        userId: userId || 'guest',
+        voiceUsed: vocalStyle || 'smooth'
       };
 
-      console.log("✅ Basic song generation completed");
+      console.log(`✅ Song generation completed with full pipeline: ${song.audioUrl}`);
       res.json(song);
 
     } catch (error) {
@@ -153,6 +169,49 @@ export class MusicAPI {
         details: error.message 
       });
     }
+  }
+
+  // Fallback audio generation if main generator fails
+  private static async generateFallbackAudio(outputPath: string, songData: any): Promise<void> {
+    console.log("Using fallback audio generation...");
+
+    try {
+      // Generate basic audio using FFmpeg if available
+      const duration = songData.duration || 30;
+      const baseFreq = MusicAPI.getGenreBaseFrequency(songData.genre);
+
+      const ffmpegCommand = `ffmpeg -f lavfi -i "sine=frequency=${baseFreq}:duration=${duration}" -f lavfi -i "sine=frequency=${baseFreq/2}:duration=${duration}" -filter_complex "[0][1]amix=inputs=2:duration=first[out]" -map "[out]" -ar 44100 -ac 2 -b:a 128k "${outputPath}" -y`;
+
+      await execAsync(ffmpegCommand);
+      console.log("✅ Fallback audio generated successfully");
+
+    } catch (ffmpegError) {
+      console.warn("FFmpeg fallback failed, creating silent audio file");
+
+      // Create a minimal MP3 file as last resort
+      const silentMp3Buffer = Buffer.from([
+        // Minimal MP3 header for 1 second of silence
+        0xFF, 0xFB, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+      ]);
+
+      fs.writeFileSync(outputPath, silentMp3Buffer);
+      console.log("✅ Silent fallback audio created");
+    }
+  }
+
+  private static getGenreBaseFrequency(genre: string): number {
+    const genreFreqs: Record<string, number> = {
+      'pop': 261.63,     // C4
+      'rock': 329.63,    // E4
+      'jazz': 349.23,    // F4
+      'classical': 392.00, // G4
+      'electronic': 261.63, // C4
+      'hip-hop': 261.63,   // C4
+      'country': 392.00,   // G4
+      'r&b': 261.63      // C4
+    };
+    return genreFreqs[genre?.toLowerCase()] || 261.63;
   }
 
   // Generate AI-enhanced music
@@ -281,6 +340,20 @@ export class MusicAPI {
     try {
       const songId = parseInt(req.params.id);
 
+      // Try to get song from storage
+      try {
+        const { storage } = await import("../storage");
+        const song = await storage.getSong(songId);
+
+        if (song) {
+          res.json(song);
+          return;
+        }
+      } catch (storageError) {
+        console.warn("Storage not available, using mock data:", storageError.message);
+      }
+
+      // Fallback to mock data if storage not available
       const song = {
         id: songId,
         title: "Generated Song",
@@ -314,7 +387,19 @@ export class MusicAPI {
   // Get user songs
   static async getUserSongs(req: Request, res: Response) {
     try {
-      const userId = req.query.userId || 1;
+      const userId = req.query.userId || '1';
+
+      // Try to get songs from storage
+      try {
+        const { storage } = await import("../storage");
+        const songs = await storage.getUserSongs(userId.toString());
+        res.json(songs);
+        return;
+      } catch (storageError) {
+        console.warn("Storage not available, returning empty array:", storageError.message);
+      }
+
+      // Fallback to empty array if storage not available
       res.json([]);
     } catch (error) {
       console.error("Error fetching songs:", error);
