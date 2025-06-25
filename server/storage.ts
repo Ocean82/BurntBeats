@@ -11,7 +11,7 @@ import {
   type InsertSong,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -19,12 +19,12 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
-  
+
   createVoiceSample(voiceSample: InsertVoiceSample): Promise<VoiceSample>;
   getVoiceSamplesByUser(userId: string): Promise<VoiceSample[]>;
   getVoiceSample(id: number): Promise<VoiceSample | undefined>;
   deleteVoiceSample(id: number): Promise<boolean>;
-  
+
   createSong(song: InsertSong): Promise<Song>;
   getSongsByUser(userId: string): Promise<Song[]>;
   getSong(id: number): Promise<Song | undefined>;
@@ -85,6 +85,32 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(voiceSamples).where(eq(voiceSamples.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
   }
+  async getVoiceSamples(userId: string, includeDeleted = false): Promise<VoiceSample[]> {
+    const whereClause = includeDeleted 
+      ? eq(voiceSamples.userId, userId)
+      : and(eq(voiceSamples.userId, userId), eq(voiceSamples.isDeleted, false));
+
+    return db.select().from(voiceSamples).where(whereClause);
+  }
+
+  async softDeleteVoiceSample(sampleId: number, userId: string): Promise<void> {
+    await db.update(voiceSamples)
+      .set({ 
+        isDeleted: true, 
+        deletedAt: new Date() 
+      })
+      .where(and(eq(voiceSamples.id, sampleId), eq(voiceSamples.userId, userId)));
+  }
+
+  async restoreVoiceSample(sampleId: number, userId: string): Promise<void> {
+    await db.update(voiceSamples)
+      .set({ 
+        isDeleted: false, 
+        deletedAt: null 
+      })
+      .where(and(eq(voiceSamples.id, sampleId), eq(voiceSamples.userId, userId)));
+  }
+
 
   // Song operations
   async createSong(insertSong: InsertSong): Promise<Song> {
@@ -116,6 +142,41 @@ export class DatabaseStorage implements IStorage {
   async deleteSong(id: number): Promise<boolean> {
     const result = await db.delete(songs).where(eq(songs.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+  async getSongs(userId: string, includeDeleted = false): Promise<Song[]> {
+    const whereClause = includeDeleted 
+      ? eq(songs.userId, userId)
+      : and(eq(songs.userId, userId), eq(songs.isDeleted, false));
+
+    return db.select().from(songs).where(whereClause);
+  }
+
+  async getSongWithRemixes(songId: number): Promise<Song & { remixes?: Song[] }> {
+    const [song] = await db.select().from(songs).where(eq(songs.id, songId));
+    if (!song) throw new Error('Song not found');
+
+    const remixes = await db.select().from(songs)
+      .where(and(eq(songs.parentSongId, songId), eq(songs.isDeleted, false)));
+
+    return { ...song, remixes };
+  }
+
+  async softDeleteSong(songId: number, userId: string): Promise<void> {
+    await db.update(songs)
+      .set({ 
+        isDeleted: true, 
+        deletedAt: new Date() 
+      })
+      .where(and(eq(songs.id, songId), eq(songs.userId, userId)));
+  }
+
+  async restoreSong(songId: number, userId: string): Promise<void> {
+    await db.update(songs)
+      .set({ 
+        isDeleted: false, 
+        deletedAt: null 
+      })
+      .where(and(eq(songs.id, songId), eq(songs.userId, userId)));
   }
 
   async getSongVersions(songId: number): Promise<any[]> {

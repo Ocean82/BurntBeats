@@ -139,6 +139,56 @@ export const WebSocketMessageSchema = z.discriminatedUnion('type', [
   })
 ]);
 
+// Song sections validation schema
+export const SongSectionSchema = z.object({
+  id: z.string().min(1),
+  label: z.enum(['Intro', 'Verse', 'Chorus', 'Bridge', 'Outro', 'Instrumental']),
+  start: z.number().min(0),
+  end: z.number().min(0),
+  lyrics: z.string().optional(),
+  key: z.string().optional(),
+  tempo: z.number().min(60).max(200).optional(),
+  description: z.string().optional()
+}).refine((data) => data.end > data.start, {
+  message: "End time must be greater than start time",
+  path: ["end"]
+});
+
+export const SongSectionsArraySchema = z.array(SongSectionSchema)
+  .min(1, "At least one section is required")
+  .refine((sections) => {
+    // Check for overlapping sections
+    for (let i = 0; i < sections.length - 1; i++) {
+      for (let j = i + 1; j < sections.length; j++) {
+        const a = sections[i];
+        const b = sections[j];
+        if (!(a.end <= b.start || b.end <= a.start)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }, {
+    message: "Sections cannot overlap"
+  });
+
+// Voice sample metadata validation
+export const VoiceSampleMetadataSchema = z.object({
+  sampleRate: z.number().min(8000).max(192000).default(44100),
+  bitDepth: z.enum([16, 24, 32]).default(16),
+  fileSize: z.number().positive(),
+  isProcessed: z.boolean().default(false)
+});
+
+// Remix/Fork validation
+export const RemixSongSchema = z.object({
+  originalSongId: z.coerce.number().positive().int(),
+  title: z.string().min(1).max(100),
+  changes: z.record(z.unknown()).optional(),
+  preserveVocals: z.boolean().default(false),
+  preserveMelody: z.boolean().default(false)
+});
+
 // Utility validation functions
 export function validateAndTransform<T>(schema: z.ZodSchema<T>, data: unknown): T {
   try {
