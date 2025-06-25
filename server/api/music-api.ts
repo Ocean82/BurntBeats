@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import path from 'path';
-import fs from 'fs';
+import { promises as fs } from 'fs';
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import { validateSongRequest, validateMusic21Request } from '../utils/validators';
+import { ErrorHandler, FileUtils, CommandExecutor } from '../utils/error-handler';
 import { SongGenerator } from '../services/song-generator';
 import { pricingService } from '../pricing-service';
 
@@ -55,10 +56,7 @@ export class MusicAPI {
       // Centralized validation
       const validation = validateSongRequest(req.body);
       if (!validation.success) {
-        return res.status(400).json({ 
-          error: "Invalid request data", 
-          details: validation.error 
-        });
+        return ErrorHandler.handleValidationError(res, validation.error);
       }
 
       const songData = validation.data;
@@ -75,10 +73,7 @@ export class MusicAPI {
       });
 
       if (generationResult.status === 'failed') {
-        return res.status(400).json({ 
-          error: "Song generation failed", 
-          details: generationResult.error 
-        });
+        return ErrorHandler.handleError(res, new Error(generationResult.error), "Song generation failed", 400);
       }
 
       const generatedSong = generationResult.song;
@@ -153,15 +148,12 @@ export class MusicAPI {
 
       console.log(`✅ Advanced song generation completed: ${song.audioUrl}`);
       console.log(`🎯 Sections generated: ${song.sections?.length || 0} sections for synced playback`);
-      
+
       res.json(song);
 
     } catch (error) {
       console.error("Song generation error:", error);
-      res.status(500).json({ 
-        error: "Failed to generate song", 
-        details: error.message 
-      });
+      ErrorHandler.handleError(res, error, "Failed to generate song");
     }
   }
 

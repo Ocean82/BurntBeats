@@ -43,7 +43,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm install cross-env --save-dev"
+args = "npm install"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"

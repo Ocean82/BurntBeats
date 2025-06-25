@@ -81,3 +81,92 @@ export const requireFeature = (feature: string) =>
 
 export const requirePlan = (minPlan: 'free' | 'basic' | 'pro' | 'enterprise') => 
   checkPlanAccess({ minPlan });
+import { Request, Response, NextFunction } from 'express';
+import { pricingService } from '../pricing-service';
+import { ErrorHandler } from '../utils/error-handler';
+
+export function checkPlanQuota(minimumPlan: string = 'free') {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = (req as any).user;
+      
+      if (!user) {
+        // Allow guest users for free tier
+        if (minimumPlan === 'free') {
+          return next();
+        }
+        return ErrorHandler.handleUnauthorized(res, 'Authentication required');
+      }
+
+      const usageCheck = await pricingService.checkUsageLimit(user.id.toString());
+      
+      if (!usageCheck.canCreate) {
+        return res.status(429).json({
+          error: 'Usage limit exceeded',
+          details: usageCheck.reason,
+          upgradeRequired: true,
+          currentPlan: user.plan || 'free'
+        });
+      }
+
+      next();
+    } catch (error) {
+      ErrorHandler.handleError(res, error, 'Failed to check plan quota');
+    }
+  };
+}
+
+export function requireFeature(feature: string) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = (req as any).user;
+      const userPlan = user?.plan || 'free';
+      
+      const hasAccess = pricingService.hasFeatureAccess(userPlan, feature as any);
+      
+      if (!hasAccess) {
+        const upgradeMessage = pricingService.getUpgradeMessage(userPlan, feature);
+        return res.status(403).json({
+          error: 'Feature not available',
+          details: upgradeMessage,
+          requiredFeature: feature,
+          currentPlan: userPlan,
+          upgradeRequired: true
+        });
+      }
+
+      next();
+    } catch (error) {
+      ErrorHandler.handleError(res, error, 'Failed to check feature access');
+    }
+  };
+}
+
+export function requirePlan(minimumPlan: 'free' | 'basic' | 'pro' | 'enterprise') {
+  const planHierarchy = { free: 0, basic: 1, pro: 2, enterprise: 3 };
+  
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = (req as any).user;
+      const userPlan = user?.plan || 'free';
+      
+      const userPlanLevel = planHierarchy[userPlan as keyof typeof planHierarchy] || 0;
+      const requiredPlanLevel = planHierarchy[minimumPlan];
+      
+      if (userPlanLevel < requiredPlanLevel) {
+        const upgradeMessage = pricingService.getUpgradeMessage(userPlan, minimumPlan);
+        return res.status(403).json({
+          error: 'Plan upgrade required',
+          details: upgradeMessage,
+          currentPlan: userPlan,
+          requiredPlan: minimumPlan,
+          upgradeRequired: true
+        });
+      }
+
+      next();
+    } catch (error) {
+      ErrorHandler.handleError(res, error, 'Failed to check plan requirements');
+    }
+  };
+}
