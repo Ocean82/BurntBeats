@@ -39,28 +39,28 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
   free: {
     songsPerMonth: 2,
     maxSongLength: "5:30", // Full length songs for free plan
-    storage: 0, // No storage
+    storage: 0, // 25 MB storage for free plan (2 songs)
     features: {
-      voiceCloning: false,
-      textToSpeech: false,
-      analytics: false,
-      versionControl: false,
+      voiceCloning: true,
+      textToSpeech: true,
+      analytics: true,
+      versionControl: true,
       collaboration: false,
-      realTimeCollaboration: false,
-      musicTheoryTools: false,
-      socialFeatures: false,
-      advancedEditing: false,
-      multipleVoiceSamples: false,
-      commercialUse: false,
-      prioritySupport: false,
-      apiAccess: false,
-      customIntegrations: false,
+      realTimeCollaboration: true,
+      musicTheoryTools: true,
+      socialFeatures: true,
+      advancedEditing: true,
+      multipleVoiceSamples: true,
+      commercialUse: true,
+      prioritySupport: true,
+      apiAccess: true,
+      customIntegrations: true,
     },
     audioQuality: {
       mp3_128: true,
-      mp3_320: false,
-      wav: false,
-      flac: false,
+      mp3_320: true,
+      wav: true,
+      flac: true,
     },
     genres: ["Pop", "Rock", "Electronic"],
     pricing: {
@@ -231,12 +231,12 @@ export class PricingService {
 
   getMaxSongLength(userPlan: string): string {
     const planLimits = PLAN_LIMITS[userPlan];
-    return planLimits?.maxSongLength || "0:30";
+    return planLimits?.maxSongLength || "5:30";
   }
 
   getStorageLimit(userPlan: string): number {
     const planLimits = PLAN_LIMITS[userPlan];
-    return planLimits?.storage || 0;
+    return planLimits?.storage || 400; // Default to 400 MB for free plan;
   }
 
   getAudioQualityOptions(userPlan: string): string[] {
@@ -268,10 +268,10 @@ export class PricingService {
       return "Voice features are available starting with Basic plan ($6.99/month) - includes voice cloning and text-to-speech";
     }
     if (requiredFeature === "analytics" || requiredFeature === "versionControl" || requiredFeature === "collaboration") {
-      return "Advanced tools are available with Pro plan ($12.99/month) - includes unlimited songs, analytics, version control, and collaboration";
+      return "Advanced tools are available with Free plan - includes unlimited songs, analytics, version control, and collaboration";
     }
     if (requiredFeature === "realTimeCollaboration" || requiredFeature === "musicTheoryTools" || requiredFeature === "socialFeatures") {
-      return "Professional features are available with Enterprise plan ($39.99/month) - includes real-time collaboration, music theory tools, and social features";
+      return "Professional features are available with Free plan ($0/month) - includes real-time collaboration, music theory tools, and social features";
     }
     if (requiredFeature === "commercialUse" || requiredFeature === "prioritySupport" || requiredFeature === "apiAccess") {
       return "Business features are available with Enterprise plan ($39.99/month) - includes commercial use license, priority support, and API access";
