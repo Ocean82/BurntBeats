@@ -10,6 +10,23 @@ interface LicenseOptions {
   issuedAt?: Date;
   tier?: 'base' | 'top';
   userEmail?: string;
+  artistName?: string;
+  beatId?: string;
+}
+
+interface BeatPopularityStats {
+  beatId: string;
+  songTitle: string;
+  totalLicenses: number;
+  tierBreakdown: {
+    bonus: number;
+    base: number;
+    top: number;
+  };
+  totalRevenue: number;
+  firstLicensed: string;
+  lastLicensed: string;
+  popularityScore: number;
 }
 
 export function generateLicense(options: LicenseOptions): string {
@@ -20,7 +37,9 @@ export function generateLicense(options: LicenseOptions): string {
     outputDir = path.join(process.cwd(), 'uploads/licenses'),
     issuedAt = new Date(),
     tier = 'base',
-    userEmail = 'user@example.com'
+    userEmail = 'user@example.com',
+    artistName = 'Artist',
+    beatId = Math.random().toString(36).slice(2, 8).toUpperCase()
   } = options;
 
   const dateStr = issuedAt.toISOString().split('T')[0];
@@ -41,13 +60,16 @@ BURNT BEATS COMMERCIAL MUSIC LICENSE
 ${licenseType} License
 
 =====================================
-LICENSE DETAILS
+LICENSE CERTIFICATE
 =====================================
 Issued Date: ${dateStr}
 Track Title: "${songTitle}"
+Artist Name: ${artistName}
+Beat ID: ${beatId}
 Licensee ID: ${userId}
 Licensee Email: ${userEmail}
 License ID: ${licenseId}
+Certificate Authority: Burnt Beats Music Platform
 License Type: ${licenseType}
 
 =====================================
@@ -117,7 +139,125 @@ License Generated: ${issuedAt.toISOString()}
   fs.writeFileSync(filePath, text.trim());
   console.log(`📄 License file created at: ${filePath}`);
 
+  // Track beat popularity
+  trackBeatPopularity(beatId, songTitle, tier, userEmail);
+
   return filePath;
+}
+
+// Beat popularity tracking system
+export async function trackBeatPopularity(
+  beatId: string, 
+  songTitle: string, 
+  tier: 'bonus' | 'base' | 'top', 
+  userEmail: string
+): Promise<void> {
+  try {
+    const statsDir = path.join(process.cwd(), 'uploads/beat-stats');
+    const statsFile = path.join(statsDir, `${beatId}_stats.json`);
+    
+    // Ensure directory exists
+    if (!fs.existsSync(statsDir)) {
+      fs.mkdirSync(statsDir, { recursive: true });
+    }
+
+    // Pricing for each tier
+    const tierPricing = {
+      bonus: 2.99,
+      base: 4.99,
+      top: 9.99
+    };
+
+    let stats: BeatPopularityStats;
+
+    // Load existing stats or create new
+    if (fs.existsSync(statsFile)) {
+      const existingStats = JSON.parse(fs.readFileSync(statsFile, 'utf8'));
+      stats = existingStats;
+      
+      // Update existing stats
+      stats.totalLicenses += 1;
+      stats.tierBreakdown[tier] += 1;
+      stats.totalRevenue += tierPricing[tier];
+      stats.lastLicensed = new Date().toISOString();
+      
+      // Calculate popularity score (weighted by tier)
+      const weights = { bonus: 1, base: 2, top: 3 };
+      stats.popularityScore = 
+        (stats.tierBreakdown.bonus * weights.bonus) +
+        (stats.tierBreakdown.base * weights.base) +
+        (stats.tierBreakdown.top * weights.top);
+        
+    } else {
+      // Create new stats
+      stats = {
+        beatId,
+        songTitle,
+        totalLicenses: 1,
+        tierBreakdown: {
+          bonus: tier === 'bonus' ? 1 : 0,
+          base: tier === 'base' ? 1 : 0,
+          top: tier === 'top' ? 1 : 0
+        },
+        totalRevenue: tierPricing[tier],
+        firstLicensed: new Date().toISOString(),
+        lastLicensed: new Date().toISOString(),
+        popularityScore: tier === 'bonus' ? 1 : tier === 'base' ? 2 : 3
+      };
+    }
+
+    // Save updated stats
+    fs.writeFileSync(statsFile, JSON.stringify(stats, null, 2));
+    
+    console.log(`📊 Beat popularity updated: ${beatId} - ${stats.totalLicenses} licenses, $${stats.totalRevenue.toFixed(2)} revenue`);
+    
+  } catch (error) {
+    console.error('Failed to track beat popularity:', error);
+  }
+}
+
+// Get beat popularity stats
+export function getBeatPopularityStats(beatId: string): BeatPopularityStats | null {
+  try {
+    const statsFile = path.join(process.cwd(), 'uploads/beat-stats', `${beatId}_stats.json`);
+    
+    if (!fs.existsSync(statsFile)) {
+      return null;
+    }
+    
+    return JSON.parse(fs.readFileSync(statsFile, 'utf8'));
+  } catch (error) {
+    console.error('Failed to load beat popularity stats:', error);
+    return null;
+  }
+}
+
+// Get top performing beats
+export function getTopPerformingBeats(limit: number = 10): BeatPopularityStats[] {
+  try {
+    const statsDir = path.join(process.cwd(), 'uploads/beat-stats');
+    
+    if (!fs.existsSync(statsDir)) {
+      return [];
+    }
+    
+    const statFiles = fs.readdirSync(statsDir)
+      .filter(file => file.endsWith('_stats.json'));
+    
+    const allStats: BeatPopularityStats[] = statFiles.map(file => {
+      const content = fs.readFileSync(path.join(statsDir, file), 'utf8');
+      return JSON.parse(content);
+    });
+    
+    // Sort by popularity score (descending)
+    return allStats
+      .sort((a, b) => b.popularityScore - a.popularityScore)
+      .slice(0, limit);
+      
+  } catch (error) {
+    console.error('Failed to get top performing beats:', error);
+    return [];
+  }
 }
 
 export function getLicenseById(licenseId: string): string | null {

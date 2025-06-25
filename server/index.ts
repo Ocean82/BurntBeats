@@ -3,6 +3,7 @@ import session from "express-session";
 import cors from "cors";
 import { createServer } from "http";
 import { registerRoutes } from "./routes";
+import bonusFeaturesApi from "./api/bonus-features-api";
 import { validateEnvironmentVariables } from "./env-check";
 import path from "path";
 import fs from "fs";
@@ -272,6 +273,9 @@ process.on('SIGINT', () => {
 
 // Register routes before starting server
 registerRoutes(app);
+
+// Register bonus features API
+app.use('/api', bonusFeaturesApi);
 
 // Serve static files from dist/public in production or development
 const publicPath = path.join(process.cwd(), 'dist', 'public');
