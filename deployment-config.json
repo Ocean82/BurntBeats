@@ -1,7 +1,7 @@
 {
   "name": "burnt-beats",
   "displayName": "Burnt Beats - AI Music Creation Platform",
-  "run": "node dist/index.js",
+  "run": "node dist/index.cjs",
   "build": {
     "client": "node build-client.js",
     "server": "node build-server.js",
