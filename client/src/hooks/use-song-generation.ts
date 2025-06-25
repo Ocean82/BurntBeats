@@ -47,12 +47,20 @@ export const useSongGeneration = ({
   // Generate song mutation
   const generateSongMutation = useMutation({
     mutationFn: async (songData: InsertSong) => {
-      const response = await fetch("/api/songs/generate", {
+      const response = await fetch("/api/music/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(songData),
+        body: JSON.stringify({
+          title: songData.title,
+          lyrics: songData.lyrics,
+          genre: songData.genre,
+          tempo: parseInt(songData.tempo?.toString() || '120'),
+          key: songData.key,
+          duration: parseInt(songData.duration?.toString() || '30'),
+          userId: songData.userId
+        }),
       });
       
       if (!response.ok) {

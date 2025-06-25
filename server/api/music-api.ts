@@ -84,23 +84,45 @@ export class MusicAPI {
         fs.mkdirSync(MusicAPI.uploadsDir, { recursive: true });
       }
 
-      // Generate the actual audio file using music generator
-      const { musicGenerator } = await import("../music-generator");
+      // Generate melody using MelodyGenerator
+      const { melodyGenerator } = await import("../melody-generator");
       
-      const songData = {
-        title,
+      const melodyConfig = {
         lyrics,
         genre: genre || 'pop',
+        mood: 'happy', // You can derive this from lyrics or make it configurable
         tempo: tempo || 120,
-        key: key || 'C',
-        duration: duration || 30,
-        userId: userId || 'guest',
-        mood: 'happy', // Default mood
-        songLength: `0:${duration || 30}` // Format for duration
+        structure: ['verse', 'chorus', 'verse', 'chorus', 'bridge', 'chorus']
       };
 
-      console.log("Generating song with enhanced music generator...");
-      const generationResult = await musicGenerator.generateSong(songData);
+      console.log("Generating melody from lyrics...");
+      const melody = await melodyGenerator.generateMelodyFromLyrics(melodyConfig);
+      
+      // Generate vocals using VocalGenerator
+      const { VocalGenerator } = await import("../vocal-generator");
+      const vocalGenerator = VocalGenerator.getInstance();
+      
+      const vocalOptions = {
+        vocalStyle: 'smooth',
+        singingStyle: 'melodic',
+        tone: 'warm',
+        genre: genre || 'pop',
+        mood: 'happy'
+      };
+
+      console.log("Generating vocals...");
+      const vocals = await vocalGenerator.generateVocals(lyrics, null, melody, vocalOptions);
+      
+      const generationResult = {
+        audioPath: vocals.audioUrl,
+        sections: melody.phrases,
+        metadata: {
+          melody: melody.audioFeatures,
+          vocals: vocals.processingMetadata,
+          totalDuration: melody.totalDuration,
+          noteCount: melody.noteCount
+        }
+      };
 
       // Copy the generated file to our final location with proper naming
       if (fs.existsSync(generationResult.audioPath.replace('/', ''))) {
@@ -351,6 +373,20 @@ export class MusicAPI {
     try {
       const songId = parseInt(req.params.id);
 
+      // Try to get song from storage
+      try {
+        const { storage } = await import("../storage");
+        const song = await storage.getSong(songId);
+        
+        if (song) {
+          res.json(song);
+          return;
+        }
+      } catch (storageError) {
+        console.warn("Storage not available, using mock data:", storageError.message);
+      }
+
+      // Fallback to mock data if storage not available
       const song = {
         id: songId,
         title: "Generated Song",
@@ -384,7 +420,19 @@ export class MusicAPI {
   // Get user songs
   static async getUserSongs(req: Request, res: Response) {
     try {
-      const userId = req.query.userId || 1;
+      const userId = req.query.userId || '1';
+
+      // Try to get songs from storage
+      try {
+        const { storage } = await import("../storage");
+        const songs = await storage.getUserSongs(userId.toString());
+        res.json(songs);
+        return;
+      } catch (storageError) {
+        console.warn("Storage not available, returning empty array:", storageError.message);
+      }
+
+      // Fallback to empty array if storage not available
       res.json([]);
     } catch (error) {
       console.error("Error fetching songs:", error);
