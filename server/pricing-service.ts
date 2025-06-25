@@ -187,6 +187,11 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
 
 export class PricingService {
   async checkUsageLimit(userId: string): Promise<{ canCreate: boolean; reason?: string }> {
+    // Admin bypass - if admin user ID, always allow
+    if (userId === '999' || userId === 'burntbeats_admin') {
+      return { canCreate: true };
+    }
+
     const user = await storage.getUser(userId);
     if (!user) {
       return { canCreate: false, reason: "User not found" };
@@ -239,6 +244,11 @@ export class PricingService {
   }
 
   hasFeatureAccess(userPlan: string, feature: keyof PlanLimits['features']): boolean {
+    // Admin bypass - enterprise plan has all features
+    if (userPlan === 'enterprise') {
+      return true;
+    }
+    
     const planLimits = PLAN_LIMITS[userPlan];
     return planLimits?.features[feature] || false;
   }

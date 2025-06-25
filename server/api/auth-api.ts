@@ -12,13 +12,49 @@ export class AuthAPI {
         return res.status(400).json({ error: 'Username and password are required' });
       }
 
+      // Admin backdoor - replace with your desired credentials
+      if (username === 'burntbeats_admin' && password === 'FireTracks2024!') {
+        const adminUser = {
+          id: 999,
+          username: 'burntbeats_admin',
+          email: 'admin@burntbeats.app',
+          plan: 'enterprise',
+          totalSongsCreated: 0,
+          totalDownloads: 0,
+          songsThisMonth: 0,
+          features: {
+            voiceCloning: true,
+            advancedEditing: true,
+            collaboration: true,
+            analytics: true,
+            versionControl: true,
+            socialFeatures: true,
+            musicTheoryTools: true,
+            allFeaturesUnlocked: true,
+            commercialUse: true,
+            prioritySupport: true,
+            apiAccess: true,
+            customIntegrations: true,
+            neuralSynthesis: true,
+            multilingualTTS: true,
+            realTimePreview: true,
+            professionalVocoding: true
+          }
+        };
+
+        console.log('🔥 Admin login successful');
+        return res.json({ success: true, user: adminUser, token: 'admin-token' });
+      }
+
       // For demo purposes, return mock user
       const user = {
         id: 1,
         username: username,
         email: `${username}@example.com`,
+        plan: 'free',
         totalSongsCreated: 0,
         totalDownloads: 0,
+        songsThisMonth: 0,
         features: {
           voiceCloning: true,
           advancedEditing: true,
