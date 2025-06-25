@@ -3,6 +3,8 @@ import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import http from 'http';
+import path from 'path';
+import fs from 'fs';
 
 const app = express();
 
@@ -59,7 +61,7 @@ app.use((req, res, next) => {
   // Validate environment variables
   const { validateEnvironmentVariables } = await import("./env-check");
   const envStatus = validateEnvironmentVariables();
-  
+
   console.log('🔧 Environment Status:', envStatus);
 
   const server = await registerRoutes(app);
@@ -81,11 +83,20 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
+  // Serve static files from uploads directory
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+  // Ensure uploads directory exists
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = 5000;
-  
+
   // Ensure server binds properly
   server.listen(port, "0.0.0.0", () => {
     log(`🚀 Server running on http://0.0.0.0:${port}`);

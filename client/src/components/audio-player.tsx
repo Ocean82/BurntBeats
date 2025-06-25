@@ -24,7 +24,7 @@ export default function AudioPlayer({ song, className = "", onUpgrade }: AudioPl
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
 
-  const audioUrl = song?.generatedAudioPath ? song.generatedAudioPath : undefined;
+  const audioUrl = song?.audioUrl || song?.generatedAudioPath;
 
   useEffect(() => {
     const audio = audioRef.current;

@@ -64,7 +64,7 @@ export default function SongForm({ onSongGenerated, user }: SongFormProps) {
         tempo: 120,
         songLength: 30
       });
-      
+
       // Song will be handled by onGenerationComplete callback
       setLyrics("");
       setGenre("");

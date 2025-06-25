@@ -45,40 +45,8 @@ if (!fs.existsSync(uploadsDir)) {
 
 export function registerRoutes(app: express.Application): http.Server {
 
-  // Serve static files from uploads directory with proper headers
-  app.use('/uploads', express.static(uploadsDir, {
-    setHeaders: (res, path) => {
-      if (path.endsWith('.mp3') || path.endsWith('.wav')) {
-        res.setHeader('Content-Type', path.endsWith('.mp3') ? 'audio/mpeg' : 'audio/wav');
-        res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
-      }
-    }
-  }));
-
-  // Direct download endpoint for clean tracks (requires purchase validation)
-  app.get("/api/download/clean/:songId", async (req: Request, res: Response) => {
-    try {
-      const { songId } = req.params;
-      
-      // In a real app, you'd validate purchase/subscription here
-      const songFilePath = path.join(uploadsDir, `generated_${songId}.mp3`);
-      
-      if (!fs.existsSync(songFilePath)) {
-        return res.status(404).json({ error: "Song file not found" });
-      }
-
-      const filename = `burnt_beats_${songId}_clean.mp3`;
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Content-Type', 'audio/mpeg');
-      
-      const fileStream = fs.createReadStream(songFilePath);
-      fileStream.pipe(res);
-      
-    } catch (error: any) {
-      console.error("Download error:", error);
-      res.status(500).json({ error: "Download failed" });
-    }
-  });
+  // Serve static files from uploads directory
+  app.use('/uploads', express.static(uploadsDir));
 
   // Health and System API Routes
   app.get("/api/health", HealthAPI.healthCheck);
@@ -96,22 +64,19 @@ export function registerRoutes(app: express.Application): http.Server {
   app.get("/api/login", (req, res) => res.redirect("/?auth=success"));
   app.get("/api/logout", (req, res) => res.redirect("/"));
 
-  // Music Generation API Routes with proper middleware
-  app.post("/api/music/generate", authenticateOptional, validateMusicGenerationInput, MusicAPI.generateSong);
-  app.post("/api/music/ai-generate", authenticateOptional, validateMusicGenerationInput, MusicAPI.generateAIMusic);
+  // Music Generation API Routes
+  app.post("/api/music/generate", MusicAPI.generateSong);
+  app.post("/api/music/ai-generate", MusicAPI.generateAIMusic);
   app.post("/api/music/demo", MusicAPI.generateMusic21Demo);
   app.get("/api/music/:id", MusicAPI.getSong);
-  app.get("/api/music", authenticateOptional, MusicAPI.getUserSongs);
+  app.get("/api/music", MusicAPI.getUserSongs);
 
   // Legacy music routes for compatibility
-  app.post("/api/songs/generate", authenticateOptional, validateMusicGenerationInput, MusicAPI.generateSong);
-  app.post("/api/generate-ai-music", authenticateOptional, validateMusicGenerationInput, MusicAPI.generateAIMusic);
+  app.post("/api/songs/generate", MusicAPI.generateSong);
+  app.post("/api/generate-ai-music", MusicAPI.generateAIMusic);
   app.post("/api/demo-music21", MusicAPI.generateMusic21Demo);
   app.get("/api/songs/single/:id", MusicAPI.getSong);
-  app.get("/api/songs", authenticateOptional, MusicAPI.getUserSongs);
-
-  // Main generation endpoint that frontend should use
-  app.post("/api/generate", authenticateOptional, validateMusicGenerationInput, MusicAPI.generateSong);
+  app.get("/api/songs", MusicAPI.getUserSongs);
 
   // Voice and Audio API Routes
   app.post("/api/voice/upload", VoiceAPI.uploadMiddleware, VoiceAPI.uploadVoiceSample);
