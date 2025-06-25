@@ -119,12 +119,30 @@ export class MusicGenerator {
         console.warn('Python generation warnings:', stderr);
       }
 
-      // Verify file was created
-      if (!fs.existsSync(outputPath)) {
+      // Check for both WAV and MP3 outputs
+      const wavPath = outputPath.replace('.mp3', '.wav');
+      const mp3Path = outputPath.replace('.wav', '.mp3');
+      
+      let finalPath = outputPath;
+      
+      // Prefer MP3 if available, fallback to WAV
+      if (fs.existsSync(mp3Path)) {
+        finalPath = mp3Path;
+        console.log('🎵 Using MP3 output for smaller file size');
+      } else if (fs.existsSync(wavPath)) {
+        finalPath = wavPath;
+        console.log('🎵 Using WAV output');
+      } else if (!fs.existsSync(outputPath)) {
         throw new Error('Python script completed but no output file was created');
       }
 
-      return `/${outputPath}`;
+      // Check for metadata file
+      const metadataPath = finalPath.replace(/\.(wav|mp3)$/, '_metadata.json');
+      if (fs.existsSync(metadataPath)) {
+        console.log('📝 Metadata file found:', metadataPath);
+      }
+
+      return `/${finalPath}`;
     } catch (error) {
       console.error('Python music generation failed, using basic audio:', error);
 

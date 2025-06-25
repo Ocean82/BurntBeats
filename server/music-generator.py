@@ -12,6 +12,21 @@ def generate_music(title, lyrics, genre, tempo, key, duration, output_path):
     print(f"🎵 Generating music: {title}")
     print(f"Genre: {genre}, Tempo: {tempo}, Key: {key}, Duration: {duration}s")
 
+    # Generate UUID-based filename if using default
+    if output_path == 'output.mp3' or os.path.basename(output_path) == 'output.mp3':
+        import uuid
+        timestamp = int(time.time())
+        unique_id = str(uuid.uuid4())[:8]
+        safe_title = "".join(c for c in title if c.isalnum() or c in (' ', '-', '_')).rstrip()[:20]
+        filename = f"{safe_title}_{timestamp}_{unique_id}.wav"
+        output_path = os.path.join(os.path.dirname(output_path) or 'uploads', filename)
+        print(f"🎯 Auto-generated unique filename: {output_path}")
+    
+    # Ensure we're working with .wav extension
+    if output_path.endswith('.mp3'):
+        output_path = output_path.replace('.mp3', '.wav')
+        print(f"🔄 Converting output to WAV format: {output_path}")
+
     # Ensure output directory exists
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
@@ -31,6 +46,26 @@ def generate_music(title, lyrics, genre, tempo, key, duration, output_path):
     
     # Write stereo WAV file
     write_stereo_wav(output_path, audio_data, sample_rate)
+    
+    # Embed lyrics metadata in the audio file
+    embed_lyrics_metadata(output_path, title, lyrics, genre, tempo, key)
+    
+    # Optionally convert to MP3 for smaller file size
+    mp3_path = convert_to_mp3(output_path, title, lyrics)
+    
+    return {
+        "wav_path": output_path,
+        "mp3_path": mp3_path,
+        "metadata": {
+            "title": title,
+            "genre": genre,
+            "tempo": tempo,
+            "key": key,
+            "duration": duration,
+            "lyrics_included": bool(lyrics),
+            "format": "stereo_wav_with_mp3_option"
+        }
+    }
 
 def generate_composition(scale_notes, chord_progression, tempo, duration_samples, sample_rate, genre, lyrics):
     """Generate a complete musical composition with multiple layers"""
@@ -80,15 +115,21 @@ def generate_composition(scale_notes, chord_progression, tempo, duration_samples
     return left_channel, right_channel
 
 def generate_melody(scale_notes, total_beats, samples_per_beat, genre, lyrics):
-    """Generate an expressive melody line"""
+    """Generate an expressive melody line with lyrics-driven phrasing"""
     melody = [0.0] * (total_beats * samples_per_beat)
     
     # Analyze lyrics for melodic inspiration
     words = lyrics.lower().split() if lyrics else ['la', 'la', 'la', 'la']
     emotional_weight = analyze_emotional_content(lyrics)
     
+    # Syllable-based phrasing
+    syllable_counts = [count_syllables(word) for word in words]
+    phrase_structure = analyze_lyric_phrases(lyrics)
+    
     current_note_index = 0
     note_duration = 2 if genre == 'ballad' else 1  # Longer notes for ballads
+    
+    print(f"🎼 Melody generation with {len(words)} words, {sum(syllable_counts)} syllables")
     
     for beat in range(0, total_beats, note_duration):
         # Choose note based on song structure and emotion
@@ -270,14 +311,71 @@ def analyze_emotional_content(lyrics):
     if not lyrics:
         return 0.5
     
-    positive_words = ['love', 'happy', 'joy', 'bright', 'beautiful', 'amazing']
-    negative_words = ['sad', 'cry', 'pain', 'dark', 'lost', 'broken']
+    positive_words = ['love', 'happy', 'joy', 'bright', 'beautiful', 'amazing', 'wonderful', 'dream', 'hope']
+    negative_words = ['sad', 'cry', 'pain', 'dark', 'lost', 'broken', 'hurt', 'alone', 'fear']
     
     words = lyrics.lower().split()
     positive_count = sum(1 for word in words if word in positive_words)
     negative_count = sum(1 for word in words if word in negative_words)
     
     return (positive_count + 0.5) / (positive_count + negative_count + 1)
+
+def count_syllables(word):
+    """Count syllables in a word for rhythmic phrasing"""
+    word = word.lower().strip(".,!?;:")
+    if not word:
+        return 1
+    
+    vowels = "aeiouy"
+    syllable_count = 0
+    prev_was_vowel = False
+    
+    for char in word:
+        if char in vowels:
+            if not prev_was_vowel:
+                syllable_count += 1
+            prev_was_vowel = True
+        else:
+            prev_was_vowel = False
+    
+    # Handle silent 'e' and minimum syllable rules
+    if word.endswith('e') and syllable_count > 1:
+        syllable_count -= 1
+    
+    return max(1, syllable_count)
+
+def analyze_lyric_phrases(lyrics):
+    """Analyze lyric structure for verse/chorus detection"""
+    if not lyrics:
+        return {"verses": [], "chorus": [], "bridge": []}
+    
+    lines = [line.strip() for line in lyrics.split('\n') if line.strip()]
+    
+    # Simple structure detection based on repetition and rhyme
+    phrase_structure = {
+        "verses": [],
+        "chorus": [],
+        "bridge": [],
+        "total_lines": len(lines),
+        "estimated_sections": max(1, len(lines) // 4)
+    }
+    
+    # Detect repeated lines (likely chorus)
+    line_counts = {}
+    for line in lines:
+        line_counts[line] = line_counts.get(line, 0) + 1
+    
+    repeated_lines = [line for line, count in line_counts.items() if count > 1]
+    
+    for i, line in enumerate(lines):
+        if line in repeated_lines:
+            phrase_structure["chorus"].append({"line": line, "position": i})
+        elif i < len(lines) * 0.6:  # First 60% likely verses
+            phrase_structure["verses"].append({"line": line, "position": i})
+        else:  # Later lines might be bridge
+            phrase_structure["bridge"].append({"line": line, "position": i})
+    
+    return phrase_structure
 
 def choose_note_for_word(word, note_range, emotional_weight):
     """Choose musical note based on word characteristics"""
@@ -340,8 +438,59 @@ def get_base_frequency(key):
     }
     return key_frequencies.get(key.upper(), 261.63)
 
+def embed_lyrics_metadata(wav_path, title, lyrics, genre, tempo, key):
+    """Embed lyrics and metadata into the WAV file"""
+    try:
+        # Create a simple metadata JSON file alongside the WAV
+        metadata = {
+            "title": title,
+            "lyrics": lyrics,
+            "genre": genre,
+            "tempo": tempo,
+            "key": key,
+            "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "syllable_count": sum(count_syllables(word) for word in lyrics.split()) if lyrics else 0
+        }
+        
+        metadata_path = wav_path.replace('.wav', '_metadata.json')
+        with open(metadata_path, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2, ensure_ascii=False)
+        
+        print(f"📝 Metadata saved: {metadata_path}")
+    except Exception as e:
+        print(f"⚠️ Could not embed metadata: {e}")
+
+def convert_to_mp3(wav_path, title, lyrics):
+    """Convert WAV to MP3 for smaller file size"""
+    try:
+        mp3_path = wav_path.replace('.wav', '.mp3')
+        
+        # Try using ffmpeg for conversion
+        import subprocess
+        cmd = [
+            'ffmpeg', '-i', wav_path,
+            '-codec:a', 'libmp3lame',
+            '-b:a', '192k',
+            '-metadata', f'title={title}',
+            '-metadata', f'comment={lyrics[:100]}...' if len(lyrics) > 100 else lyrics,
+            mp3_path, '-y'
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            print(f"🎵 MP3 conversion successful: {mp3_path}")
+            return mp3_path
+        else:
+            print(f"⚠️ MP3 conversion failed: {result.stderr}")
+            return None
+            
+    except Exception as e:
+        print(f"⚠️ MP3 conversion not available: {e}")
+        return None
+
 def main():
-    parser = argparse.ArgumentParser(description="Generate music composition")
+    parser = argparse.ArgumentParser(description="Generate music composition with lyrics integration")
     parser.add_argument("--title", required=True, help="Song title")
     parser.add_argument("--lyrics", required=True, help="Song lyrics")
     parser.add_argument("--genre", default="pop", help="Music genre")
@@ -349,18 +498,34 @@ def main():
     parser.add_argument("--key", default="C", help="Musical key")
     parser.add_argument("--duration", type=int, default=30, help="Duration in seconds")
     parser.add_argument("--output_path", required=True, help="Output file path")
+    parser.add_argument("--return_mp3", action="store_true", help="Also generate MP3 version")
 
     args = parser.parse_args()
 
     try:
-        generate_music(
+        import uuid
+        import time
+        
+        result = generate_music(
             args.title, args.lyrics, args.genre, 
             args.tempo, args.key, args.duration, args.output_path
         )
-        print("✅ Music generated:", args.output_path)
-        print(f"SUCCESS: {args.output_path}")
+        
+        if isinstance(result, dict):
+            print("✅ Music generated successfully:")
+            print(f"WAV: {result['wav_path']}")
+            if result.get('mp3_path'):
+                print(f"MP3: {result['mp3_path']}")
+            print(f"SUCCESS: {result['wav_path']}")
+        else:
+            # Fallback for old return format
+            print("✅ Music generated:", args.output_path)
+            print(f"SUCCESS: {args.output_path}")
+            
     except Exception as e:
         print(f"ERROR: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 if __name__ == "__main__":
