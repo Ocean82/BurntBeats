@@ -81,6 +81,12 @@ export class MusicGenerator {
       return melody.audioPath;
     }
 
+    // Check if we can use the new Python-compatible format
+    if (melody.pythonFormat) {
+      console.log('🐍 Using Python music21 format for enhanced generation');
+      return await this.generateFromPythonFormat(songData, melody.pythonFormat);
+    }
+
     // Fallback: generate using the original method
     const timestamp = Date.now();
     const filename = `generated_${songData.userId || 'user'}_${timestamp}.wav`;
@@ -231,6 +237,58 @@ export class MusicGenerator {
       'r&b': 'Bb'
     };
     return genreKeys[genre.toLowerCase() as keyof typeof genreKeys] || 'C';
+  }
+
+  private async generateFromPythonFormat(songData: any, pythonFormat: any): Promise<string> {
+    const timestamp = Date.now();
+    const filename = `generated_${songData.userId || 'user'}_${timestamp}.mid`;
+    const outputPath = path.join('uploads', filename);
+
+    // Ensure uploads directory exists
+    await fs.mkdir('uploads', { recursive: true });
+
+    // Write melody data to temporary JSON file for Python script
+    const melodyDataPath = path.join('uploads', `melody_data_${timestamp}.json`);
+    await fs.writeFile(melodyDataPath, JSON.stringify(pythonFormat, null, 2));
+
+    // Prepare Python script arguments with melody data
+    const args = [
+      'server/enhanced-music21-generator.py',
+      `"${songData.title}"`,
+      `"${songData.lyrics.replace(/"/g, '\\"')}"`,
+      songData.genre,
+      (songData.tempo || 120).toString(),
+      this.getKeyFromGenre(songData.genre),
+      (songData.duration || 30).toString(),
+      outputPath,
+      `--melody-data=${melodyDataPath}`
+    ];
+
+    try {
+      console.log('🎼 Generating music with enhanced melody data...');
+      const { stdout, stderr } = await execAsync(`timeout 30s python3 ${args.join(' ')}`);
+
+      if (stderr && !stderr.includes('warning')) {
+        console.warn('Python generation warnings:', stderr);
+      }
+
+      // Clean up temporary file
+      await fs.unlink(melodyDataPath).catch(() => {});
+
+      // Verify file was created
+      const fileExists = await fs.access(outputPath).then(() => true).catch(() => false);
+      if (!fileExists) {
+        throw new Error('Python script completed but no output file was created');
+      }
+
+      console.log('✅ Enhanced music generation completed');
+      return `/${outputPath}`;
+    } catch (error) {
+      console.error('Enhanced Python music generation failed:', error);
+      // Clean up temporary file
+      await fs.unlink(melodyDataPath).catch(() => {});
+      throw error;
+    }
   }
 }
 

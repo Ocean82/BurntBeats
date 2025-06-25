@@ -24,12 +24,15 @@ def main():
     # Parse additional arguments
     train_data_path = None
     output_format = "midi"
+    melody_data_path = None
 
     for arg in sys.argv[8:]:
         if arg.startswith("--train-data="):
             train_data_path = arg.split("=", 1)[1]
         elif arg.startswith("--format="):
             output_format = arg.split("=", 1)[1]
+        elif arg.startswith("--melody-data="):
+            melody_data_path = arg.split("=", 1)[1]
 
     try:
         title = sys.argv[1].strip('"')
@@ -48,6 +51,13 @@ def main():
         if train_data_path:
             print(f"🎼 Loading training data from: {train_data_path}")
             musical_patterns = load_and_analyze_training_data(train_data_path, genre)
+
+        # Load melody data if provided
+        melody_data = None
+        if melody_data_path and os.path.exists(melody_data_path):
+            print(f"🎵 Loading melody data from: {melody_data_path}")
+            with open(melody_data_path, 'r') as f:
+                melody_data = json.load(f)
 
         # Create the composition with lyrics integration and training patterns
         score = create_enhanced_composition(title, lyrics, genre, tempo_bpm, key_sig, duration_seconds, musical_patterns)
