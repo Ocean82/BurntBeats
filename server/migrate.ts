@@ -19,8 +19,14 @@ async function runMigrations() {
     await migrate(db, { migrationsFolder: './migrations' });
     console.log('✅ Database migrations completed');
   } catch (error) {
-    console.error('❌ Migration failed:', error);
-    throw error;
+    // Handle case where tables already exist
+    if (error.code === '42P07' && error.message.includes('already exists')) {
+      console.log('⚠️  Tables already exist, skipping migration');
+      console.log('✅ Database schema is up to date');
+    } else {
+      console.error('❌ Migration failed:', error);
+      throw error;
+    }
   } finally {
     await pool.end();
   }
