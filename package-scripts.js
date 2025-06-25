@@ -59,7 +59,7 @@ async function buildClient(watch = false) {
 
 async function buildServer() {
   ensureDirectories();
-  const command = `npx esbuild server/index.ts --bundle --platform=node --target=node20 --format=esm --outfile=dist/index.js --external:pg-native --external:bufferutil --external:utf-8-validate --external:fsevents`;
+  const command = `npx esbuild server/index.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/index.cjs --external:pg-native --external:bufferutil --external:utf-8-validate --external:fsevents`;
   runCommand(command, 'Building server application');
 }
 
