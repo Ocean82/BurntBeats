@@ -12,7 +12,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { IncomingMessage } from 'http';
 
 const app = express();
-const port = 5000;
+const port = parseInt(process.env.PORT || '5000', 10);
 
 // Trust proxy for Replit deployment (fixes rate limiting issues)
 app.set('trust proxy', 1);
@@ -304,7 +304,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-server.listen(port, '0.0.0.0', () => {
+server.listen(port, () => {
   console.log(`🚀 Burnt Beats server running on http://0.0.0.0:${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
   console.log(`📊 Environment status:`, JSON.stringify(envStatus, null, 2));
