@@ -16,7 +16,7 @@ const db = drizzle({ client: pool });
 async function runMigrations() {
   try {
     console.log('🔄 Running database migrations...');
-    await migrate(db, { migrationsFolder: './drizzle' });
+    await migrate(db, { migrationsFolder: './migrations' });
     console.log('✅ Database migrations completed');
   } catch (error) {
     console.error('❌ Migration failed:', error);
@@ -26,7 +26,8 @@ async function runMigrations() {
   }
 }
 
-if (require.main === module) {
+// Check if this file is being run directly (ES module equivalent of require.main === module)
+if (import.meta.url === `file://${process.argv[1]}`) {
   runMigrations().catch(console.error);
 }
 

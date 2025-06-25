@@ -1,3 +1,4 @@
+
 {
   "version": "7",
   "dialect": "postgresql",
@@ -7,6 +8,13 @@
       "version": "7",
       "when": 1750689389388,
       "tag": "0000_ancient_jackal",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1750805600000,
+      "tag": "0001_add_monthly_usage_tracking",
       "breakpoints": true
     }
   ]
