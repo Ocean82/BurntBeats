@@ -366,6 +366,27 @@ export class PricingService {
     // For now, return true if license ID format is correct
     return /^BBX-[A-Z0-9]{4}-\d+$/.test(licenseId);
   }
+
+  getPlans() {
+    return PLAN_LIMITS;
+  }
+
+  checkLimitations(planType: string, currentUsage: { songsGenerated: number; storageUsed: number }) {
+    const planLimits = PLAN_LIMITS[planType];
+    if (!planLimits) {
+      return { error: "Invalid plan type" };
+    }
+
+    return {
+      songsPerMonth: planLimits.songsPerMonth,
+      songsRemaining: planLimits.songsPerMonth === -1 ? -1 : Math.max(0, planLimits.songsPerMonth - currentUsage.songsGenerated),
+      storageLimit: planLimits.storage,
+      storageUsed: currentUsage.storageUsed,
+      features: planLimits.features,
+      audioQuality: planLimits.audioQuality,
+      genres: planLimits.genres
+    };
+  }
 }
 
 export const pricingService = new PricingService();

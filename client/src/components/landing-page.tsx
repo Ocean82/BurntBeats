@@ -92,13 +92,80 @@ export default function LandingPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <ul className="space-y-2 text-gray-300">
-                <li>• 2 full-length songs per month</li>
-                <li>• No voice cloning</li>
+                <li>• 2 songs per month</li>
+                <li>• All features included</li>
                 <li>• No storage</li>
-                <li>• Basic audio player</li>
+                <li>• MP3 128kbps & 320kbps</li>
+                <li>• WAV & FLAC quality</li>
               </ul>
               <Button onClick={handleLogin} variant="outline" className="w-full">
                 Get Started
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-white text-center">Basic</CardTitle>
+              <div className="text-center">
+                <span className="text-3xl font-bold text-white">$6.99</span>
+                <span className="text-gray-400">/month</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="space-y-2 text-gray-300">
+                <li>• 4 songs per month</li>
+                <li>• Voice cloning & TTS</li>
+                <li>• 5 songs storage</li>
+                <li>• MP3 128kbps & 320kbps</li>
+                <li>• Advanced editing</li>
+              </ul>
+              <Button onClick={handleLogin} variant="outline" className="w-full">
+                Choose Basic
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-800 border-gray-700 ring-2 ring-vibrant-orange">
+            <CardHeader>
+              <CardTitle className="text-white text-center">Pro</CardTitle>
+              <div className="text-center">
+                <span className="text-3xl font-bold text-white">$12.99</span>
+                <span className="text-gray-400">/month</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="space-y-2 text-gray-300">
+                <li>• Unlimited songs</li>
+                <li>• All features</li>
+                <li>• 50 songs storage</li>
+                <li>• MP3, WAV quality</li>
+                <li>• Neural synthesis</li>
+              </ul>
+              <Button onClick={handleLogin} className="w-full bg-vibrant-orange">
+                Choose Pro
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-800 border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-white text-center">Enterprise</CardTitle>
+              <div className="text-center">
+                <span className="text-3xl font-bold text-white">$39.99</span>
+                <span className="text-gray-400">/month</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="space-y-2 text-gray-300">
+                <li>• Unlimited everything</li>
+                <li>• Commercial use license</li>
+                <li>• Priority support</li>
+                <li>• All formats (FLAC)</li>
+                <li>• API access</li>
+              </ul>
+              <Button onClick={handleLogin} variant="outline" className="w-full">
+                Choose Enterprise
               </Button>
             </CardContent>
           </Card>
