@@ -9,14 +9,14 @@ packages = ["ffmpeg", "glibcLocales", "libxcrypt", "pkg-config", "portmidi", "xs
 [deployment]
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
-run = ["npm", "run", "start"]
+run = ["sh", "-c", "node quick-deploy.js start"]
 
 [[ports]]
 localPort = 5000
 externalPort = 80
 
 [workflows]
-runButton = "Start Fixed Application"
+runButton = "Production Build & Start"
 
 [[workflows.workflow]]
 name = "Project"
@@ -57,3 +57,16 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python3 server/music-generation-api.py"
+
+[[workflows.workflow]]
+name = "Production Build & Start"
+author = 41134091
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node quick-deploy.js build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node quick-deploy.js start"
