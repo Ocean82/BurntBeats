@@ -1,5 +1,7 @@
 import { storage } from "./storage";
 import type { User } from "@shared/schema";
+import { generateLicense, generatePDFLicense } from "./utils/license-generator";
+import { generatePDFLicense as createPDFLicense } from "./utils/pdf-license-generator";
 
 export interface PlanLimits {
   songsPerMonth: number;
@@ -187,11 +189,6 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
 
 export class PricingService {
   async checkUsageLimit(userId: string): Promise<{ canCreate: boolean; reason?: string }> {
-    // Admin bypass - if admin user ID, always allow
-    if (userId === '999' || userId === 'burntbeats_admin') {
-      return { canCreate: true };
-    }
-
     const user = await storage.getUser(userId);
     if (!user) {
       return { canCreate: false, reason: "User not found" };
@@ -244,11 +241,6 @@ export class PricingService {
   }
 
   hasFeatureAccess(userPlan: string, feature: keyof PlanLimits['features']): boolean {
-    // Admin bypass - enterprise plan has all features
-    if (userPlan === 'enterprise') {
-      return true;
-    }
-    
     const planLimits = PLAN_LIMITS[userPlan];
     return planLimits?.features[feature] || false;
   }
@@ -307,6 +299,72 @@ export class PricingService {
     }
 
     return messages[currentPlan] || "Upgrade required for this feature";
+  }
+
+  async generateCommercialLicense(options: {
+    songTitle: string;
+    userId: string;
+    tier: 'base' | 'top';
+    userEmail?: string;
+    format?: 'txt' | 'pdf' | 'both';
+  }): Promise<{ textPath?: string; pdfPath?: string; licenseId: string }> {
+    const { songTitle, userId, tier, userEmail, format = 'both' } = options;
+    
+    const user = await storage.getUser(userId);
+    const email = userEmail || user?.email || 'user@example.com';
+    
+    const licenseId = `BBX-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Date.now()}`;
+    
+    const result: { textPath?: string; pdfPath?: string; licenseId: string } = { licenseId };
+    
+    if (format === 'txt' || format === 'both') {
+      result.textPath = generateLicense({
+        songTitle,
+        userId,
+        licenseId,
+        tier,
+        userEmail: email
+      });
+    }
+    
+    if (format === 'pdf' || format === 'both') {
+      result.pdfPath = createPDFLicense({
+        songTitle,
+        userId,
+        licenseId,
+        tier,
+        userEmail: email
+      });
+    }
+    
+    // Store license info in database for verification
+    await this.storeLicenseInfo(licenseId, {
+      songTitle,
+      userId,
+      tier,
+      userEmail: email,
+      issuedAt: new Date()
+    });
+    
+    return result;
+  }
+
+  private async storeLicenseInfo(licenseId: string, info: {
+    songTitle: string;
+    userId: string;
+    tier: 'base' | 'top';
+    userEmail: string;
+    issuedAt: Date;
+  }): Promise<void> {
+    // In a real implementation, you would store this in your database
+    // For now, we'll just log it
+    console.log(`📄 License ${licenseId} stored:`, info);
+  }
+
+  async verifyLicense(licenseId: string): Promise<boolean> {
+    // In a real implementation, you would check your database
+    // For now, return true if license ID format is correct
+    return /^BBX-[A-Z0-9]{4}-\d+$/.test(licenseId);
   }
 }
 

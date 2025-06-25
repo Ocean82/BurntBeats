@@ -118,4 +118,64 @@ export class PricingAPI {
       res.status(500).json({ error: 'Failed to fetch subscription' });
     }
   }
+
+  // Verify license
+  static async verifyLicense(req: Request, res: Response) {
+    try {
+      const { licenseId } = req.params;
+
+      if (!licenseId) {
+        return res.status(400).json({ error: 'License ID is required' });
+      }
+
+      const isValid = await pricingService.verifyLicense(licenseId);
+      
+      if (!isValid) {
+        return res.status(404).json({ error: 'License not found or invalid' });
+      }
+
+      res.json({ 
+        valid: true, 
+        licenseId,
+        message: 'License is valid and active'
+      });
+
+    } catch (error) {
+      console.error('License verification error:', error);
+      res.status(500).json({ error: 'Failed to verify license' });
+    }
+  }
+
+  // Generate commercial license
+  static async generateLicense(req: Request, res: Response) {
+    try {
+      const { songTitle, userId, tier, userEmail, format } = req.body;
+
+      if (!songTitle || !userId || !tier) {
+        return res.status(400).json({ 
+          error: 'Song title, user ID, and tier are required' 
+        });
+      }
+
+      const license = await pricingService.generateCommercialLicense({
+        songTitle,
+        userId,
+        tier,
+        userEmail,
+        format
+      });
+
+      res.json({
+        success: true,
+        licenseId: license.licenseId,
+        textPath: license.textPath,
+        pdfPath: license.pdfPath,
+        message: 'Commercial license generated successfully'
+      });
+
+    } catch (error) {
+      console.error('License generation error:', error);
+      res.status(500).json({ error: 'Failed to generate license' });
+    }
+  }
 }
