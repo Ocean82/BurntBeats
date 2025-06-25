@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Progress } from "@/components/ui/progress"
-import { Play, Pause, Volume2, VolumeX, Download, AlertCircle, Loader2 } from "lucide-react"
+import { Play, Pause, Volume2, VolumeX, Download, AlertCircle, Loader2, Music } from "lucide-react"
 import type { Song } from "@shared/schema"
 import { formatTime } from "@/lib/utils"
 import WatermarkIndicator from "./watermark-indicator"
@@ -18,6 +18,7 @@ interface AudioPlayerProps {
   loop?: boolean;
   onTrackEnd?: () => void;
   onNext?: () => void;
+  showSections?: boolean;
 }
 
 export default function AudioPlayer({ 
@@ -39,6 +40,8 @@ export default function AudioPlayer({
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [currentSection, setCurrentSection] = useState<string>('');
+  const [showSectionList, setShowSectionList] = useState(false);
 
   // Validate and normalize audio URL
   const audioUrl = validateAudioUrl(song?.audioUrl || song?.generatedAudioPath);
@@ -96,6 +99,16 @@ export default function AudioPlayer({
     const handleTimeUpdate = () => {
       if (audio.duration && !isNaN(audio.duration)) {
         setCurrentTime(audio.currentTime);
+        
+        // Update current section based on playback time
+        if (song.sections && Array.isArray(song.sections)) {
+          const currentSec = song.sections.find(section => 
+            audio.currentTime >= section.startTime && audio.currentTime < section.endTime
+          );
+          if (currentSec && currentSec.type !== currentSection) {
+            setCurrentSection(currentSec.type);
+          }
+        }
       }
     };
 
@@ -226,6 +239,22 @@ export default function AudioPlayer({
     } else {
       audio.volume = 0;
       setIsMuted(true);
+    }
+  };
+
+  const jumpToSection = (startTime: number) => {
+    const audio = audioRef.current;
+    if (!audio || !isReady) return;
+    
+    if (!hasUserInteracted) {
+      setHasUserInteracted(true);
+    }
+    
+    audio.currentTime = startTime;
+    setCurrentTime(startTime);
+    
+    if (!isPlaying) {
+      togglePlay();
     }
   };
 
@@ -371,12 +400,49 @@ export default function AudioPlayer({
             </div>
           )}
 
+          {/* Section Navigation */}
+          {showFullControls && song.sections && Array.isArray(song.sections) && song.sections.length > 0 && (
+            <div className="space-y-3 border-t border-white/10 pt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-white/60">Current: {currentSection || 'Loading...'}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSectionList(!showSectionList)}
+                  className="text-white/60 hover:text-white text-xs"
+                >
+                  {showSectionList ? 'Hide' : 'Show'} Sections
+                </Button>
+              </div>
+              
+              {showSectionList && (
+                <div className="grid grid-cols-2 gap-2">
+                  {song.sections.map((section, index) => (
+                    <Button
+                      key={index}
+                      variant={currentSection === section.type ? "secondary" : "ghost"}
+                      size="sm"
+                      onClick={() => jumpToSection(section.startTime)}
+                      className="text-xs justify-start text-white/70 hover:text-white hover:bg-white/10"
+                      disabled={!isReady}
+                    >
+                      <span className="truncate">
+                        {section.type} ({formatTime(section.startTime)})
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Debug info in development */}
           {process.env.NODE_ENV === 'development' && (
             <div className="text-xs text-white/30 mt-4 space-y-1">
               <p>Audio URL: {audioUrl}</p>
               <p>Ready: {isReady ? 'Yes' : 'No'} | Duration: {duration}s</p>
               <p>User Interaction: {hasUserInteracted ? 'Yes' : 'No'}</p>
+              <p>Sections: {song.sections ? song.sections.length : 0}</p>
             </div>
           )}
         </div>

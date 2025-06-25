@@ -27,6 +27,9 @@ export class MusicGenerator {
     console.log(`🎵 Starting song generation: ${songData.title}`);
 
     try {
+      // Generate Song generation: ${songData.title}`);
+
+    try {
       // Generate melody from lyrics
       const melody = await this.melodyGenerator.generateMelodyFromLyrics({
         lyrics: songData.lyrics,
@@ -51,7 +54,7 @@ export class MusicGenerator {
       const audioPath = await this.generateAudioFile(songData, melody, vocals);
 
       // Create song structure
-      const sections = this.generateSongSections(melody, vocals, songData.duration * 1000);
+      const sections = this.generateSongSections(songData);
 
       return {
         audioPath,
@@ -101,20 +104,20 @@ export class MusicGenerator {
     try {
       // Check if Python is available first
       await execAsync('python3 --version');
-      
+
       // Execute Python music generation with timeout
       console.log('🐍 Executing Python music generator as fallback...');
       const { stdout, stderr } = await execAsync(`timeout 30s python3 ${args.join(' ')}`);
-      
+
       if (stderr && !stderr.includes('warning')) {
         console.warn('Python generation warnings:', stderr);
       }
-      
+
       // Verify file was created
       if (!fs.existsSync(outputPath)) {
         throw new Error('Python script completed but no output file was created');
       }
-      
+
       return `/${outputPath}`;
     } catch (error) {
       console.error('Python music generation failed, using basic audio:', error);
@@ -129,7 +132,7 @@ export class MusicGenerator {
         await execAsync(basicAudioCmd);
       } catch (ffmpegError) {
         console.warn('FFmpeg not available, creating minimal audio file');
-        
+
         // Create a minimal MP3 file as absolute fallback
         const minimalMp3 = Buffer.alloc(1024); // 1KB minimal MP3
         fs.writeFileSync(outputPath, minimalMp3);
@@ -148,24 +151,68 @@ export class MusicGenerator {
     return genreFreqs[genre.toLowerCase()] || 261.63;
   }
 
-  private generateSongSections(melody: any, vocals: any, durationMs: number): any[] {
-    const sectionCount = Math.min(4, melody.phrases?.length || 4);
-    const sectionDuration = durationMs / sectionCount;
+  private generateSongSections(songData: any): any[] {
+    // Generate sections based on lyrics structure
+    const lyricLines = songData.lyrics.split('\n').filter(line => line.trim());
     const sections = [];
+    let currentTime = 0;
+    const totalDuration = songData.duration || 30;
+    const baseSection = Math.floor(totalDuration / 4); // 4 main sections
 
-    const sectionTypes = ['intro', 'verse', 'chorus', 'outro'];
+    // Create structured sections for audio navigation
+    sections.push({
+      id: 1,
+      type: 'Intro',
+      startTime: 0,
+      endTime: Math.min(8, totalDuration * 0.1),
+      lyrics: 'Instrumental intro'
+    });
 
-    for (let i = 0; i < sectionCount; i++) {
-      const startTime = i * sectionDuration;
-      const endTime = (i + 1) * sectionDuration;
+    const verseStart = sections[0].endTime;
+    const verseDuration = Math.min(baseSection, totalDuration * 0.3);
+    sections.push({
+      id: 2,
+      type: 'Verse 1',
+      startTime: verseStart,
+      endTime: verseStart + verseDuration,
+      lyrics: lyricLines.slice(0, Math.ceil(lyricLines.length / 3)).join('\n')
+    });
+
+    const chorusStart = sections[1].endTime;
+    const chorusDuration = Math.min(baseSection, totalDuration * 0.25);
+    sections.push({
+      id: 3,
+      type: 'Chorus',
+      startTime: chorusStart,
+      endTime: chorusStart + chorusDuration,
+      lyrics: lyricLines.slice(Math.ceil(lyricLines.length / 3), Math.ceil(lyricLines.length * 2 / 3)).join('\n')
+    });
+
+    if (totalDuration > 20) {
+      const verse2Start = sections[2].endTime;
+      const verse2Duration = Math.min(baseSection, totalDuration * 0.2);
+      sections.push({
+        id: 4,
+        type: 'Verse 2',
+        startTime: verse2Start,
+        endTime: verse2Start + verse2Duration,
+        lyrics: lyricLines.slice(Math.ceil(lyricLines.length * 2 / 3)).join('\n')
+      });
 
       sections.push({
-        id: i + 1,
-        type: sectionTypes[i] || 'verse',
-        startTime: Math.round(startTime),
-        endTime: Math.round(endTime),
-        lyrics: melody.phrases?.[i]?.lyricLine || `Section ${i + 1}`,
-        melody: melody.phrases?.[i] || null
+        id: 5,
+        type: 'Outro',
+        startTime: sections[3].endTime,
+        endTime: totalDuration,
+        lyrics: 'Instrumental outro'
+      });
+    } else {
+      sections.push({
+        id: 4,
+        type: 'Outro',
+        startTime: sections[2].endTime,
+        endTime: totalDuration,
+        lyrics: 'Instrumental outro'
       });
     }
 
@@ -733,156 +780,4 @@ function calculateProcessingTime(params: any): number {
   if (params.dynamicProcessing.energy > 1.2) baseTime += 100;
 
   return baseTime;
-}
-
-function generateSongSections(melody: any, vocals: any): any {
-  const sections = [];
-
-  // Generate sections based on melody structure and vocal arrangement
-  if (melody.phraseStructure) {
-    const phraseDuration = melody.phraseStructure.phraseLength;
-    const phraseCount = melody.phraseStructure.phraseCount;
-
-    for (let i = 0; i < phraseCount; i++) {
-      const startTime = i * phraseDuration;
-      const endTime = (i + 1) * phraseDuration;
-
-      sections.push({
-        id: i + 1,
-        type: determineSectionType(i, phraseCount),
-        startTime,
-        endTime,
-        lyrics: extractLyricsForSection(vocals, startTime, endTime),
-        melody: extractMelodyForSection(melody, startTime, endTime),
-        characteristics: getSectionCharacteristics(i, melody, vocals)
-      });
-    }
-  }
-
-  return sections;
-}
-
-function determineSectionType(index: number, totalPhrases: number): string {
-  if (index === 0) return 'intro';
-  if (index === totalPhrases - 1) return 'outro';
-  if (index % 4 === 1 || index % 4 === 2) return 'verse';
-  if (index % 4 === 3) return 'chorus';
-  return 'bridge';
-}
-
-function extractLyricsForSection(vocals: any, startTime: number, endTime: number): string {
-  if (!vocals.rawVocals?.phonemeSequence) return '';
-
-  const relevantPhonemes = vocals.rawVocals.phonemeSequence.filter((seq: any) =>
-    seq.startTime >= startTime && seq.endTime <= endTime
-  );
-
-  return relevantPhonemes.map((seq: any) => seq.lineText).join('\n');
-}
-
-function extractMelodyForSection(melody: any, startTime: number, endTime: number): any {
-  return {
-    chords: melody.chordProgression,
-    contour: melody.melodicContour,
-    rhythm: melody.rhythmicStructure,
-    timeRange: { startTime, endTime }
-  };
-}
-
-function getSectionCharacteristics(index: number, melody: any, vocals: any): any {
-  return {
-    energy: calculateSectionEnergy(index, melody),
-    complexity: calculateSectionComplexity(index, melody),
-    vocalIntensity: calculateVocalIntensity(vocals),
-    harmonicRichness: calculateHarmonicRichness(melody),
-    rhythmicDensity: calculateRhythmicDensity(melody)
-  };
-}
-
-function calculateSectionEnergy(index: number, melody: any): number {
-  const baseEnergy = 0.6;
-  const dynamicVariation = melody.dynamicMarkings?.variation?.length || 3;
-  const sectionPosition = index / 8; // Assume 8 sections average
-
-  // Energy tends to build through a song
-  return Math.min(1.0, baseEnergy + (sectionPosition * 0.3) + (dynamicVariation * 0.1));
-}
-
-function calculateSectionComplexity(index: number, melody: any): number {
-  const baseComplexity = getComplexityFromGenre(melody.genre || 'pop') === 'complex' ? 0.8 : 0.5;
-  const motifCount = melody.motifs?.length || 2;
-
-  return Math.min(1.0, baseComplexity + (motifCount * 0.1));
-}
-
-function getComplexityFromGenre(genre: string): 'simple' | 'moderate' | 'complex' {
-  const complexityMap: { [key: string]: 'simple' | 'moderate' | 'complex' } = {
-    'pop': 'simple',
-    'rock': 'moderate',
-    'jazz': 'complex',
-    'classical': 'complex',
-    'electronic': 'moderate',
-    'hip-hop': 'simple',
-    'country': 'simple',
-    'r&b': 'moderate'
-  };
-  return complexityMap[genre.toLowerCase()] || 'moderate';
-}
-
-function calculateVocalIntensity(vocals: any): number {
-  if (!vocals.processingMetadata) return 0.7;
-
-  const naturalness = vocals.processingMetadata.naturalness || 0.85;
-  const melodyAlignment = vocals.processingMetadata.melodyAlignment || 0.88;
-
-  return (naturalness + melodyAlignment) / 2;
-}
-
-function calculateHarmonicRichness(melody: any): number {
-  const chordCount = melody.chordProgression?.length || 4;
-  const uniqueChords = new Set(melody.chordProgression || []).size;
-
-  return Math.min(1.0, uniqueChords / chordCount + 0.2);
-}
-
-function calculateRhythmicDensity(melody: any): number {
-  const subdivision = melody.rhythmicStructure?.subdivision || 'quarter';
-  const syncopation = melody.rhythmicStructure?.syncopation || 'minimal';
-
-  let density = 0.5;
-
-  switch (subdivision) {
-    case 'sixteenth': density += 0.4; break;
-    case 'eighth': density += 0.2; break;
-    case 'triplet': density += 0.3; break;
-  }
-
-  switch (syncopation) {
-    case 'high': density += 0.3; break;
-    case 'moderate': density += 0.2; break;
-    case 'programmed': density += 0.4; break;
-  }
-
-  return Math.min(1.0, density);
-}
-
-function parseSongDuration(songLength: string): number {
-  const parts = songLength.split(':');
-  const minutes = parseInt(parts[0]) || 3;
-  const seconds = parseInt(parts[1]) || 30;
-  return minutes * 60 + seconds;
-}
-
-function getKeyFromGenre(genre: string): string {
-  const genreKeys: { [key: string]: string } = {
-    'rock': 'E',
-    'pop': 'C',
-    'jazz': 'F',
-    'classical': 'C',
-    'electronic': 'C',
-    'hip-hop': 'C',
-    'country': 'G',
-    'r&b': 'C'
-  };
-  return genreKeys[genre.toLowerCase()] || 'C';
 }

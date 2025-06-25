@@ -82,11 +82,11 @@ export function registerRoutes(app: express.Application): http.Server {
   app.get("/api/audio/:songId", async (req: Request, res: Response) => {
     try {
       const { songId } = req.params;
-      
+
       // Get song info to find audio file
       const { storage } = await import("./storage");
       const song = await storage.getSong(parseInt(songId));
-      
+
       if (!song || !song.generatedAudioPath) {
         return res.status(404).json({ error: "Audio file not found" });
       }
@@ -95,9 +95,9 @@ export function registerRoutes(app: express.Application): http.Server {
       const cleanPath = song.generatedAudioPath.startsWith('/') 
         ? song.generatedAudioPath.slice(1) 
         : song.generatedAudioPath;
-      
+
       const audioPath = path.join(process.cwd(), cleanPath);
-      
+
       if (!fs.existsSync(audioPath)) {
         return res.status(404).json({ error: "Audio file not found on disk" });
       }
@@ -114,21 +114,21 @@ export function registerRoutes(app: express.Application): http.Server {
       res.setHeader('Content-Type', contentType);
       res.setHeader('Accept-Ranges', 'bytes');
       res.setHeader('Cache-Control', 'public, max-age=3600');
-      
+
       // Handle range requests for audio seeking
       const stat = fs.statSync(audioPath);
       const range = req.headers.range;
-      
+
       if (range) {
         const parts = range.replace(/bytes=/, "").split("-");
         const start = parseInt(parts[0], 10);
         const end = parts[1] ? parseInt(parts[1], 10) : stat.size - 1;
         const chunksize = (end - start) + 1;
-        
+
         res.status(206);
         res.setHeader('Content-Range', `bytes ${start}-${end}/${stat.size}`);
         res.setHeader('Content-Length', chunksize);
-        
+
         const stream = fs.createReadStream(audioPath, { start, end });
         stream.pipe(res);
       } else {
@@ -136,7 +136,7 @@ export function registerRoutes(app: express.Application): http.Server {
         const stream = fs.createReadStream(audioPath);
         stream.pipe(res);
       }
-      
+
     } catch (error) {
       console.error("Audio streaming error:", error);
       res.status(500).json({ error: "Failed to stream audio" });

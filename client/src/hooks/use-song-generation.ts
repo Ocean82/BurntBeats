@@ -47,7 +47,7 @@ export const useSongGeneration = ({
   // Generate song mutation
   const generateSongMutation = useMutation({
     mutationFn: async (songData: InsertSong) => {
-      const response = await fetch("/api/music/generate", {
+      const response = await fetch("/api/songs", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
