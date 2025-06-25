@@ -1,8 +1,23 @@
-
 import { Request, Response } from 'express';
 import { pricingService } from '../pricing-service';
 
 export class PricingAPI {
+  // Check if user can create new song
+  static async checkUsageLimit(req: Request, res: Response) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      const result = await pricingService.checkUsageLimit(userId);
+      res.json(result);
+    } catch (error) {
+      console.error('Usage limit check error:', error);
+      res.status(500).json({ error: 'Failed to check usage limit' });
+    }
+  }
+
   // Get pricing plans
   static async getPricingPlans(req: Request, res: Response) {
     try {

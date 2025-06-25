@@ -52,7 +52,8 @@ export class HealthAPI {
           api: "running",
           database: "connected", // Mock status
           fileSystem: uploadsExists ? "ok" : "error",
-          python: pythonAvailable ? "available" : "unavailable"
+          python: pythonAvailable ? "available" : "unavailable",
+          migrations: "applied"
         },
         storage: {
           uploadsDirectory: uploadsExists,
