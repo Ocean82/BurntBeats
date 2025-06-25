@@ -12,7 +12,10 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { IncomingMessage } from 'http';
 
 const app = express();
-const port = parseInt(process.env.PORT || '5000', 10);
+// Use different ports for development vs production deployment
+const port = process.env.NODE_ENV === 'production' 
+  ? parseInt(process.env.PORT || '80', 10)
+  : parseInt(process.env.PORT || '5000', 10);
 
 // Trust proxy for Replit deployment (fixes rate limiting issues)
 app.set('trust proxy', 1);
