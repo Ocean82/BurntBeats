@@ -1,5 +1,11 @@
+
 import fs from 'fs';
 import path from 'path';
+import { promisify } from 'util';
+import { exec } from 'child_process';
+import crypto from 'crypto';
+
+const execAsync = promisify(exec);
 
 export class WatermarkService {
   private static watermarkMessages = [
@@ -10,20 +16,35 @@ export class WatermarkService {
     "Burnt Beats preview - remove this message with purchase"
   ];
 
-  static generateWatermarkedTrack(originalAudioPath: string, songId: string, songTitle: string): string {
+  private static metrics = {
+    watermarkSuccess: 0,
+    watermarkFailures: 0,
+    ffmpegFallbacks: 0,
+    tierProcessingTime: new Map<string, number>()
+  };
+
+  static async generateWatermarkedTrack(originalAudioPath: string, songId: string, songTitle: string): Promise<string> {
     try {
       console.log(`Adding watermark to song ${songId}: ${songTitle}`);
       
       const watermarkedPath = originalAudioPath.replace('.mp3', '_watermarked.mp3').replace('.wav', '_watermarked.wav');
       
       // Add subtle audio watermark overlay that preserves musical quality
-      this.addSubtleWatermark(originalAudioPath, watermarkedPath);
+      await this.addSubtleWatermark(originalAudioPath, watermarkedPath, songId);
+      
+      // Add metadata tags
+      await this.addWatermarkMetadata(watermarkedPath, 'preview', songId);
       
       console.log(`Watermarked track created: ${watermarkedPath}`);
+      this.metrics.watermarkSuccess++;
       return watermarkedPath;
     } catch (error) {
       console.error('Watermark generation failed:', error);
+      this.metrics.watermarkFailures++;
+      this.emitMetric('watermarkFailed', { songId, error: error.message });
+      
       // Fallback to copying original file
+      const watermarkedPath = originalAudioPath.replace('.mp3', '_watermarked.mp3').replace('.wav', '_watermarked.wav');
       if (fs.existsSync(originalAudioPath)) {
         fs.copyFileSync(originalAudioPath, watermarkedPath);
       }
@@ -31,39 +52,66 @@ export class WatermarkService {
     }
   }
 
-  private static addSubtleWatermark(inputPath: string, outputPath: string): void {
+  private static async addSubtleWatermark(inputPath: string, outputPath: string, songId: string): Promise<void> {
     // Check if custom watermark overlay exists
     const watermarkOverlayPath = path.join(process.cwd(), 'uploads', 'watermark_overlay.mp3');
     
     if (fs.existsSync(watermarkOverlayPath)) {
       console.log('Using custom watermark overlay');
-      this.mixWithCustomOverlay(inputPath, outputPath, watermarkOverlayPath);
+      await this.mixWithCustomOverlay(inputPath, outputPath, watermarkOverlayPath, songId);
     } else {
       console.log('Using default watermark method');
-      this.addDefaultWatermark(inputPath, outputPath);
+      await this.addDefaultWatermark(inputPath, outputPath, songId);
     }
   }
 
-  private static mixWithCustomOverlay(inputPath: string, outputPath: string, overlayPath: string): void {
+  private static async mixWithCustomOverlay(inputPath: string, outputPath: string, overlayPath: string, songId: string): Promise<void> {
     try {
-      // Try using ffmpeg for high-quality mixing
-      const { exec } = require('child_process');
-      exec(`ffmpeg -i "${inputPath}" -i "${overlayPath}" -filter_complex "[0:a]volume=1.0[main];[1:a]volume=0.15[overlay];[main][overlay]amix=inputs=2:duration=first:dropout_transition=0" "${outputPath}" -y`, 
-        (error: any, stdout: any, stderr: any) => {
-          if (error) {
-            console.log('FFmpeg not available, using manual mixing');
-            this.manualMixOverlay(inputPath, outputPath, overlayPath);
-          } else {
-            console.log('Watermark overlay applied with ffmpeg');
-          }
-        });
+      // First, analyze the track's loudness for dynamic volume adjustment
+      const loudness = await this.analyzeTrackLoudness(inputPath);
+      const overlayVolume = this.calculateOverlayVolume(loudness);
+      
+      // Try using ffmpeg for high-quality mixing with proper async handling
+      const watermarkCommand = [
+        '-i', `"${inputPath}"`,
+        '-i', `"${overlayPath}"`,
+        '-filter_complex', `"[0:a]volume=1.0[main];[1:a]volume=${overlayVolume}[overlay];[main][overlay]amix=inputs=2:duration=first:dropout_transition=0"`,
+        '-c:a', 'mp3',
+        '-b:a', '320k',
+        '-y',
+        `"${outputPath}"`
+      ].join(' ');
+
+      await execAsync(`ffmpeg ${watermarkCommand}`);
+      console.log('Watermark overlay applied with ffmpeg');
     } catch (error) {
-      console.log('Fallback to manual mixing');
-      this.manualMixOverlay(inputPath, outputPath, overlayPath);
+      console.log('FFmpeg not available, using manual mixing');
+      this.metrics.ffmpegFallbacks++;
+      this.emitMetric('ffmpegFallbackUsed', { songId, reason: error.message });
+      await this.manualMixOverlay(inputPath, outputPath, overlayPath, songId);
     }
   }
 
-  private static manualMixOverlay(inputPath: string, outputPath: string, overlayPath: string): void {
+  private static async analyzeTrackLoudness(inputPath: string): Promise<number> {
+    try {
+      const { stdout } = await execAsync(`ffmpeg -i "${inputPath}" -filter:a volumedetect -f null /dev/null 2>&1`);
+      const loudnessMatch = stdout.match(/mean_volume: ([-\d.]+) dB/);
+      return loudnessMatch ? parseFloat(loudnessMatch[1]) : -20; // Default to -20dB if can't detect
+    } catch (error) {
+      console.warn('Could not analyze track loudness, using default');
+      return -20; // Safe default
+    }
+  }
+
+  private static calculateOverlayVolume(trackLoudness: number): number {
+    // Dynamic volume adjustment based on track loudness
+    // Louder tracks get quieter watermarks, quieter tracks get slightly louder watermarks
+    const baseVolume = 0.15;
+    const adjustment = Math.max(-0.1, Math.min(0.1, (trackLoudness + 20) / 100));
+    return Math.max(0.05, Math.min(0.3, baseVolume - adjustment));
+  }
+
+  private static async manualMixOverlay(inputPath: string, outputPath: string, overlayPath: string, songId: string): Promise<void> {
     // Manual audio mixing (simplified approach)
     // For now, copy the main audio and add subtle periodic watermark
     const inputData = fs.readFileSync(inputPath);
@@ -73,26 +121,25 @@ export class WatermarkService {
     const sampleRate = inputData.readUInt32LE(24);
     const channels = inputData.readUInt16LE(22);
     const headerSize = 44;
-    const audioData = inputData.slice(headerSize);
     
     // Add periodic watermark sounds every 20 seconds
-    this.addPeriodicWatermarkSounds(watermarkedData, headerSize, sampleRate, channels);
+    await this.addPeriodicWatermarkSounds(watermarkedData, headerSize, sampleRate, channels, songId);
     
     fs.writeFileSync(outputPath, watermarkedData);
   }
 
-  private static addPeriodicWatermarkSounds(audioData: Buffer, headerSize: number, sampleRate: number, channels: number): void {
+  private static async addPeriodicWatermarkSounds(audioData: Buffer, headerSize: number, sampleRate: number, channels: number, songId: string): Promise<void> {
     const audioSection = audioData.slice(headerSize);
     const interval = sampleRate * 20 * channels * 2; // Every 20 seconds
     const duration = sampleRate * 1.5 * channels * 2; // 1.5 second watermark sound
     
     for (let pos = headerSize; pos < audioData.length; pos += interval) {
       // Add a subtle "whoosh" sound that indicates this is a preview
-      this.addWhooshSound(audioData, pos, Math.min(duration, audioData.length - pos), sampleRate, channels);
+      this.addWhooshSound(audioData, pos, Math.min(duration, audioData.length - pos), sampleRate, channels, songId);
     }
   }
 
-  private static addWhooshSound(audioData: Buffer, startPos: number, duration: number, sampleRate: number, channels: number): void {
+  private static addWhooshSound(audioData: Buffer, startPos: number, duration: number, sampleRate: number, channels: number, songId: string): void {
     // Create a subtle "whoosh" or "swoosh" sound that's clearly audible but not too intrusive
     for (let i = 0; i < duration && startPos + i < audioData.length; i += channels * 2) {
       const sampleIndex = i / (channels * 2);
@@ -122,7 +169,7 @@ export class WatermarkService {
     }
   }
 
-  private static addDefaultWatermark(inputPath: string, outputPath: string): void {
+  private static async addDefaultWatermark(inputPath: string, outputPath: string, songId: string): Promise<void> {
     const inputData = fs.readFileSync(inputPath);
     
     // Parse WAV header
@@ -139,18 +186,18 @@ export class WatermarkService {
     const watermarkDuration = sampleRate * 0.3 * channels * 2; // 0.3 second overlay
     
     for (let pos = 0; pos < watermarkedData.length; pos += watermarkInterval) {
-      this.addWatermarkTone(watermarkedData, pos, watermarkDuration, sampleRate, channels);
+      this.addWatermarkTone(watermarkedData, pos, watermarkDuration, sampleRate, channels, songId);
     }
     
-    // Add inaudible frequency signature throughout
-    this.addFrequencySignature(watermarkedData, sampleRate, channels);
+    // Add randomized frequency signature throughout
+    this.addRandomizedFrequencySignature(watermarkedData, sampleRate, channels, songId);
     
     // Write watermarked file
     const header = inputData.slice(0, headerSize);
     fs.writeFileSync(outputPath, Buffer.concat([header, watermarkedData]));
   }
 
-  private static addWatermarkTone(audioData: Buffer, startPos: number, duration: number, sampleRate: number, channels: number): void {
+  private static addWatermarkTone(audioData: Buffer, startPos: number, duration: number, sampleRate: number, channels: number, songId: string): void {
     // Add a very subtle high-frequency tone that's barely audible but detectable
     const watermarkFreq = 15000; // 15kHz - high but still audible as a subtle "shimmer"
     const amplitude = 1000; // Very quiet
@@ -178,14 +225,18 @@ export class WatermarkService {
     }
   }
 
-  private static addFrequencySignature(audioData: Buffer, sampleRate: number, channels: number): void {
-    // Add a very subtle frequency signature that identifies the track as watermarked
-    // This is inaudible but can be detected by audio analysis software
-    const signatureFreq = 17500; // Very high frequency, mostly inaudible
-    const amplitude = 300; // Extremely quiet
+  private static addRandomizedFrequencySignature(audioData: Buffer, sampleRate: number, channels: number, songId: string): void {
+    // Generate a song-specific frequency within the range 17.4-17.7kHz
+    const hash = crypto.createHash('md5').update(songId).digest('hex');
+    const randomSeed = parseInt(hash.slice(0, 8), 16);
+    const freqVariation = (randomSeed % 300) / 1000; // 0-0.3 kHz variation
+    const signatureFreq = 17400 + freqVariation; // 17.4-17.7kHz range
     
+    const amplitude = 300; // Extremely quiet
     const bytesPerSample = channels * 2;
     const totalSamples = audioData.length / bytesPerSample;
+    
+    console.log(`Adding frequency signature at ${signatureFreq.toFixed(1)}Hz for song ${songId}`);
     
     for (let sampleIndex = 0; sampleIndex < totalSamples; sampleIndex += 100) { // Every 100th sample
       const t = sampleIndex / sampleRate;
@@ -204,40 +255,109 @@ export class WatermarkService {
     }
   }
 
-  static generateCleanTrack(originalAudioPath: string, tier: string, songId: string): string {
+  static async generateCleanTrack(originalAudioPath: string, tier: string, songId: string): Promise<string> {
+    const startTime = Date.now();
+    
     try {
       console.log(`Generating clean ${tier} track for song ${songId}`);
       
       // Generate different quality versions based on tier
-      const qualityMap = {
-        'bonus': '_bonus_128kbps.mp3',    // Keep watermark for bonus tier
-        'base': '_base_320kbps.mp3',      // Clean version
-        'top': '_top_studio.wav'          // Studio quality clean version
+      const qualityConfigs = {
+        'bonus': { suffix: '_bonus_128kbps.mp3', bitrate: '128k', format: 'mp3', watermarked: true },
+        'base': { suffix: '_base_320kbps.mp3', bitrate: '320k', format: 'mp3', watermarked: false },
+        'top': { suffix: '_top_studio.wav', bitrate: null, format: 'wav', watermarked: false }
       };
       
-      const suffix = qualityMap[tier as keyof typeof qualityMap] || '_clean.mp3';
-      const cleanPath = originalAudioPath.replace(/\.(mp3|wav)$/, suffix);
+      const config = qualityConfigs[tier as keyof typeof qualityConfigs] || qualityConfigs['base'];
+      const cleanPath = originalAudioPath.replace(/\.(mp3|wav)$/, config.suffix);
       
-      if (tier === 'bonus') {
-        // Bonus tier keeps the watermark but is still purchasable
-        return this.generateWatermarkedTrack(originalAudioPath, songId, 'Bonus Track');
+      if (config.watermarked) {
+        // Bonus tier keeps the watermark but is still purchasable at lower quality
+        const watermarkedPath = await this.generateWatermarkedTrack(originalAudioPath, songId, 'Bonus Track');
+        await this.encodeToQuality(watermarkedPath, cleanPath, config);
+        await this.addWatermarkMetadata(cleanPath, tier, songId);
+      } else {
+        // For Base and Top tiers, generate clean versions with proper encoding
+        await this.encodeToQuality(originalAudioPath, cleanPath, config);
+        await this.addWatermarkMetadata(cleanPath, tier, songId);
       }
       
-      // For Base and Top tiers, generate clean versions
-      // In real implementation, this would:
-      // 1. Load the original unwatermarked audio
-      // 2. Apply quality settings based on tier
-      // 3. Export in appropriate format and bitrate
+      const processingTime = Date.now() - startTime;
+      this.metrics.tierProcessingTime.set(tier, processingTime);
       
-      if (fs.existsSync(originalAudioPath)) {
-        fs.copyFileSync(originalAudioPath, cleanPath);
-        console.log(`Clean ${tier} track created: ${cleanPath}`);
-      }
-      
+      console.log(`Clean ${tier} track created: ${cleanPath} (${processingTime}ms)`);
       return cleanPath;
     } catch (error) {
       console.error('Clean track generation failed:', error);
+      this.emitMetric('cleanTrackFailed', { songId, tier, error: error.message });
       throw error;
+    }
+  }
+
+  private static async encodeToQuality(inputPath: string, outputPath: string, config: any): Promise<void> {
+    try {
+      let ffmpegArgs: string[];
+      
+      if (config.format === 'wav') {
+        // High-quality WAV for top tier
+        ffmpegArgs = [
+          '-i', `"${inputPath}"`,
+          '-c:a', 'pcm_s24le', // 24-bit PCM
+          '-ar', '48000',      // 48kHz sample rate
+          '-y',
+          `"${outputPath}"`
+        ];
+      } else {
+        // MP3 encoding for bonus and base tiers
+        ffmpegArgs = [
+          '-i', `"${inputPath}"`,
+          '-c:a', 'libmp3lame',
+          '-b:a', config.bitrate,
+          '-ar', '44100',
+          '-y',
+          `"${outputPath}"`
+        ];
+      }
+      
+      await execAsync(`ffmpeg ${ffmpegArgs.join(' ')}`);
+      console.log(`Successfully encoded to ${config.format} at ${config.bitrate || '24-bit'}`);
+    } catch (error) {
+      console.error('FFmpeg encoding failed, falling back to file copy:', error);
+      if (fs.existsSync(inputPath)) {
+        fs.copyFileSync(inputPath, outputPath);
+      }
+    }
+  }
+
+  private static async addWatermarkMetadata(audioPath: string, tier: string, songId: string): Promise<void> {
+    try {
+      const metadata = {
+        comment: "Burnt Beats Track",
+        title: `Song ${songId}`,
+        tier: tier,
+        songId: songId,
+        watermarked: tier === 'bonus' || tier === 'preview' ? 'true' : 'false',
+        processed_date: new Date().toISOString()
+      };
+
+      // Use ffmpeg to add metadata
+      const tempPath = audioPath + '.temp';
+      const metadataArgs = Object.entries(metadata)
+        .map(([key, value]) => `-metadata ${key}="${value}"`)
+        .join(' ');
+
+      await execAsync(`ffmpeg -i "${audioPath}" ${metadataArgs} -c copy "${tempPath}" -y`);
+      
+      // Replace original with metadata-enhanced version
+      fs.renameSync(tempPath, audioPath);
+      console.log(`Added metadata to ${audioPath}:`, metadata);
+    } catch (error) {
+      console.warn('Failed to add metadata:', error);
+      // Clean up temp file if it exists
+      const tempPath = audioPath + '.temp';
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath);
+      }
     }
   }
 
@@ -278,6 +398,37 @@ export class WatermarkService {
     // 4. Return true only if all checks pass
     
     return true; // Allow for demo purposes
+  }
+
+  // Metrics and telemetry methods
+  static getMetrics() {
+    return {
+      ...this.metrics,
+      watermarkCoverageRate: this.calculateCoverageRate(),
+      avgProcessingTimeByTier: Object.fromEntries(this.metrics.tierProcessingTime)
+    };
+  }
+
+  private static calculateCoverageRate(): number {
+    const total = this.metrics.watermarkSuccess + this.metrics.watermarkFailures;
+    return total > 0 ? (this.metrics.watermarkSuccess / total) * 100 : 0;
+  }
+
+  private static emitMetric(eventName: string, data: any): void {
+    // In a real implementation, this would send to your analytics service
+    console.log(`[METRIC] ${eventName}:`, data);
+    
+    // Could integrate with services like:
+    // - DataDog, New Relic, or custom analytics
+    // - Webhook to dashboard service
+    // - File-based logging for analysis
+  }
+
+  static resetMetrics(): void {
+    this.metrics.watermarkSuccess = 0;
+    this.metrics.watermarkFailures = 0;
+    this.metrics.ffmpegFallbacks = 0;
+    this.metrics.tierProcessingTime.clear();
   }
 }
 
