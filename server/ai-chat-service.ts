@@ -1,5 +1,25 @@
 import { Request, Response } from 'express';
 
+interface LyricAnalysis {
+  overallScore: number;
+  strengths: string[];
+  improvements: string[];
+  mood: string;
+  genre: string;
+  structure: string;
+  feedback: string;
+}
+
+interface PostPurchaseFeedback {
+  songId: string;
+  songTitle: string;
+  lyrics: string;
+  purchaseTier: 'bonus' | 'base' | 'top';
+  userEmail: string;
+  analysis: LyricAnalysis;
+  generatedAt: string;
+}
+
 export class AIChatService {
   private static sassyPersonalities = {
     roast: [
@@ -126,6 +146,227 @@ export class AIChatService {
     }
     
     return response;
+  }
+
+  // Post-purchase AI feedback on lyrics
+  static async generatePostPurchaseFeedback(
+    songId: string,
+    songTitle: string,
+    lyrics: string,
+    purchaseTier: 'bonus' | 'base' | 'top',
+    userEmail: string
+  ): Promise<PostPurchaseFeedback> {
+    const analysis = AIChatService.analyzeLyrics(lyrics);
+    
+    const feedback: PostPurchaseFeedback = {
+      songId,
+      songTitle,
+      lyrics,
+      purchaseTier,
+      userEmail,
+      analysis,
+      generatedAt: new Date().toISOString()
+    };
+
+    // Store feedback for user dashboard
+    try {
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      const feedbackDir = path.join(process.cwd(), 'uploads/feedback');
+      await fs.mkdir(feedbackDir, { recursive: true });
+      
+      const feedbackPath = path.join(feedbackDir, `${songId}_feedback.json`);
+      await fs.writeFile(feedbackPath, JSON.stringify(feedback, null, 2));
+      
+      console.log(`🎵 AI Feedback generated for "${songTitle}" (${purchaseTier} tier)`);
+    } catch (error) {
+      console.error('Failed to save AI feedback:', error);
+    }
+
+    return feedback;
+  }
+
+  private static analyzeLyrics(lyrics: string): LyricAnalysis {
+    const lines = lyrics.split('\n').filter(line => line.trim());
+    const words = lyrics.toLowerCase().split(/\s+/);
+    
+    // Analyze structure
+    const structure = AIChatService.detectSongStructure(lyrics);
+    
+    // Analyze mood and genre hints
+    const mood = AIChatService.detectMood(words);
+    const genre = AIChatService.detectGenre(words);
+    
+    // Score lyrics (1-10)
+    let score = 5; // Base score
+    
+    // Add points for good structure
+    if (structure.includes('verse') && structure.includes('chorus')) score += 2;
+    if (lines.length >= 8) score += 1; // Sufficient content
+    if (AIChatService.hasRhymeScheme(lines)) score += 1;
+    if (AIChatService.hasVariedVocabulary(words)) score += 1;
+    
+    // Generate strengths and improvements
+    const strengths = AIChatService.identifyStrengths(lyrics, structure, mood);
+    const improvements = AIChatService.identifyImprovements(lyrics, score);
+    
+    // Generate personalized feedback
+    const feedback = AIChatService.generatePersonalizedFeedback(score, mood, genre);
+
+    return {
+      overallScore: Math.min(score, 10),
+      strengths,
+      improvements,
+      mood,
+      genre,
+      structure,
+      feedback
+    };
+  }
+
+  private static detectSongStructure(lyrics: string): string {
+    const lowerLyrics = lyrics.toLowerCase();
+    const structures = [];
+    
+    if (lowerLyrics.includes('verse') || lowerLyrics.match(/\b(first|second|third)\s+(verse|stanza)\b/)) {
+      structures.push('verse');
+    }
+    if (lowerLyrics.includes('chorus') || lowerLyrics.includes('hook')) {
+      structures.push('chorus');
+    }
+    if (lowerLyrics.includes('bridge')) {
+      structures.push('bridge');
+    }
+    if (lowerLyrics.includes('outro') || lowerLyrics.includes('ending')) {
+      structures.push('outro');
+    }
+    
+    return structures.length > 0 ? structures.join(', ') : 'free-form';
+  }
+
+  private static detectMood(words: string[]): string {
+    const moodWords = {
+      happy: ['love', 'joy', 'bright', 'smile', 'dance', 'celebrate', 'sunshine', 'amazing'],
+      sad: ['cry', 'tears', 'lonely', 'broken', 'hurt', 'pain', 'goodbye', 'miss'],
+      angry: ['fight', 'rage', 'mad', 'anger', 'hate', 'destroy', 'war', 'furious'],
+      romantic: ['love', 'heart', 'kiss', 'together', 'forever', 'dream', 'beautiful', 'soul'],
+      energetic: ['power', 'energy', 'run', 'fast', 'strong', 'fire', 'electric', 'alive']
+    };
+
+    const moodScores: Record<string, number> = {};
+    
+    for (const [mood, keywords] of Object.entries(moodWords)) {
+      moodScores[mood] = keywords.filter(keyword => words.includes(keyword)).length;
+    }
+
+    const dominantMood = Object.entries(moodScores)
+      .sort(([,a], [,b]) => b - a)[0];
+    
+    return dominantMood[1] > 0 ? dominantMood[0] : 'neutral';
+  }
+
+  private static detectGenre(words: string[]): string {
+    const genreKeywords = {
+      pop: ['love', 'heart', 'dance', 'tonight', 'baby', 'feeling'],
+      rock: ['power', 'strong', 'fight', 'loud', 'electric', 'rebel'],
+      jazz: ['smooth', 'blue', 'night', 'cool', 'swing', 'rhythm'],
+      country: ['home', 'road', 'truck', 'beer', 'small', 'town'],
+      hiphop: ['money', 'street', 'real', 'hustle', 'game', 'flow'],
+      electronic: ['digital', 'machine', 'electric', 'synthetic', 'future', 'space']
+    };
+
+    const genreScores: Record<string, number> = {};
+    
+    for (const [genre, keywords] of Object.entries(genreKeywords)) {
+      genreScores[genre] = keywords.filter(keyword => words.includes(keyword)).length;
+    }
+
+    const dominantGenre = Object.entries(genreScores)
+      .sort(([,a], [,b]) => b - a)[0];
+    
+    return dominantGenre[1] > 0 ? dominantGenre[0] : 'universal';
+  }
+
+  private static hasRhymeScheme(lines: string[]): boolean {
+    if (lines.length < 4) return false;
+    
+    // Simple rhyme detection - check if line endings have similar sounds
+    const endWords = lines.map(line => {
+      const words = line.trim().split(/\s+/);
+      return words[words.length - 1]?.toLowerCase().replace(/[^a-z]/g, '') || '';
+    });
+
+    // Check for AABB, ABAB, or ABCB patterns
+    for (let i = 0; i < endWords.length - 3; i += 4) {
+      const a = endWords[i];
+      const b = endWords[i + 1];
+      const c = endWords[i + 2];
+      const d = endWords[i + 3];
+      
+      if ((a.endsWith(b.slice(-2)) || b.endsWith(a.slice(-2))) && 
+          (c.endsWith(d.slice(-2)) || d.endsWith(c.slice(-2)))) {
+        return true; // AABB
+      }
+      if ((a.endsWith(c.slice(-2)) || c.endsWith(a.slice(-2))) && 
+          (b.endsWith(d.slice(-2)) || d.endsWith(b.slice(-2)))) {
+        return true; // ABAB
+      }
+    }
+    
+    return false;
+  }
+
+  private static hasVariedVocabulary(words: string[]): boolean {
+    const uniqueWords = new Set(words.filter(word => word.length > 3));
+    return uniqueWords.size / words.length > 0.6; // 60% unique words
+  }
+
+  private static identifyStrengths(lyrics: string, structure: string, mood: string): string[] {
+    const strengths = [];
+    
+    if (structure.includes('verse') && structure.includes('chorus')) {
+      strengths.push('Well-structured with clear verse-chorus format');
+    }
+    if (mood !== 'neutral') {
+      strengths.push(`Strong ${mood} emotional tone throughout`);
+    }
+    if (lyrics.length > 200) {
+      strengths.push('Substantial lyrical content with good depth');
+    }
+    if (lyrics.includes('?') || lyrics.includes('!')) {
+      strengths.push('Dynamic punctuation adds emotional emphasis');
+    }
+    
+    return strengths.length > 0 ? strengths : ['Creative expression with personal voice'];
+  }
+
+  private static identifyImprovements(lyrics: string, score: number): string[] {
+    const improvements = [];
+    
+    if (score < 6) {
+      improvements.push('Consider adding more verses or chorus sections');
+    }
+    if (!lyrics.includes('!') && !lyrics.includes('?')) {
+      improvements.push('Add more emotional punctuation for impact');
+    }
+    if (lyrics.split('\n').length < 8) {
+      improvements.push('Expand lyrics with additional verses or a bridge section');
+    }
+    if (lyrics.toLowerCase().split(/\s+/).filter(word => word === 'love').length > 5) {
+      improvements.push('Try varying vocabulary to avoid word repetition');
+    }
+    
+    return improvements.length > 0 ? improvements : ['Consider experimenting with different rhyme schemes'];
+  }
+
+  private static generatePersonalizedFeedback(score: number, mood: string, genre: string): string {
+    if (score >= 8) {
+      return AIChatService.getRandomResponse('encouraging') + ` Your ${mood} ${genre} vibes are absolutely killing it!`;
+    } else if (score >= 6) {
+      return AIChatService.getRandomResponse('helpful') + ` This ${mood} track has potential - let's make it shine!`;
+    } else {
+      return AIChatService.getRandomResponse('roast') + ` But hey, everyone starts somewhere with their ${genre} journey.`;
+    }
   }
 
   static async handleChat(req: Request, res: Response) {
