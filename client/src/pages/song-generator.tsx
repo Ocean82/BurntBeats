@@ -9,7 +9,6 @@ import SongLibrary from "@/components/song-library";
 import AnalyticsDashboard from "@/components/analytics-dashboard";
 import VersionControl from "@/components/version-control";
 import CollaborationTools from "@/components/collaboration-tools";
-import CollaborativeWorkspace from "@/components/collaborative-workspace";
 import MusicTheoryTools from "@/components/music-theory-tools";
 import SocialFeatures from "@/components/social-features";
 import StripeTieredCheckout from "@/components/stripe-tiered-checkout";
@@ -19,6 +18,9 @@ import AdvancedVoiceCloning from "@/components/advanced-voice-cloning";
 import EnhancedTextToSpeech from "@/components/enhanced-text-to-speech";
 import PricingPlans from "@/components/pricing-plans";
 import SizeBasedCheckout from "@/components/size-based-checkout";
+import SassyAIChat from "@/components/sassy-ai-chat";
+import StyleReferenceUpload from "@/components/style-reference-upload";
+import MusicTheoryUpload from "@/components/music-theory-upload";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Music, HelpCircle, Settings, User, Crown, LogOut, Download } from "lucide-react";
@@ -295,9 +297,12 @@ export default function SongGenerator({ user, onLogout }: SongGeneratorProps) {
                   <DownloadOptions song={completedSong} />
                 </div>
               ) : (
-                <div className="text-center text-gray-400">
-                  <Music className="w-16 h-16 mx-auto mb-4" />
-                  <p>Ready to create your next masterpiece!</p>
+                <div className="space-y-6">
+                  <StyleReferenceUpload onStyleExtracted={(style) => {
+                    console.log('Style extracted:', style);
+                  }} />
+                  <MusicTheoryUpload user={user} />
+                  <SassyAIChat user={user} />
                 </div>
               )}
             </div>
