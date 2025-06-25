@@ -1,4 +1,3 @@
-
 #!/usr/bin/env node
 
 import { execSync } from 'child_process';
@@ -46,7 +45,8 @@ function createProductionPackage() {
       "node": ">=20.0.0"
     },
     "scripts": {
-      "start": "node index.js"
+      "start": "node index.js",
+      "health-check": "curl -f http://0.0.0.0:5000/health || exit 1"
     },
     "dependencies": {
       "express": "^4.21.2",
@@ -63,6 +63,9 @@ function createProductionPackage() {
       "ws": "^8.18.0",
       "zod": "^3.24.2",
       "nanoid": "^5.1.5"
+    },
+    "optionalDependencies": {
+      "fsevents": "*"
     }
   };
   
@@ -119,31 +122,17 @@ try {
     '--sourcemap=external'
   ].join(' ');
   
-  execSync(esbuildCommand, { 
-    stdio: 'inherit',
-    env: { ...process.env, NODE_ENV: 'production' }
-  });
+  execSync(esbuildCommand, { stdio: 'inherit' });
   
   // Step 4: Create production package.json
   createProductionPackage();
   
-  // Step 5: Validate output
+  // Step 5: Validate build output
   validateBuildOutput();
   
-  console.log('✅ Server build completed successfully');
+  console.log('🎉 Server build completed successfully!');
   
 } catch (error) {
   console.error('❌ Server build failed:', error.message);
-  
-  // Cleanup on failure
-  try {
-    if (existsSync('dist/index.js')) {
-      execSync('rm -f dist/index.js dist/index.js.map', { stdio: 'pipe' });
-      console.log('🧹 Cleaned up partial build artifacts');
-    }
-  } catch (cleanupError) {
-    console.warn('⚠️  Failed to cleanup build artifacts:', cleanupError.message);
-  }
-  
   process.exit(1);
 }
