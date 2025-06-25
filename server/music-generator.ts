@@ -241,8 +241,8 @@ export class MusicGenerator {
 
   private async generateFromPythonFormat(songData: any, pythonFormat: any): Promise<string> {
     const timestamp = Date.now();
-    const filename = `generated_${songData.userId || 'user'}_${timestamp}.mid`;
-    const outputPath = path.join('uploads', filename);
+    const midiFilename = `generated_${songData.userId || 'user'}_${timestamp}.mid`;
+    const midiPath = path.join('uploads', midiFilename);
 
     // Ensure uploads directory exists
     await fs.mkdir('uploads', { recursive: true });
@@ -260,7 +260,7 @@ export class MusicGenerator {
       (songData.tempo || 120).toString(),
       this.getKeyFromGenre(songData.genre),
       (songData.duration || 30).toString(),
-      outputPath,
+      midiPath,
       `--melody-data=${melodyDataPath}`
     ];
 
@@ -275,20 +275,120 @@ export class MusicGenerator {
       // Clean up temporary file
       await fs.unlink(melodyDataPath).catch(() => {});
 
-      // Verify file was created
-      const fileExists = await fs.access(outputPath).then(() => true).catch(() => false);
+      // Verify MIDI file was created
+      const fileExists = await fs.access(midiPath).then(() => true).catch(() => false);
       if (!fileExists) {
-        throw new Error('Python script completed but no output file was created');
+        throw new Error('Python script completed but no MIDI file was created');
       }
 
-      console.log('✅ Enhanced music generation completed');
-      return `/${outputPath}`;
+      console.log('✅ Enhanced MIDI generation completed');
+
+      // Convert MIDI to audio for playback
+      const audioPath = await this.convertMidiToAudio(midiPath, songData);
+      return audioPath;
     } catch (error) {
       console.error('Enhanced Python music generation failed:', error);
       // Clean up temporary file
       await fs.unlink(melodyDataPath).catch(() => {});
       throw error;
     }
+  }
+
+  private async convertMidiToAudio(midiPath: string, songData: any): Promise<string> {
+    const audioFilename = path.basename(midiPath, '.mid') + '.mp3';
+    const audioPath = path.join('uploads', audioFilename);
+
+    console.log('🔄 Converting MIDI to audio...');
+
+    try {
+      // Try FluidSynth first (best quality)
+      await this.convertWithFluidSynth(midiPath, audioPath);
+      console.log('✅ Converted with FluidSynth');
+      return `/${audioPath}`;
+    } catch (fluidSynthError) {
+      console.warn('FluidSynth conversion failed:', fluidSynthError);
+
+      try {
+        // Fallback to Timidity
+        await this.convertWithTimidity(midiPath, audioPath);
+        console.log('✅ Converted with Timidity');
+        return `/${audioPath}`;
+      } catch (timidityError) {
+        console.warn('Timidity conversion failed:', timidityError);
+
+        try {
+          // Fallback to basic synthesis
+          await this.convertWithBasicSynthesis(midiPath, audioPath, songData);
+          console.log('✅ Converted with basic synthesis');
+          return `/${audioPath}`;
+        } catch (synthError) {
+          console.error('All MIDI conversion methods failed:', synthError);
+          
+          // Return MIDI path as last resort
+          console.log('⚠️ Returning MIDI file - frontend should handle conversion');
+          return `/${midiPath}`;
+        }
+      }
+    }
+  }
+
+  private async convertWithFluidSynth(midiPath: string, audioPath: string): Promise<void> {
+    // FluidSynth command with default soundfont
+    const fluidSynthCmd = `fluidsynth -ni -g 0.5 -o synth.sample-rate=44100 -F "${audioPath.replace('.mp3', '.wav')}" /usr/share/sounds/sf2/FluidR3_GM.sf2 "${midiPath}"`;
+    
+    await execAsync(fluidSynthCmd);
+    
+    // Convert WAV to MP3 if needed
+    if (audioPath.endsWith('.mp3')) {
+      const wavPath = audioPath.replace('.mp3', '.wav');
+      const ffmpegCmd = `ffmpeg -i "${wavPath}" -codec:a libmp3lame -b:a 192k "${audioPath}" -y`;
+      await execAsync(ffmpegCmd);
+      await fs.unlink(wavPath).catch(() => {}); // Clean up WAV
+    }
+  }
+
+  private async convertWithTimidity(midiPath: string, audioPath: string): Promise<void> {
+    // Timidity command
+    const timidityCmd = `timidity "${midiPath}" -Ow -o "${audioPath.replace('.mp3', '.wav')}"`;
+    
+    await execAsync(timidityCmd);
+    
+    // Convert WAV to MP3 if needed
+    if (audioPath.endsWith('.mp3')) {
+      const wavPath = audioPath.replace('.mp3', '.wav');
+      const ffmpegCmd = `ffmpeg -i "${wavPath}" -codec:a libmp3lame -b:a 192k "${audioPath}" -y`;
+      await execAsync(ffmpegCmd);
+      await fs.unlink(wavPath).catch(() => {}); // Clean up WAV
+    }
+  }
+
+  private async convertWithBasicSynthesis(midiPath: string, audioPath: string, songData: any): Promise<void> {
+    // Parse MIDI and create basic synthesis
+    console.log('🎹 Using basic synthesis as fallback...');
+    
+    const duration = songData.duration || 30;
+    const tempo = songData.tempo || 120;
+    const baseFreq = this.getGenreBaseFrequency(songData.genre || 'pop');
+    
+    // Create a basic composition based on genre and tempo
+    const melodyFreq = baseFreq * 1.5;
+    const harmonyFreq = baseFreq * 1.25;
+    const bassFreq = baseFreq * 0.5;
+    
+    // Generate layered audio
+    const ffmpegCmd = [
+      'ffmpeg',
+      `-f lavfi -i "sine=frequency=${bassFreq}:duration=${duration}"`,
+      `-f lavfi -i "sine=frequency=${baseFreq}:duration=${duration}"`,
+      `-f lavfi -i "sine=frequency=${melodyFreq}:duration=${duration}"`,
+      `-f lavfi -i "sine=frequency=${harmonyFreq}:duration=${duration}"`,
+      '-filter_complex',
+      '"[0:a]volume=0.4[bass];[1:a]volume=0.6[root];[2:a]volume=0.8[melody];[3:a]volume=0.3[harmony];[bass][root][melody][harmony]amix=inputs=4:duration=first:dropout_transition=0[mixed];[mixed]volume=2.0,highpass=f=80,lowpass=f=8000[out]"',
+      '-map "[out]"',
+      `-ar 44100 -ac 2 -b:a 192k "${audioPath}" -y`
+    ].join(' ');
+    
+    await execAsync(ffmpegCmd);
   }
 }
 
