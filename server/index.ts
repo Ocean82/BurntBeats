@@ -13,6 +13,9 @@ import { IncomingMessage } from 'http';
 const app = express();
 const port = 5000;
 
+// Trust proxy for Replit deployment (fixes rate limiting issues)
+app.set('trust proxy', 1);
+
 // Validate environment variables
 const envStatus = validateEnvironmentVariables();
 
