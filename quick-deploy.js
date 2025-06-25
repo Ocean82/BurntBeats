@@ -3,11 +3,109 @@
 /**
  * Quick deployment script for Burnt Beats
  * Addresses all missing build:client, build:server, and start scripts
+ * Includes environment variable management and CI/CD integration
  */
 
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, writeFileSync, copyFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, copyFileSync, readFileSync } from 'fs';
 import path from 'path';
+
+// Environment variable configuration
+const ENV_CONFIG = {
+  required: {
+    development: ['DATABASE_URL'],
+    production: ['DATABASE_URL', 'NODE_ENV']
+  },
+  optional: {
+    development: ['STRIPE_SECRET_KEY', 'STRIPE_PUBLISHABLE_KEY', 'OPENAI_API_KEY', 'ELEVENLABS_API_KEY'],
+    production: ['STRIPE_SECRET_KEY', 'STRIPE_PUBLISHABLE_KEY', 'STRIPE_WEBHOOK_SECRET', 'OPENAI_API_KEY', 'ELEVENLABS_API_KEY', 'AI_MODEL_PATH']
+  }
+};
+
+function validateEnvironment(targetEnv = 'development') {
+  console.log(`🔧 Validating ${targetEnv} environment variables...`);
+  
+  const required = ENV_CONFIG.required[targetEnv] || [];
+  const optional = ENV_CONFIG.optional[targetEnv] || [];
+  
+  const missing = required.filter(key => !process.env[key]);
+  const missingOptional = optional.filter(key => !process.env[key]);
+  
+  if (missing.length > 0) {
+    console.error('❌ Missing required environment variables:', missing);
+    if (process.env.CI) {
+      console.error('CI/CD: Set these variables in your deployment environment');
+      process.exit(1);
+    } else {
+      console.warn('⚠️  Consider setting these in your Replit Secrets');
+    }
+  } else {
+    console.log('✅ Required environment variables present');
+  }
+  
+  if (missingOptional.length > 0) {
+    console.warn('⚠️  Missing optional environment variables:', missingOptional);
+    console.log('💡 These features will be limited without proper configuration');
+  }
+  
+  return { missing, missingOptional };
+}
+
+function checkCIEnvironment() {
+  const isCI = !!(process.env.CI || process.env.GITHUB_ACTIONS || process.env.REPLIT_DEPLOYMENT);
+  
+  if (isCI) {
+    console.log('🤖 CI/CD environment detected');
+    
+    // Validate CI-specific requirements
+    if (process.env.NODE_ENV === 'production') {
+      const { missing } = validateEnvironment('production');
+      if (missing.length > 0) {
+        console.error('❌ CI/CD: Production deployment blocked due to missing environment variables');
+        process.exit(1);
+      }
+    }
+    
+    // Check for build artifacts in CI
+    if (process.argv.includes('start') && !existsSync('dist/index.js')) {
+      console.error('❌ CI/CD: No build artifacts found. Ensure build step completed successfully');
+      process.exit(1);
+    }
+  }
+  
+  return isCI;
+}
+
+function createEnvExample() {
+  const envExample = `# Burnt Beats Environment Variables
+# Copy this file to .env and fill in your values
+
+# Required for all environments
+DATABASE_URL=your_database_url_here
+
+# Production specific
+NODE_ENV=production
+
+# Optional - Payment processing
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+
+# Optional - AI Services
+OPENAI_API_KEY=sk-your_openai_api_key
+ELEVENLABS_API_KEY=your_elevenlabs_api_key
+AI_MODEL_PATH=/path/to/your/local/model
+
+# Optional - Development
+VITE_APP_TITLE=Burnt Beats
+VITE_API_BASE_URL=http://0.0.0.0:5000
+`;
+
+  if (!existsSync('.env.example')) {
+    writeFileSync('.env.example', envExample);
+    console.log('📝 Created .env.example file');
+  }
+}
 
 function ensureDirectories() {
   const dirs = ['dist', 'dist/public', 'uploads'];
@@ -57,9 +155,14 @@ function createMinimalClientBuild() {
 }
 
 function buildServer() {
-  console.log('Building server...');
+  console.log('🔨 Building server with esbuild...');
   
   try {
+    // Validate TypeScript files exist
+    if (!existsSync('server/index.ts')) {
+      throw new Error('server/index.ts not found');
+    }
+    
     const esbuildCommand = [
       'npx esbuild server/index.ts',
       '--bundle',
@@ -81,22 +184,28 @@ function buildServer() {
       '--external:@vitejs/plugin-react',
       '--external:@replit/vite-plugin-cartographer',
       '--external:@replit/vite-plugin-runtime-error-modal',
-      '--minify'
+      '--minify',
+      '--sourcemap=external'
     ].join(' ');
     
+    console.log('📦 Bundling TypeScript server...');
     execSync(esbuildCommand, { stdio: 'inherit' });
-    console.log('Server build completed');
     
-    // Create production package.json with your required build scripts
+    if (!existsSync('dist/index.js')) {
+      throw new Error('Server build output not generated');
+    }
+    
+    console.log('✅ Server build completed');
+    
+    // Create production package.json with enhanced configuration
     const prodPackage = {
       "name": "burnt-beats",
       "version": "1.0.0",
       "type": "module",
       "engines": { "node": ">=20.0.0" },
       "scripts": { 
-        "build:client": "node build-client.js",
-        "build:server": "node build-server.js",
-        "start": "NODE_ENV=production tsx server/index.ts"
+        "start": "node index.js",
+        "health-check": "curl -f http://0.0.0.0:5000/health || exit 1"
       },
       "dependencies": {
         "express": "^4.21.2",
@@ -113,14 +222,62 @@ function buildServer() {
         "ws": "^8.18.0",
         "zod": "^3.24.2",
         "nanoid": "^5.1.5"
+      },
+      "optionalDependencies": {
+        "fsevents": "*"
       }
     };
     
     writeFileSync('dist/package.json', JSON.stringify(prodPackage, null, 2));
-    console.log('Created production package.json');
+    console.log('📄 Created production package.json');
+    
+    // Create a simple health check script for CI/CD
+    const healthCheck = `#!/usr/bin/env node
+// Health check script for CI/CD
+import http from 'http';
+
+const options = {
+  hostname: '0.0.0.0',
+  port: process.env.PORT || 5000,
+  path: '/health',
+  method: 'GET',
+  timeout: 5000
+};
+
+const req = http.request(options, (res) => {
+  if (res.statusCode === 200) {
+    console.log('✅ Health check passed');
+    process.exit(0);
+  } else {
+    console.error('❌ Health check failed:', res.statusCode);
+    process.exit(1);
+  }
+});
+
+req.on('error', (err) => {
+  console.error('❌ Health check error:', err.message);
+  process.exit(1);
+});
+
+req.on('timeout', () => {
+  console.error('❌ Health check timeout');
+  req.destroy();
+  process.exit(1);
+});
+
+req.end();
+`;
+    
+    writeFileSync('dist/health-check.js', healthCheck);
+    console.log('🏥 Created health check script');
     
   } catch (error) {
-    console.error('Server build failed:', error.message);
+    console.error('❌ Server build failed:', error.message);
+    
+    if (process.env.CI) {
+      console.error('CI/CD: Server compilation failed - check TypeScript errors');
+    }
+    
     throw error;
   }
 }
@@ -141,42 +298,93 @@ async function main() {
   const command = process.argv[2] || 'build';
   
   try {
+    // Initialize environment management
+    createEnvExample();
+    const isCI = checkCIEnvironment();
+    
+    // Validate environment based on command
+    const targetEnv = (command === 'start' || process.env.NODE_ENV === 'production') ? 'production' : 'development';
+    validateEnvironment(targetEnv);
+    
     switch (command) {
       case 'build:client':
+        console.log('🏗️  Building client application...');
         ensureDirectories();
         createMinimalClientBuild();
         break;
         
       case 'build:server':
+        console.log('🖥️  Building server application...');
         ensureDirectories();
         buildServer();
         break;
         
       case 'start':
         if (!existsSync('dist/index.js')) {
-          console.error('Production build not found. Run build first.');
+          console.error('❌ Production build not found. Run build first.');
+          if (isCI) {
+            console.error('CI/CD: Ensure build:server step completed successfully');
+          }
           process.exit(1);
         }
-        console.log('Starting production server...');
+        
+        console.log('🚀 Starting production server...');
+        
+        // Final production environment check
+        validateEnvironment('production');
+        
         execSync('node dist/index.js', { 
           stdio: 'inherit',
-          env: { ...process.env, NODE_ENV: 'production' }
+          env: { 
+            ...process.env, 
+            NODE_ENV: 'production',
+            PORT: process.env.PORT || '5000'
+          }
         });
+        break;
+        
+      case 'validate-env':
+        console.log('🔍 Environment validation only...');
+        const prodValidation = validateEnvironment('production');
+        const devValidation = validateEnvironment('development');
+        
+        console.log('\n📊 Environment Status:');
+        console.log(`Development ready: ${devValidation.missing.length === 0 ? '✅' : '❌'}`);
+        console.log(`Production ready: ${prodValidation.missing.length === 0 ? '✅' : '❌'}`);
         break;
         
       case 'build':
       default:
-        console.log('Starting deployment build...');
+        console.log('🎵 Starting Burnt Beats deployment build...');
+        console.log('=========================================');
+        
+        if (isCI) {
+          console.log('🤖 CI/CD mode: Enhanced validation enabled');
+        }
+        
         ensureDirectories();
         createMinimalClientBuild();
         buildServer();
         validateBuild();
-        console.log('Deployment build completed successfully');
-        console.log('Ready for production deployment');
+        
+        console.log('\n✅ Deployment build completed successfully');
+        console.log('🚀 Ready for production deployment on Replit');
+        
+        if (!isCI) {
+          console.log('\n💡 Next steps:');
+          console.log('  - Review environment variables in Replit Secrets');
+          console.log('  - Run "node quick-deploy.js start" to test production build');
+          console.log('  - Deploy using Replit Deploy button');
+        }
         break;
     }
   } catch (error) {
-    console.error('Deployment failed:', error.message);
+    console.error('❌ Deployment failed:', error.message);
+    
+    if (isCI) {
+      console.error('CI/CD: Build process terminated with errors');
+    }
+    
     process.exit(1);
   }
 }
