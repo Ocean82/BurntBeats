@@ -47,7 +47,7 @@ export const useSongGeneration = ({
   // Generate song mutation
   const generateSongMutation = useMutation({
     mutationFn: async (songData: InsertSong) => {
-      const response = await fetch("/api/songs", {
+      const response = await fetch("/api/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -59,7 +59,11 @@ export const useSongGeneration = ({
           tempo: parseInt(songData.tempo?.toString() || '120'),
           key: songData.key,
           duration: parseInt(songData.duration?.toString() || '30'),
-          userId: songData.userId
+          userId: songData.userId,
+          mood: songData.mood || 'happy',
+          vocalStyle: songData.vocalStyle || 'smooth',
+          singingStyle: songData.singingStyle || 'melodic',
+          tone: songData.tone || 'warm'
         }),
       });
       
@@ -91,12 +95,27 @@ export const useSongGeneration = ({
       onGenerationStart?.(tempSong);
     },
     onSuccess: (song) => {
+      // Validate and enhance the song object with proper audio URLs
+      const enhancedSong = {
+        ...song,
+        audioUrl: song.audioUrl || `/api/audio/${song.id}`,
+        previewUrl: song.previewUrl || song.generatedAudioPath || `/api/audio/${song.id}`,
+        downloadUrl: song.downloadUrl || song.generatedAudioPath || `/uploads/${song.title?.toLowerCase().replace(/\s+/g, '_')}.mp3`
+      };
+
       // Check if song is already completed (immediate generation)
-      if (song.status === "completed") {
+      if (enhancedSong.status === "completed") {
         setGeneratingSong(null);
         setGenerationProgress(100);
         
-        onGenerationComplete?.(song);
+        console.log("🎵 Song generation completed:", {
+          title: enhancedSong.title,
+          audioUrl: enhancedSong.audioUrl,
+          hasAudio: !!enhancedSong.generatedAudioPath,
+          sections: enhancedSong.sections?.length || 0
+        });
+        
+        onGenerationComplete?.(enhancedSong);
         
         toast({
           title: "Song Generated Successfully",
@@ -104,8 +123,8 @@ export const useSongGeneration = ({
         });
       } else {
         // Song is still processing, start polling
-        setGeneratingSong(song);
-        startProgressPolling(song.id);
+        setGeneratingSong(enhancedSong);
+        startProgressPolling(enhancedSong.id);
         
         toast({
           title: "Song Generation Started",

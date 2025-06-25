@@ -33,7 +33,26 @@ export default function SongForm({ onSongGenerated, user }: SongFormProps) {
     generationStage,
     generationError
   } = useSongGeneration({
-    onGenerationComplete: onSongGenerated,
+    onGenerationComplete: (song) => {
+      console.log("🎵 Song generation completed with audio:", {
+        title: song.title,
+        audioUrl: song.audioUrl,
+        generatedAudioPath: song.generatedAudioPath,
+        status: song.status,
+        sections: song.sections?.length || 0
+      });
+
+      // Set the completed song for the audio player
+      onSongGenerated(song);
+
+      // Auto-advance to next step if using step system
+      // if (typeof currentStep !== 'undefined' && currentStep < 4) {
+      //   setTimeout(() => {
+      //     // Allow time for user to see completion
+      //     console.log("Auto-advancing to audio player step");
+      //   }, 1000);
+      // }
+    },
     userId: user?.id || 1
   });
 
@@ -61,8 +80,11 @@ export default function SongForm({ onSongGenerated, user }: SongFormProps) {
         lyrics: lyrics.trim(),
         genre: genre || "Pop",
         vocalStyle: style || "Upbeat",
+        mood: mood || "Happy",
         tempo: 120,
-        songLength: 30
+        duration: 30,
+        singingStyle: "melodic",
+        tone: "warm"
       });
 
       // Song will be handled by onGenerationComplete callback

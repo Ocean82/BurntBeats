@@ -1,5 +1,6 @@
+
 {
-  "entrypoint": "node dist/index.js",
+  "entrypoint": "node start-production.js",
   "build": [
     "node build-client.js",
     "node build-server.js"
@@ -7,14 +8,20 @@
   "buildScript": "node build-client.js && node build-server.js",
   "run": "node start-production.js",
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "PORT": "5000"
   },
   "healthCheck": {
     "path": "/health",
-    "method": "GET"
+    "method": "GET",
+    "timeout": 30000,
+    "interval": 10000
   },
   "port": 5000,
   "staticFiles": {
     "/": "dist/public"
-  }
+  },
+  "buildTimeout": 300000,
+  "startTimeout": 120000,
+  "gracefulShutdownTimeout": 30000
 }

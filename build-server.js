@@ -1,44 +1,43 @@
+
 #!/usr/bin/env node
 
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, statSync } from 'fs';
 
-// Ensure dist directory exists
-if (!existsSync('dist')) {
-  mkdirSync('dist', { recursive: true });
+console.log('🖥️  Building server application...');
+
+// Validation checks
+function validatePrerequisites() {
+  const requiredFiles = [
+    'server/index.ts',
+    'tsconfig.server.json'
+  ];
+  
+  const missing = requiredFiles.filter(file => !existsSync(file));
+  if (missing.length > 0) {
+    throw new Error(`Missing required files: ${missing.join(', ')}`);
+  }
+  
+  // Check if esbuild is available
+  try {
+    execSync('npx esbuild --version', { stdio: 'pipe' });
+  } catch (error) {
+    throw new Error('esbuild not available. Run: npm install esbuild');
+  }
+  
+  console.log('✅ Prerequisites validated');
 }
 
-console.log('Building server application...');
+// Ensure dist directory exists
+function ensureDirectories() {
+  if (!existsSync('dist')) {
+    mkdirSync('dist', { recursive: true });
+    console.log('📁 Created dist directory');
+  }
+}
 
-try {
-  // Build server with esbuild
-  const esbuildCommand = [
-    'npx esbuild server/index.ts',
-    '--bundle',
-    '--platform=node',
-    '--target=node20',
-    '--format=esm',
-    '--outfile=dist/index.js',
-    '--external:pg-native',
-    '--external:bufferutil',
-    '--external:utf-8-validate',
-    '--external:fsevents',
-    '--external:lightningcss',
-    '--external:@babel/preset-typescript',
-    '--external:@babel/core',
-    '--external:tailwindcss',
-    '--external:autoprefixer',
-    '--external:postcss',
-    '--external:vite',
-    '--external:@vitejs/plugin-react',
-    '--external:@replit/vite-plugin-cartographer',
-    '--external:@replit/vite-plugin-runtime-error-modal',
-    '--minify'
-  ].join(' ');
-  
-  execSync(esbuildCommand, { stdio: 'inherit' });
-  
-  // Create production package.json
+// Create production package.json
+function createProductionPackage() {
   const prodPackage = {
     "name": "burnt-beats",
     "version": "1.0.0",
@@ -68,10 +67,83 @@ try {
   };
   
   writeFileSync('dist/package.json', JSON.stringify(prodPackage, null, 2));
+  console.log('📦 Created production package.json');
+}
+
+// Validate build output
+function validateBuildOutput() {
+  if (!existsSync('dist/index.js')) {
+    throw new Error('Build failed: dist/index.js not generated');
+  }
+  
+  const stats = statSync('dist/index.js');
+  if (stats.size < 1000) {
+    throw new Error('Build failed: Server bundle appears to be empty or corrupted');
+  }
+  
+  console.log(`✅ Server bundle created: ${Math.round(stats.size / 1024)}KB`);
+}
+
+try {
+  // Step 1: Validate prerequisites
+  validatePrerequisites();
+  
+  // Step 2: Ensure directories
+  ensureDirectories();
+  
+  // Step 3: Build server with esbuild
+  console.log('🔨 Building server with esbuild...');
+  
+  const esbuildCommand = [
+    'npx esbuild server/index.ts',
+    '--bundle',
+    '--platform=node',
+    '--target=node20',
+    '--format=esm',
+    '--outfile=dist/index.js',
+    '--external:pg-native',
+    '--external:bufferutil',
+    '--external:utf-8-validate',
+    '--external:fsevents',
+    '--external:lightningcss',
+    '--external:@babel/preset-typescript',
+    '--external:@babel/core',
+    '--external:tailwindcss',
+    '--external:autoprefixer',
+    '--external:postcss',
+    '--external:vite',
+    '--external:@vitejs/plugin-react',
+    '--external:@replit/vite-plugin-cartographer',
+    '--external:@replit/vite-plugin-runtime-error-modal',
+    '--minify',
+    '--sourcemap=external'
+  ].join(' ');
+  
+  execSync(esbuildCommand, { 
+    stdio: 'inherit',
+    env: { ...process.env, NODE_ENV: 'production' }
+  });
+  
+  // Step 4: Create production package.json
+  createProductionPackage();
+  
+  // Step 5: Validate output
+  validateBuildOutput();
   
   console.log('✅ Server build completed successfully');
-  console.log('✅ Production package.json created');
+  
 } catch (error) {
   console.error('❌ Server build failed:', error.message);
+  
+  // Cleanup on failure
+  try {
+    if (existsSync('dist/index.js')) {
+      execSync('rm -f dist/index.js dist/index.js.map', { stdio: 'pipe' });
+      console.log('🧹 Cleaned up partial build artifacts');
+    }
+  } catch (cleanupError) {
+    console.warn('⚠️  Failed to cleanup build artifacts:', cleanupError.message);
+  }
+  
   process.exit(1);
 }

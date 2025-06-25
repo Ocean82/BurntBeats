@@ -48,20 +48,34 @@ export default function AudioPlayer({
 
   // Validate audio URL helper function
   function validateAudioUrl(url: string | null | undefined): string | null {
-    if (!url) return null;
-    
+    if (!url) {
+      console.warn('Audio URL is null or undefined');
+      return null;
+    }
+
+    // Handle API streaming URLs
+    if (url.startsWith('/api/audio/')) {
+      const baseUrl = window.location.origin;
+      const fullUrl = `${baseUrl}${url}`;
+      console.log('Using API audio stream:', fullUrl);
+      return fullUrl;
+    }
+
     // Handle relative URLs by making them absolute
     if (url.startsWith('/uploads/') || url.startsWith('/songs/')) {
       const baseUrl = window.location.origin;
-      return `${baseUrl}${url}`;
+      const fullUrl = `${baseUrl}${url}`;
+      console.log('Using static file URL:', fullUrl);
+      return fullUrl;
     }
-    
-    // Validate URL format
+
+    // Validate URL format for absolute URLs
     try {
       new URL(url);
+      console.log('Using absolute URL:', url);
       return url;
     } catch {
-      console.warn('Invalid audio URL:', url);
+      console.warn('Invalid audio URL format:', url);
       return null;
     }
   }
@@ -83,7 +97,7 @@ export default function AudioPlayer({
       setDuration(audio.duration);
       setIsReady(true);
       setIsLoading(false);
-      
+
       // Attempt autoplay if enabled and user has interacted
       if (autoPlay && hasUserInteracted) {
         audio.play().catch(err => {
@@ -99,7 +113,7 @@ export default function AudioPlayer({
     const handleTimeUpdate = () => {
       if (audio.duration && !isNaN(audio.duration)) {
         setCurrentTime(audio.currentTime);
-        
+
         // Update current section based on playback time
         if (song.sections && Array.isArray(song.sections)) {
           const currentSec = song.sections.find(section => 
@@ -114,7 +128,7 @@ export default function AudioPlayer({
 
     const handleEnded = () => {
       setIsPlaying(false);
-      
+
       if (loop) {
         audio.currentTime = 0;
         audio.play().catch(console.error);
@@ -130,7 +144,7 @@ export default function AudioPlayer({
     const handleError = (e: Event) => {
       const errorTarget = e.target as HTMLAudioElement;
       const errorCode = errorTarget.error?.code;
-      
+
       let errorMessage = 'Failed to load audio';
       switch (errorCode) {
         case MediaError.MEDIA_ERR_ABORTED:
@@ -146,7 +160,7 @@ export default function AudioPlayer({
           errorMessage = 'Audio format not supported';
           break;
       }
-      
+
       setError(errorMessage);
       setIsLoading(false);
       setIsReady(false);
@@ -197,7 +211,7 @@ export default function AudioPlayer({
       } catch (error) {
         const err = error as Error;
         console.error('Error playing audio:', err);
-        
+
         if (err.name === 'NotAllowedError') {
           setError('Playback blocked by browser. Please interact with the page first.');
         } else if (err.name === 'NotSupportedError') {
@@ -212,7 +226,7 @@ export default function AudioPlayer({
   const handleSeek = (value: number[]) => {
     const audio = audioRef.current;
     if (!audio || !isReady || !duration) return;
-    
+
     const seekTime = Math.min(Math.max(value[0], 0), duration);
     audio.currentTime = seekTime;
     setCurrentTime(seekTime);
@@ -221,7 +235,7 @@ export default function AudioPlayer({
   const handleVolumeChange = (value: number[]) => {
     const audio = audioRef.current;
     const newVolume = value[0];
-    
+
     if (audio) {
       audio.volume = newVolume;
     }
@@ -245,14 +259,14 @@ export default function AudioPlayer({
   const jumpToSection = (startTime: number) => {
     const audio = audioRef.current;
     if (!audio || !isReady) return;
-    
+
     if (!hasUserInteracted) {
       setHasUserInteracted(true);
     }
-    
+
     audio.currentTime = startTime;
     setCurrentTime(startTime);
-    
+
     if (!isPlaying) {
       togglePlay();
     }
@@ -306,7 +320,7 @@ export default function AudioPlayer({
           preload="metadata"
           loop={loop}
         />
-        
+
         <div className="space-y-4">
           {/* Song Info */}
           <div className="text-center">
@@ -360,7 +374,7 @@ export default function AudioPlayer({
                 <Play className="h-6 w-6" />
               )}
             </Button>
-            
+
             {/* Next button if callback provided */}
             {onNext && (
               <Button
@@ -400,7 +414,7 @@ export default function AudioPlayer({
             </div>
           )}
 
-          {/* Section Navigation */}
+          {/* Enhanced Section Navigation with Scrubbing */}
           {showFullControls && song.sections && Array.isArray(song.sections) && song.sections.length > 0 && (
             <div className="space-y-3 border-t border-white/10 pt-4">
               <div className="flex items-center justify-between">
@@ -414,22 +428,99 @@ export default function AudioPlayer({
                   {showSectionList ? 'Hide' : 'Show'} Sections
                 </Button>
               </div>
-              
-              {showSectionList && (
-                <div className="grid grid-cols-2 gap-2">
-                  {song.sections.map((section, index) => (
-                    <Button
+
+              {/* Section Timeline Scrubber */}
+              <div className="relative h-8 bg-white/5 rounded-lg overflow-hidden">
+                {song.sections.map((section, index) => {
+                  const sectionWidth = ((section.endTime - section.startTime) / duration) * 100;
+                  const sectionLeft = (section.startTime / duration) * 100;
+                  const isCurrentSection = currentTime >= section.startTime && currentTime < section.endTime;
+                  
+                  return (
+                    <button
                       key={index}
-                      variant={currentSection === section.type ? "secondary" : "ghost"}
-                      size="sm"
                       onClick={() => jumpToSection(section.startTime)}
-                      className="text-xs justify-start text-white/70 hover:text-white hover:bg-white/10"
                       disabled={!isReady}
+                      className={`absolute h-full text-xs font-medium transition-all hover:brightness-125 disabled:opacity-50 ${
+                        isCurrentSection 
+                          ? 'bg-purple-500/80 text-white' 
+                          : 'bg-white/20 text-white/70 hover:bg-white/30'
+                      }`}
+                      style={{
+                        left: `${sectionLeft}%`,
+                        width: `${sectionWidth}%`,
+                      }}
+                      title={`Jump to ${section.type} (${formatTime(section.startTime)})`}
                     >
-                      <span className="truncate">
-                        {section.type} ({formatTime(section.startTime)})
+                      <span className="px-1 truncate block">
+                        {section.type}
                       </span>
-                    </Button>
+                    </button>
+                  );
+                })}
+                
+                {/* Progress indicator overlay */}
+                <div 
+                  className="absolute top-0 h-full bg-gradient-to-r from-purple-600 to-purple-400 opacity-40 pointer-events-none"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+
+              {/* Quick Jump Buttons */}
+              <div className="flex flex-wrap gap-2">
+                {song.sections.map((section, index) => (
+                  <Button
+                    key={index}
+                    variant={currentSection === section.type ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => jumpToSection(section.startTime)}
+                    className="text-xs text-white/70 hover:text-white hover:bg-white/10 flex-shrink-0"
+                    disabled={!isReady}
+                  >
+                    <span className="flex items-center space-x-1">
+                      <span>{section.type}</span>
+                      <span className="text-white/40">({formatTime(section.startTime)})</span>
+                    </span>
+                  </Button>
+                ))}
+              </div>
+
+              {showSectionList && (
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {song.sections.map((section, index) => (
+                    <div 
+                      key={index}
+                      className={`flex items-center justify-between p-2 rounded-md transition-colors ${
+                        currentSection === section.type 
+                          ? 'bg-purple-500/20 border border-purple-500/40' 
+                          : 'bg-white/5 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm font-medium text-white">
+                            {section.type}
+                          </span>
+                          <span className="text-xs text-white/60">
+                            {formatTime(section.startTime)} - {formatTime(section.endTime)}
+                          </span>
+                        </div>
+                        {section.lyrics && (
+                          <p className="text-xs text-white/50 mt-1 line-clamp-2">
+                            {section.lyrics}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => jumpToSection(section.startTime)}
+                        disabled={!isReady}
+                        className="text-white/60 hover:text-white ml-2"
+                      >
+                        Jump
+                      </Button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -446,6 +537,29 @@ export default function AudioPlayer({
             </div>
           )}
         </div>
+
+        {/* Song Sections Navigation */}
+        {song?.sections && song.sections.length > 0 && (
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-gray-300 mb-2">Song Sections</h4>
+            <div className="flex flex-wrap gap-2">
+              {song.sections.map((section: any, index: number) => (
+                <button
+                  key={index}
+                  onClick={() => jumpToSection(section.startTime || 0)}
+                  className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                    currentTime >= (section.startTime || 0) && 
+                    currentTime < (section.endTime || duration)
+                      ? 'bg-green-500/20 border-green-500 text-green-400'
+                      : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {section.type || `Section ${index + 1}`}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

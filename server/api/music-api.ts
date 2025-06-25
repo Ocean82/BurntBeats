@@ -46,18 +46,18 @@ export class MusicAPI {
     }
   }
 
-  // Generate basic song
+  // Generate basic song using advanced generateSong function
   static async generateSong(req: Request, res: Response) {
     try {
       const { title, lyrics, genre, tempo, key, duration, userId, vocalStyle, singingStyle, mood, tone } = req.body;
 
-      if (!title || !lyrics) {
-        return res.status(400).json({ error: "Title and lyrics are required" });
+      if (!lyrics) {
+        return res.status(400).json({ error: "Lyrics are required" });
       }
 
       // Validate inputs
-      if (typeof title !== 'string' || typeof lyrics !== 'string') {
-        return res.status(400).json({ error: "Title and lyrics must be strings" });
+      if (typeof lyrics !== 'string') {
+        return res.status(400).json({ error: "Lyrics must be a string" });
       }
 
       if (tempo && (isNaN(tempo) || tempo < 60 || tempo > 200)) {
@@ -68,13 +68,13 @@ export class MusicAPI {
         return res.status(400).json({ error: "Duration must be between 10 and 300 seconds" });
       }
 
-      console.log("🎵 Generating song with full MelodyGenerator + VocalGenerator pipeline...");
+      console.log("🎵 Generating song with advanced MelodyGenerator + VocalGenerator pipeline...");
 
-      // Import the full music generation system
+      // Import the advanced music generation system
       const { generateSong } = await import("../music-generator");
 
       const songData = {
-        title,
+        title: title || `${genre || 'Pop'} Song`,
         lyrics,
         genre: genre || 'pop',
         tempo: tempo || 120,
@@ -88,22 +88,22 @@ export class MusicAPI {
         songLength: `0:${Math.floor((duration || 30) / 60)}:${String((duration || 30) % 60).padStart(2, '0')}`
       };
 
-      console.log("🎼 Starting MelodyGenerator + VocalGenerator pipeline...");
-      const generationResult = await generateSong(songData);
+      console.log("🎼 Starting advanced song generation pipeline...");
+      const generatedSong = await generateSong(songData);
 
       // Store song in database if storage is available
       let storedSong = null;
       try {
         const { storage } = await import("../storage");
         storedSong = await storage.createSong({
-          title,
-          lyrics,
-          genre: genre || 'pop',
-          tempo: tempo || 120,
-          key: key || 'C',
-          duration: duration || 30,
-          generatedAudioPath: generationResult.generatedAudioPath,
-          userId: userId || 'guest',
+          title: generatedSong.title,
+          lyrics: generatedSong.lyrics,
+          genre: generatedSong.genre,
+          tempo: generatedSong.tempo,
+          key: generatedSong.key,
+          duration: generatedSong.duration,
+          generatedAudioPath: generatedSong.generatedAudioPath,
+          userId: generatedSong.userId,
           status: 'completed',
           generationProgress: 100
         });
@@ -114,10 +114,10 @@ export class MusicAPI {
       // Calculate file size if audio file exists
       let fileSize = 0;
       try {
-        if (generationResult.generatedAudioPath) {
-          const cleanPath = generationResult.generatedAudioPath.startsWith('/') 
-            ? generationResult.generatedAudioPath.slice(1) 
-            : generationResult.generatedAudioPath;
+        if (generatedSong.generatedAudioPath) {
+          const cleanPath = generatedSong.generatedAudioPath.startsWith('/') 
+            ? generatedSong.generatedAudioPath.slice(1) 
+            : generatedSong.generatedAudioPath;
           const fullPath = path.join(process.cwd(), cleanPath);
           if (fs.existsSync(fullPath)) {
             const stats = fs.statSync(fullPath);
@@ -128,38 +128,40 @@ export class MusicAPI {
         console.warn("Could not calculate file size:", error);
       }
 
-      // Return complete Song object with proper URLs
+      // Return complete Song object with proper URLs and synced sections
       const song = {
         id: storedSong?.id || Date.now(),
-        title,
-        lyrics,
-        genre: genre || 'pop',
-        tempo: tempo || 120,
-        key: key || 'C',
-        duration: duration || 30,
+        title: generatedSong.title,
+        lyrics: generatedSong.lyrics,
+        genre: generatedSong.genre,
+        tempo: generatedSong.tempo,
+        key: generatedSong.key,
+        duration: generatedSong.duration,
         status: "completed" as const,
         generationProgress: 100,
-        generatedAudioPath: generationResult.generatedAudioPath,
+        generatedAudioPath: generatedSong.generatedAudioPath,
         audioUrl: `/api/audio/${storedSong?.id || Date.now()}`, // Use streaming endpoint
-        previewUrl: generationResult.generatedAudioPath, // Direct file access for preview
-        downloadUrl: generationResult.generatedAudioPath, // Direct file access for download
+        previewUrl: generatedSong.generatedAudioPath, // Direct file access for preview
+        downloadUrl: generatedSong.generatedAudioPath, // Direct file access for download
         hasWatermark: false,
         fileSize,
-        sections: generationResult.sections || null,
-        settings: generationResult.settings || null,
-        melody: generationResult.melody || null,
-        vocals: generationResult.vocals || null,
+        sections: generatedSong.sections || null, // Synced sections for player navigation
+        settings: generatedSong.settings || null,
+        melody: generatedSong.melody || null,
+        vocals: generatedSong.vocals || null,
         planRestricted: false,
         playCount: 0,
         likes: 0,
         rating: 4,
         createdAt: new Date(),
         updatedAt: new Date(),
-        userId: userId || 'guest',
+        userId: generatedSong.userId,
         voiceUsed: vocalStyle || 'smooth'
       };
 
-      console.log(`✅ Song generation completed with full pipeline: ${song.audioUrl}`);
+      console.log(`✅ Advanced song generation completed: ${song.audioUrl}`);
+      console.log(`🎯 Sections generated: ${song.sections?.length || 0} sections for synced playback`);
+      
       res.json(song);
 
     } catch (error) {

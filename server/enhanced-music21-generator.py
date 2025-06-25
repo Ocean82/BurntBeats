@@ -81,13 +81,15 @@ def validate_key_signature(key_input):
 
 def main():
     if len(sys.argv) < 8:
-        print("Usage: python enhanced-music21-generator.py <title> <lyrics> <genre> <tempo> <key> <duration> <output_path> [--train-data=<path>] [--format=<midi|musicxml|both>]")
+        print("Usage: python enhanced-music21-generator.py <title> <lyrics> <genre> <tempo> <key> <duration> <output_path> [--train-data=<path>] [--format=<midi|musicxml|both>] [--voice-leading=<enhanced>] [--dynamic-phrasing=<true|false>]")
         sys.exit(1)
 
     # Parse additional arguments
     train_data_path = None
     output_format = "midi"
     melody_data_path = None
+    voice_leading_enhanced = False
+    dynamic_phrasing_enabled = True
 
     for arg in sys.argv[8:]:
         if arg.startswith("--train-data="):
@@ -96,6 +98,10 @@ def main():
             output_format = arg.split("=", 1)[1]
         elif arg.startswith("--melody-data="):
             melody_data_path = arg.split("=", 1)[1]
+        elif arg.startswith("--voice-leading="):
+            voice_leading_enhanced = arg.split("=", 1)[1].lower() == "enhanced"
+        elif arg.startswith("--dynamic-phrasing="):
+            dynamic_phrasing_enabled = arg.split("=", 1)[1].lower() == "true"
 
     try:
         title = sys.argv[1].strip('"')
@@ -126,7 +132,10 @@ def main():
                 melody_data = json.load(f)
 
         # Create the composition with lyrics integration and training patterns
-        score = create_enhanced_composition(title, lyrics, genre, tempo_bpm, key_sig, duration_seconds, musical_patterns)
+        score = create_enhanced_composition(
+            title, lyrics, genre, tempo_bpm, key_sig, duration_seconds, 
+            musical_patterns, voice_leading_enhanced, dynamic_phrasing_enabled
+        )
 
         # Generate output in specified format(s)
         output_paths = write_enhanced_output(score, output_path, output_format)
@@ -488,7 +497,7 @@ def generate_detailed_analysis(score):
 
     return analysis_data
 
-def create_enhanced_composition(title, lyrics, genre, tempo_bpm, key_sig, duration_seconds, musical_patterns=None):
+def create_enhanced_composition(title, lyrics, genre, tempo_bpm, key_sig, duration_seconds, musical_patterns=None, voice_leading_enhanced=False, dynamic_phrasing_enabled=True):
     """Create enhanced composition with lyrics integration and training patterns"""
     score = stream.Score()
 
@@ -848,7 +857,7 @@ def get_rhythm_from_syllables(syllable_count):
         return 'complex'
 
 def create_lyrics_informed_melody(genre, key_sig, tempo_bpm, measures, lyric_analysis, musical_patterns=None):
-    """Create melody informed by lyrics analysis and training patterns"""
+    """Create melody informed by lyrics analysis and training patterns with dynamic phrasing"""
     melody = stream.Part()
     melody.partName = 'Lyrics-Informed Melody'
     melody.instrument = get_genre_instrument(genre, 'melody')
@@ -856,28 +865,105 @@ def create_lyrics_informed_melody(genre, key_sig, tempo_bpm, measures, lyric_ana
     key_obj = key.Key(key_sig)
     scale_notes = key_obj.scale.pitches
 
-    for measure in range(measures):
-        phrase_idx = measure % len(lyric_analysis['musical_phrases'])
-        phrase_data = lyric_analysis['musical_phrases'][phrase_idx]
-
+    # Dynamic phrase lengths based on genre
+    phrase_lengths = get_dynamic_phrase_lengths(genre, measures, lyric_analysis)
+    
+    current_measure = 0
+    phrase_idx = 0
+    
+    for phrase_length in phrase_lengths:
+        if current_measure >= measures or phrase_idx >= len(lyric_analysis['musical_phrases']):
+            break
+            
+        phrase_data = lyric_analysis['musical_phrases'][phrase_idx % len(lyric_analysis['musical_phrases'])]
+        
         melody_phrase = create_melodic_phrase_from_lyrics(
-            scale_notes, genre, phrase_data, tempo_bpm, musical_patterns
+            scale_notes, genre, phrase_data, tempo_bpm, musical_patterns, phrase_length
         )
         melody.extend(melody_phrase)
+        
+        current_measure += phrase_length
+        phrase_idx += 1
 
     return melody
 
-def create_melodic_phrase_from_lyrics(scale_notes, genre, phrase_data, tempo_bpm, musical_patterns=None):
+def get_dynamic_phrase_lengths(genre, total_measures, lyric_analysis):
+    """Generate dynamic phrase lengths based on genre characteristics"""
+    phrase_patterns = {
+        'pop': [4, 4, 4, 4],  # Always 4-bar phrases for pop
+        'rock': [4, 4, 2, 2, 4],  # Mostly 4-bar with some 2-bar
+        'jazz': [5, 3, 7, 4, 3],  # Asymmetrical phrases
+        'classical': [8, 4, 6, 2],  # Varied classical phrasing
+        'electronic': [2, 2, 4, 2, 2, 2],  # Short electronic phrases
+        'hip-hop': [4, 2, 4, 2],  # Hip-hop typical phrasing
+        'country': [4, 4, 4, 4],  # Traditional country phrasing
+        'r&b': [4, 2, 4, 2, 4]  # R&B with some variation
+    }
+    
+    base_pattern = phrase_patterns.get(genre.lower(), [4, 4, 4, 4])
+    
+    # Add randomization for jazz and experimental genres
+    if genre.lower() == 'jazz':
+        # Jazz gets more asymmetrical phrases
+        lengths = []
+        remaining = total_measures
+        while remaining > 0:
+            # Bias toward asymmetrical lengths for jazz
+            possible_lengths = [3, 5, 7] if random.random() < 0.6 else [4, 6, 8]
+            length = random.choice(possible_lengths)
+            length = min(length, remaining)
+            lengths.append(length)
+            remaining -= length
+        return lengths
+    
+    elif genre.lower() in ['experimental', 'avant-garde']:
+        # Completely random phrase lengths
+        lengths = []
+        remaining = total_measures
+        while remaining > 0:
+            length = random.randint(1, min(9, remaining))
+            lengths.append(length)
+            remaining -= length
+        return lengths
+    
+    else:
+        # Use pattern with slight variation
+        lengths = []
+        remaining = total_measures
+        pattern_idx = 0
+        
+        while remaining > 0:
+            base_length = base_pattern[pattern_idx % len(base_pattern)]
+            
+            # Add slight randomization (except for pop which stays strict)
+            if genre.lower() != 'pop' and random.random() < 0.3:
+                variation = random.choice([-1, 1]) if base_length > 2 else 1
+                length = max(1, base_length + variation)
+            else:
+                length = base_length
+                
+            length = min(length, remaining)
+            lengths.append(length)
+            remaining -= length
+            pattern_idx += 1
+            
+        return lengths
+
+def create_melodic_phrase_from_lyrics(scale_notes, genre, phrase_data, tempo_bpm, musical_patterns=None, phrase_length_measures=4):
     """Create a melodic phrase based on lyric analysis with proper music21 objects and training patterns"""
     phrase = []
 
-    # Base patterns influenced by lyrics
+    # Adjust pattern length based on phrase_length_measures
+    notes_per_measure = 4  # Assuming 4/4 time with quarter note = beat
+    total_notes = phrase_length_measures * notes_per_measure
+    
+    # Base patterns influenced by lyrics, scaled to phrase length
     if phrase_data['melodic_direction'] == 'ascending':
-        pattern = [1, 2, 3, 4, 5, 4, 3, 2]  # Rising then falling
+        pattern = generate_scaled_pattern([1, 2, 3, 4, 5, 4, 3, 2], total_notes)
     elif phrase_data['melodic_direction'] == 'descending':
-        pattern = [5, 4, 3, 2, 1, 2, 3, 4]  # Falling then rising
+        pattern = generate_scaled_pattern([5, 4, 3, 2, 1, 2, 3, 4], total_notes)
     else:
-        pattern = [3, 1, 4, 2, 5, 3, 2, 1]  # Wave-like
+        pattern = generate_scaled_pattern([3, 1, 4, 2, 5, 3, 2, 1], total_notes)
 
     # Adjust pattern based on emotion
     emotion = phrase_data['emotion']
@@ -1236,8 +1322,22 @@ def add_rhythmic_contemplation(pattern):
             item['is_rest'] = True
     return pattern
 
+def generate_scaled_pattern(base_pattern, target_length):
+    """Scale a pattern to fit the target length"""
+    if target_length <= len(base_pattern):
+        return base_pattern[:target_length]
+    
+    # Repeat and extend pattern
+    scaled = []
+    pattern_idx = 0
+    for i in range(target_length):
+        scaled.append(base_pattern[pattern_idx % len(base_pattern)])
+        pattern_idx += 1
+    
+    return scaled
+
 def create_enhanced_harmony(genre, key_sig, measures, emotion_arc):
-    """Create harmony that responds to emotional arc"""
+    """Create harmony that responds to emotional arc with enhanced voice leading"""
     harmony = stream.Part()
     harmony.partName = 'Enhanced Harmony'
     harmony.instrument = get_genre_instrument(genre, 'harmony')
@@ -1245,6 +1345,8 @@ def create_enhanced_harmony(genre, key_sig, measures, emotion_arc):
     # Enhanced chord progressions based on genre and emotion
     progressions = get_enhanced_progressions(genre)
     base_progression = progressions['base']
+    
+    previous_chord = None
 
     for measure in range(measures):
         emotion_idx = measure % len(emotion_arc)
@@ -1259,9 +1361,12 @@ def create_enhanced_harmony(genre, key_sig, measures, emotion_arc):
             progression = base_progression
 
         chord_symbol = progression[measure % len(progression)]
-        chord_obj = create_emotional_chord(chord_symbol, key_sig, current_emotion, genre)
+        chord_obj = create_emotional_chord_with_voice_leading(
+            chord_symbol, key_sig, current_emotion, genre, previous_chord
+        )
         chord_obj.quarterLength = 4.0
         harmony.append(chord_obj)
+        previous_chord = chord_obj
 
     return harmony
 
@@ -1290,6 +1395,158 @@ def get_enhanced_progressions(genre):
         }
     }
     return progressions.get(genre.lower(), progressions['pop'])
+
+def create_emotional_chord_with_voice_leading(chord_symbol, key_sig, emotion, genre, previous_chord=None):
+    """Create chord with enhanced voice leading and jazz extensions"""
+    key_obj = key.Key(key_sig)
+    
+    # Parse chord symbol and determine root
+    chord_root = get_chord_root_from_symbol(chord_symbol, key_obj)
+    
+    if genre.lower() == 'jazz':
+        return create_jazz_chord_with_extensions(chord_symbol, chord_root, emotion, previous_chord)
+    else:
+        return create_emotional_chord(chord_symbol, key_sig, emotion, genre)
+
+def create_jazz_chord_with_extensions(chord_symbol, root_pitch, emotion, previous_chord=None):
+    """Create sophisticated jazz chords with proper extensions and voice leading"""
+    
+    # Jazz chord extensions based on chord type
+    jazz_chord_types = {
+        'I': {'extensions': ['M7', 'M9'], 'alterations': []},
+        'ii': {'extensions': ['m7', 'm9'], 'alterations': []},
+        'iii': {'extensions': ['m7'], 'alterations': []},
+        'IV': {'extensions': ['M7', 'M9'], 'alterations': []},
+        'V': {'extensions': ['7', '9', '13'], 'alterations': ['b9', '#11']},
+        'vi': {'extensions': ['m7', 'm9'], 'alterations': []},
+        'vii': {'extensions': ['m7b5'], 'alterations': ['b9']}
+    }
+    
+    chord_info = jazz_chord_types.get(chord_symbol, jazz_chord_types['I'])
+    
+    # Build chord tones
+    chord_tones = []
+    
+    # Root
+    root = pitch.Pitch(root_pitch)
+    root.octave = 3
+    chord_tones.append(root)
+    
+    # Third (major or minor based on chord type)
+    if chord_symbol in ['ii', 'iii', 'vi'] or 'm' in str(chord_symbol):
+        third = pitch.Pitch(root_pitch.transpose('m3'))
+    else:
+        third = pitch.Pitch(root_pitch.transpose('M3'))
+    third.octave = 4
+    
+    # Fifth (or altered fifth)
+    if 'b5' in chord_info['extensions']:
+        fifth = pitch.Pitch(root_pitch.transpose('d5'))
+    else:
+        fifth = pitch.Pitch(root_pitch.transpose('P5'))
+    fifth.octave = 4
+    
+    # Extensions
+    for ext in chord_info['extensions']:
+        if ext == 'M7':
+            seventh = pitch.Pitch(root_pitch.transpose('M7'))
+            seventh.octave = 4
+            chord_tones.extend([third, fifth, seventh])
+        elif ext == '7':
+            seventh = pitch.Pitch(root_pitch.transpose('m7'))
+            seventh.octave = 4
+            chord_tones.extend([third, fifth, seventh])
+        elif ext == 'm7':
+            third = pitch.Pitch(root_pitch.transpose('m3'))
+            seventh = pitch.Pitch(root_pitch.transpose('m7'))
+            third.octave = 4
+            seventh.octave = 4
+            chord_tones.extend([third, fifth, seventh])
+        elif ext == 'M9':
+            ninth = pitch.Pitch(root_pitch.transpose('M9'))
+            ninth.octave = 5
+            chord_tones.append(ninth)
+        elif ext == '9':
+            ninth = pitch.Pitch(root_pitch.transpose('M9'))
+            ninth.octave = 5
+            chord_tones.append(ninth)
+        elif ext == '13':
+            thirteenth = pitch.Pitch(root_pitch.transpose('M13'))
+            thirteenth.octave = 5
+            chord_tones.append(thirteenth)
+    
+    # Add alterations for dominant chords
+    if chord_symbol == 'V':
+        for alt in chord_info['alterations']:
+            if alt == 'b9' and random.random() > 0.5:
+                flat_ninth = pitch.Pitch(root_pitch.transpose('m9'))
+                flat_ninth.octave = 5
+                chord_tones.append(flat_ninth)
+            elif alt == '#11' and random.random() > 0.6:
+                sharp_eleventh = pitch.Pitch(root_pitch.transpose('A11'))
+                sharp_eleventh.octave = 5
+                chord_tones.append(sharp_eleventh)
+    
+    # Apply voice leading if previous chord exists
+    if previous_chord:
+        chord_tones = apply_smooth_voice_leading(chord_tones, previous_chord)
+    
+    # Create the chord
+    jazz_chord = chord.Chord(chord_tones, quarterLength=4.0)
+    
+    # Jazz dynamics
+    jazz_chord.volume.velocity = 75 + int(emotion * 20)
+    
+    return jazz_chord
+
+def apply_smooth_voice_leading(new_chord_tones, previous_chord):
+    """Apply smooth voice leading by minimizing voice movement"""
+    if not previous_chord or len(previous_chord.pitches) == 0:
+        return new_chord_tones
+    
+    # Get previous chord pitches
+    prev_pitches = list(previous_chord.pitches)
+    
+    # Try to minimize movement between voices
+    optimized_tones = []
+    
+    for new_tone in new_chord_tones:
+        best_octave = new_tone.octave
+        min_distance = float('inf')
+        
+        # Try different octaves to find closest voice leading
+        for octave_shift in [-1, 0, 1]:
+            test_pitch = pitch.Pitch(new_tone)
+            test_pitch.octave = new_tone.octave + octave_shift
+            
+            # Find closest previous pitch
+            for prev_pitch in prev_pitches:
+                distance = abs(test_pitch.midi - prev_pitch.midi)
+                if distance < min_distance:
+                    min_distance = distance
+                    best_octave = test_pitch.octave
+        
+        # Apply best octave
+        optimized_tone = pitch.Pitch(new_tone)
+        optimized_tone.octave = best_octave
+        optimized_tones.append(optimized_tone)
+    
+    return optimized_tones
+
+def get_chord_root_from_symbol(chord_symbol, key_obj):
+    """Get the root pitch from a chord symbol in the given key"""
+    # Roman numeral to scale degree mapping
+    roman_to_degree = {
+        'I': 1, 'ii': 2, 'iii': 3, 'IV': 4, 'V': 5, 'vi': 6, 'vii': 7
+    }
+    
+    degree = roman_to_degree.get(chord_symbol, 1)
+    scale_pitches = key_obj.scale.pitches
+    
+    if degree <= len(scale_pitches):
+        return scale_pitches[degree - 1]
+    else:
+        return key_obj.tonic
 
 def create_emotional_chord(chord_symbol, key_sig, emotion, genre):
     """Create chord with emotional coloring using proper music21 Chord objects"""

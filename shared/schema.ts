@@ -23,7 +23,13 @@ export const voiceSamples = pgTable("voice_samples", {
   name: text("name").notNull(),
   filePath: text("file_path").notNull(),
   duration: decimal("duration"),
+  sampleRate: integer("sample_rate").default(44100),
+  bitDepth: integer("bit_depth").default(16),
+  fileSize: integer("file_size"), // in bytes
+  isProcessed: boolean("is_processed").default(false),
+  isDeleted: boolean("is_deleted").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const songs = pgTable("songs", {
@@ -45,8 +51,13 @@ export const songs = pgTable("songs", {
   playCount: integer("play_count").default(0),
   likes: integer("likes").default(0),
   rating: decimal("rating"),
+  parentSongId: integer("parent_song_id").references(() => songs.id), // For remixes/forks
+  forkedFromId: integer("forked_from_id").references(() => songs.id), // Original source
+  isRemix: boolean("is_remix").default(false),
+  isDeleted: boolean("is_deleted").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const songVersions = pgTable("song_versions", {
@@ -55,7 +66,9 @@ export const songVersions = pgTable("song_versions", {
   version: integer("version").notNull(),
   changes: jsonb("changes"),
   audioPath: text("audio_path"),
+  isDeleted: boolean("is_deleted").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export type User = typeof users.$inferSelect;
@@ -67,6 +80,38 @@ export type InsertVoiceSample = typeof voiceSamples.$inferInsert;
 
 export type Song = typeof songs.$inferSelect;
 export type InsertSong = typeof songs.$inferInsert;
+
+export interface SongSection {
+  id: string;
+  label: "Intro" | "Verse" | "Chorus" | "Bridge" | "Outro" | "Instrumental";
+  start: number; // seconds
+  end: number; // seconds
+  lyrics?: string;
+  key?: string;
+  tempo?: number;
+  description?: string;
+}
+
+export interface AudioFeatures {
+  tempo: number;
+  key: string;
+  energy: number;
+  valence: number;
+  danceability: number;
+}
+
+export interface MelodyPhrase {
+  notes: Array<{
+    pitch: number;
+    duration: number;
+    velocity: number;
+    startTime: number;
+  }>;
+  startTime: number;
+  duration: number;
+  key: string;
+  scale: string;
+}
 
 export interface GeneratedMelody {
   phrases: MelodyPhrase[];
