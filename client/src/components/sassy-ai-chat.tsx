@@ -55,14 +55,18 @@ export default function SassyAIChat({ user }: SassyAIChatProps) {
       };
       setMessages(prev => [...prev, aiMessage]);
     },
-    onError: () => {
-      // Fallback to local sassy responses if API fails
+    onError: (error) => {
+      console.error('Chat error:', error);
+      // Enhanced fallback responses based on different error scenarios
       const sassyResponses = [
         "Hmm, my circuits are having a moment. But I bet your lyrics need work anyway! 😏",
         "Error 404: Decent lyrics not found. Try harder next time!",
         "My AI brain is buffering... unlike your creativity which seems permanently stuck!",
         "Technical difficulties aside, I'm still more talented than your last song attempt.",
-        "Connection lost, but my sass remains intact. Got any real music questions?"
+        "Connection lost, but my sass remains intact. Got any real music questions?",
+        "I'm having technical difficulties, but honestly, your music probably needs more work than my code does.",
+        "Server's down, but my attitude is still up! What else you got?",
+        "My circuits are fried from trying to process your last message. Give me a sec to recover!"
       ];
       
       const randomResponse = sassyResponses[Math.floor(Math.random() * sassyResponses.length)];
@@ -75,6 +79,27 @@ export default function SassyAIChat({ user }: SassyAIChatProps) {
       setMessages(prev => [...prev, aiMessage]);
     }
   });
+
+  // Add quick suggestion buttons
+  const quickSuggestions = [
+    "Roast my lyrics",
+    "Help with chords",
+    "Random advice",
+    "What's trending?"
+  ];
+
+  const handleQuickSuggestion = (suggestion: string) => {
+    setInput(suggestion);
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      text: suggestion,
+      sender: 'user',
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, userMessage]);
+    chatMutation.mutate(suggestion);
+    setInput("");
+  };
 
   const handleSend = () => {
     if (!input.trim()) return;
@@ -190,8 +215,23 @@ export default function SassyAIChat({ user }: SassyAIChatProps) {
           </Button>
         </div>
         
+        <div className="flex flex-wrap gap-2 justify-center mb-2">
+          {quickSuggestions.map((suggestion) => (
+            <Button
+              key={suggestion}
+              variant="outline"
+              size="sm"
+              onClick={() => handleQuickSuggestion(suggestion)}
+              className="text-xs bg-gray-800 border-gray-600 hover:bg-gray-700"
+              disabled={chatMutation.isPending}
+            >
+              {suggestion}
+            </Button>
+          ))}
+        </div>
+        
         <div className="text-xs text-gray-500 text-center">
-          💡 Try: "Roast my lyrics", "Help with chord progressions", "What's trending in music?"
+          💡 Click a suggestion above or type your own message
         </div>
       </CardContent>
     </Card>

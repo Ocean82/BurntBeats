@@ -1,4 +1,4 @@
-import { Music, Plus, History, Mic, Download, Crown, Library, BarChart3, GitBranch, Users, BookOpen, TrendingUp, X, Menu } from "lucide-react";
+import { Music, Plus, History, Mic, Download, Crown, Library, BarChart3, GitBranch, Users, BookOpen, TrendingUp, X, Menu, FileText, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -51,6 +51,7 @@ export default function Sidebar({ onMenuClick, activeMenu = "New Song" }: Sideba
     { icon: BookOpen, label: "Music Theory", key: "theory", isPro: true },
     { icon: TrendingUp, label: "Social Hub", key: "social" },
     { icon: Download, label: "Downloads", key: "downloads" },
+    { icon: FileText, label: "Terms & Licensing", key: "terms" }, // Added Terms & Licensing
   ];
 
   const handleMenuClick = (key: string) => {

@@ -47,6 +47,40 @@ const app = express();
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), "uploads");
+
+  // Business profile endpoint for Stripe verification
+  app.get("/api/business-profile", (req: Request, res: Response) => {
+    res.json({
+      businessName: "Burnt Beats",
+      description: "AI-powered music generation platform with commercial licensing",
+      website: "https://burnt-beats-sammyjernigan.replit.app",
+      email: "support@burntbeats.app",
+      social: {
+        instagram: "@burntbeatsmusic",
+        twitter: "@burntbeats"
+      },
+      services: [
+        "AI Music Generation",
+        "Commercial Music Licensing", 
+        "Voice Synthesis",
+        "Beat Production"
+      ],
+      licensing: {
+        types: ["Commercial", "Sync", "Distribution"],
+        pricing: {
+          bonus: "$3 - Demo license with watermark",
+          base: "$8 - Full commercial license MP3 320kbps",
+          top: "$15 - Premium license WAV 24-bit with stems"
+        }
+      },
+      contact: {
+        support: "Available via in-app chat and email",
+        response_time: "24-48 hours"
+      }
+    });
+  });
+
+
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
@@ -87,14 +121,14 @@ export function registerRoutes(app: express.Application): http.Server {
 
   // API v1 Routes with versioning
   const v1Router = express.Router();
-  
+
   // Music Generation API Routes (v1)
   v1Router.post("/songs/generate", musicGenerationRateLimit, optionalAuth, checkPlanQuota('free'), validateMusicGenerationInput, MusicAPI.generateSong);
   v1Router.post("/songs/ai-generate", musicGenerationRateLimit, optionalAuth, requireFeature('neuralSynthesis'), validateMusicGenerationInput, MusicAPI.generateAIMusic);
   v1Router.post("/music21/demo", generalRateLimit, optionalAuth, MusicAPI.generateMusic21Demo);
   v1Router.get("/songs/:id", generalRateLimit, MusicAPI.getSong);
   v1Router.get("/songs", generalRateLimit, optionalAuth, MusicAPI.getUserSongs);
-  
+
   // Mount v1 routes
   app.use("/api/v1", v1Router);
 
@@ -819,7 +853,7 @@ export function registerRoutes(app: express.Application): http.Server {
 
       if (isWatermarked) {
         previewPath = await audioPreviewService.generateWatermarkedPreview(audioPath, songId.toString());
-      } else {
+      } else{
         previewPath = await audioPreviewService.generateCleanPreview(audioPath, songId.toString());
       }
 

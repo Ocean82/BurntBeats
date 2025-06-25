@@ -1,5 +1,7 @@
 import { storage } from "./storage";
 import type { User } from "@shared/schema";
+import { generateLicense, generatePDFLicense } from "./utils/license-generator";
+import { generatePDFLicense as createPDFLicense } from "./utils/pdf-license-generator";
 
 export interface PlanLimits {
   songsPerMonth: number;
@@ -297,6 +299,93 @@ export class PricingService {
     }
 
     return messages[currentPlan] || "Upgrade required for this feature";
+  }
+
+  async generateCommercialLicense(options: {
+    songTitle: string;
+    userId: string;
+    tier: 'base' | 'top';
+    userEmail?: string;
+    format?: 'txt' | 'pdf' | 'both';
+  }): Promise<{ textPath?: string; pdfPath?: string; licenseId: string }> {
+    const { songTitle, userId, tier, userEmail, format = 'both' } = options;
+    
+    const user = await storage.getUser(userId);
+    const email = userEmail || user?.email || 'user@example.com';
+    
+    const licenseId = `BBX-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Date.now()}`;
+    
+    const result: { textPath?: string; pdfPath?: string; licenseId: string } = { licenseId };
+    
+    if (format === 'txt' || format === 'both') {
+      result.textPath = generateLicense({
+        songTitle,
+        userId,
+        licenseId,
+        tier,
+        userEmail: email
+      });
+    }
+    
+    if (format === 'pdf' || format === 'both') {
+      result.pdfPath = createPDFLicense({
+        songTitle,
+        userId,
+        licenseId,
+        tier,
+        userEmail: email
+      });
+    }
+    
+    // Store license info in database for verification
+    await this.storeLicenseInfo(licenseId, {
+      songTitle,
+      userId,
+      tier,
+      userEmail: email,
+      issuedAt: new Date()
+    });
+    
+    return result;
+  }
+
+  private async storeLicenseInfo(licenseId: string, info: {
+    songTitle: string;
+    userId: string;
+    tier: 'base' | 'top';
+    userEmail: string;
+    issuedAt: Date;
+  }): Promise<void> {
+    // In a real implementation, you would store this in your database
+    // For now, we'll just log it
+    console.log(`📄 License ${licenseId} stored:`, info);
+  }
+
+  async verifyLicense(licenseId: string): Promise<boolean> {
+    // In a real implementation, you would check your database
+    // For now, return true if license ID format is correct
+    return /^BBX-[A-Z0-9]{4}-\d+$/.test(licenseId);
+  }
+
+  getPlans() {
+    return PLAN_LIMITS;
+  }
+
+  checkLimitations(planType: string, currentUsage: { songsGenerated: number; storageUsed: number }) {
+    const planLimits = PLAN_LIMITS[planType];
+    if (!planLimits) {
+      return { error: "Invalid plan type" };
+    }
+
+    return {
+      songsPerMonth: planLimits.songsPerMonth,
+      songsRemaining: planLimits.songsPerMonth === -1 ? -1 : Math.max(0, planLimits.songsPerMonth - currentUsage.songsGenerated),
+      storageLimit: planLimits.storage,
+      storageUsed: currentUsage.storageUsed,
+      features: planLimits.features,
+      audioQuality: planLimits.audioQuality,
+      genres: planLimits.genres
+    };
   }
 }
 
