@@ -105,14 +105,14 @@ export class MusicGenerator {
       return `/${outputPath}`;
     } catch (error) {
       console.error('Python music generation failed, using basic audio:', error);
-      
+
       // Create a basic audio file as last resort
       const baseFreq = this.getGenreBaseFrequency(songData.genre || 'pop');
       const duration = songData.duration || 30;
-      
+
       const basicAudioCmd = `ffmpeg -f lavfi -i "sine=frequency=${baseFreq}:duration=${duration}" -ar 44100 -ac 2 "${outputPath}" -y`;
       await execAsync(basicAudioCmd);
-      
+
       return `/${outputPath}`;
     }
   }
@@ -136,7 +136,7 @@ export class MusicGenerator {
     for (let i = 0; i < sectionCount; i++) {
       const startTime = i * sectionDuration;
       const endTime = (i + 1) * sectionDuration;
-      
+
       sections.push({
         id: i + 1,
         type: sectionTypes[i] || 'verse',
@@ -176,7 +176,7 @@ export async function generateSong(songData: any): Promise<Song> {
 
   try {
     console.log(`Starting advanced song generation for: ${songData.title}`);
-    
+
     // Stage 1: Generate advanced melody structure
     console.log('Stage 1: Generating melody structure...');
     const melody = await melodyGenerator.generateMelody(
@@ -250,7 +250,7 @@ export async function generateSong(songData: any): Promise<Song> {
 async function loadVoiceSample(voiceSampleId: number): Promise<any> {
   // Load voice sample from database/storage
   console.log(`Loading voice sample: ${voiceSampleId}`);
-  
+
   // In production, this would load the actual voice sample file
   return {
     id: voiceSampleId,
@@ -263,40 +263,79 @@ async function loadVoiceSample(voiceSampleId: number): Promise<any> {
   };
 }
 
+async function applyAdvancedAudioProcessing(audioPath: string, songData: any, vocals: any): Promise<string> {
+  console.log('🎛️ Applying advanced audio processing...');
+
+  try {
+    // For now, return the original audio path
+    // In production, this would apply mastering, EQ, compression, etc.
+    return audioPath;
+  } catch (error) {
+    console.error('Audio processing failed:', error);
+    return audioPath; // Return original on failure
+  }
+}
+
+function generateSongSections(melody: any, vocals: any): any[] {
+  const sections = [];
+
+  if (melody.phrases && melody.phrases.length > 0) {
+    let currentTime = 0;
+    const sectionTypes = ['intro', 'verse', 'chorus', 'bridge', 'outro'];
+
+    melody.phrases.forEach((phrase: any, index: number) => {
+      const sectionType = sectionTypes[index % sectionTypes.length];
+      const duration = phrase.notes.reduce((sum: number, note: any) => sum + note.duration, 0);
+
+      sections.push({
+        type: sectionType,
+        startTime: currentTime,
+        endTime: currentTime + duration,
+        lyricLine: phrase.lyricLine || '',
+        notes: phrase.notes.length
+      });
+
+      currentTime += duration;
+    });
+  }
+
+  return sections;
+}
+
 async function generateAudioComposition(songData: any, melody: any, vocals: any): Promise<string> {
   const timestamp = Date.now();
   const audioFileName = `generated_${songData.userId}_${timestamp}.mp3`;
   const outputPath = path.join('uploads', audioFileName);
-  
+
   // Ensure uploads directory exists
   await fs.mkdir('uploads', { recursive: true });
-  
+
   console.log('🎼 Generating audio composition with melody and vocal integration...');
-  
+
   try {
     // Generate composition using Node.js for reliability
     const duration = parseSongDuration(songData.songLength || '0:30');
     const baseFreq = getGenreBaseFrequency(songData.genre);
     const chordProgression = melody.chordProgression || ['C', 'Am', 'F', 'G'];
-    
+
     // Create layered audio composition
     const bassFreq = baseFreq / 2;
     const melodyFreq = baseFreq * 1.5;
     const harmonyFreq = baseFreq * 1.25;
-    
+
     // Build audio layers with proper timing
     const beatsPerSecond = (songData.tempo || 120) / 60;
     const beatDuration = 1 / beatsPerSecond;
     const totalBeats = Math.floor(duration * beatsPerSecond);
-    
+
     // Generate musical phrases based on melody structure
     let audioCommand = '';
-    
+
     if (melody.phrases && melody.phrases.length > 0) {
       // Use actual melody data
       const melodyNotes = melody.phrases.flatMap((phrase: any) => phrase.notes);
       const noteFreqs = melodyNotes.map((note: any) => midiToFrequency(note.pitch));
-      
+
       // Create melody line from actual notes
       const melodyLayer = noteFreqs.map((freq: number, i: number) => {
         const startTime = i * beatDuration;
@@ -304,7 +343,7 @@ async function generateAudioComposition(songData: any, melody: any, vocals: any)
         const volume = (noteVolume / 127) * 1.5;
         return `sine=frequency=${freq}:duration=${beatDuration}:volume=${volume}`;
       }).join(',');
-      
+
       audioCommand = `ffmpeg -f lavfi -i "${melodyLayer}" `;
     } else {
       // Fallback to chord-based composition
@@ -312,31 +351,31 @@ async function generateAudioComposition(songData: any, melody: any, vocals: any)
       const melodyLayer = `sine=frequency=${chordFreqs[0]}:duration=${duration}`;
       audioCommand = `ffmpeg -f lavfi -i "${melodyLayer}" `;
     }
-    
+
     // Add bass and harmony layers
     const bassLayer = `sine=frequency=${bassFreq}:duration=${duration}`;
     const harmonyLayer = `sine=frequency=${harmonyFreq}:duration=${duration}`;
-    
+
     // Combine all layers with proper mixing
     audioCommand += `-f lavfi -i "${bassLayer}" -f lavfi -i "${harmonyLayer}" `;
     audioCommand += `-filter_complex "[0:a]volume=1.8[melody];[1:a]volume=2.0[bass];[2:a]volume=1.2[harmony];[melody][bass][harmony]amix=inputs=3:duration=first:dropout_transition=0[mixed];[mixed]volume=3.0,highpass=f=80,lowpass=f=8000[out]" `;
     audioCommand += `-map "[out]" -t ${duration} -ar 44100 -ac 2 -b:a 192k "${outputPath}" -y`;
-    
+
     console.log('🎵 Executing audio generation...');
     await execAsync(audioCommand);
-    
+
     console.log('✅ Audio composition generated successfully');
     return `/uploads/${audioFileName}`;
-    
+
   } catch (error) {
     console.error('Audio generation failed, using fallback:', error);
-    
+
     // Simple fallback composition
     const fallbackFreq = getGenreBaseFrequency(songData.genre || 'pop');
     const fallbackDuration = parseSongDuration(songData.songLength || '0:30');
     const fallbackCmd = `ffmpeg -f lavfi -i "sine=frequency=${fallbackFreq}:duration=${fallbackDuration}" -f lavfi -i "sine=frequency=${fallbackFreq/2}:duration=${fallbackDuration}" -filter_complex "[0][1]amix=inputs=2:duration=first[out]" -map "[out]" -ar 44100 -ac 2 -b:a 128k "${outputPath}" -y`;
     await execAsync(fallbackCmd);
-    
+
     return `/uploads/${audioFileName}`;
   }
 }
@@ -369,7 +408,7 @@ function getChordFrequency(chord: string, baseFreq: number): number {
     'A': 1.67, 'Am': 1.67, 'Am7': 1.67,
     'B': 1.875, 'Bm': 1.875
   };
-  
+
   const multiplier = chordMap[chord] || 1.0;
   return baseFreq * multiplier;
 }
@@ -378,10 +417,10 @@ function getChordFrequency(chord: string, baseFreq: number): number {
 
 async function createFallbackComposition(outputPath: string, songData: any, melody: any): Promise<void> {
   console.log('Creating fallback composition...');
-  
+
   // Create a simple audio file as fallback
   const fallbackPath = outputPath.replace('.mid', '_fallback.mp3');
-  
+
   // Generate a basic composition structure
   const compositionData = {
     title: songData.title,
@@ -392,11 +431,11 @@ async function createFallbackComposition(outputPath: string, songData: any, melo
     melody: melody,
     timestamp: Date.now()
   };
-  
+
   // Write composition metadata
   await fs.writeFile(fallbackPath.replace('.mp3', '_metadata.json'), 
     JSON.stringify(compositionData, null, 2));
-  
+
   console.log('Fallback composition created');
 }
 
@@ -407,9 +446,9 @@ async function enhanceCompositionWithAdvancedFeatures(
   songData: any
 ): Promise<string> {
   console.log('Enhancing composition with advanced features...');
-  
+
   const enhancedPath = basePath.replace('.mid', '_enhanced.mp3');
-  
+
   // Apply melody enhancements
   const melodyEnhancements = {
     chordProgression: melody.chordProgression,
@@ -457,10 +496,10 @@ async function integrateAdvancedFeatures(
 
   // Generate enhanced audio file
   const enhancedPath = basePath.replace('.mid', '_integrated.mp3');
-  
+
   // Simulate advanced audio generation with real parameters
   await new Promise(resolve => setTimeout(resolve, 2000)); // Processing time simulation
-  
+
   return enhancedPath;
 }
 
@@ -521,20 +560,20 @@ function getGenreOptimizationParams(genre: string): any {
 
 function calculateDynamicRange(dynamics: any): number {
   if (!dynamics) return 0.75;
-  
+
   const range = dynamics.variation?.length || 3;
   const crescendos = dynamics.crescendos || 0;
   const diminuendos = dynamics.diminuendos || 0;
-  
+
   return Math.min(1.0, (range * 0.2) + (crescendos * 0.1) + (diminuendos * 0.1));
 }
 
 function calculateHarmonicComplexity(chordProgression: string[]): number {
   if (!chordProgression) return 0.5;
-  
+
   const uniqueChords = new Set(chordProgression).size;
   const progressionLength = chordProgression.length;
-  
+
   return Math.min(1.0, (uniqueChords / progressionLength) + 0.3);
 }
 
@@ -544,9 +583,9 @@ async function applyAdvancedAudioProcessing(
   vocals: any
 ): Promise<string> {
   console.log('Applying advanced audio processing...');
-  
+
   const processedPath = audioPath.replace('.mp3', '_processed.mp3');
-  
+
   // Advanced processing parameters
   const processingParams = {
     masteringChain: getAudioMasteringChain(songData.genre),
@@ -557,7 +596,7 @@ async function applyAdvancedAudioProcessing(
 
   // Apply mastering chain
   await applyMasteringChain(audioPath, processedPath, processingParams);
-  
+
   console.log(`Advanced audio processing completed: ${processedPath}`);
   return processedPath;
 }
@@ -654,38 +693,38 @@ async function applyMasteringChain(
 ): Promise<void> {
   // Advanced mastering simulation
   console.log('Applying mastering chain with parameters:', params);
-  
+
   // Simulate processing time based on complexity
   const processingTime = calculateProcessingTime(params);
   await new Promise(resolve => setTimeout(resolve, processingTime));
-  
+
   console.log('Mastering chain applied successfully');
 }
 
 function calculateProcessingTime(params: any): number {
   // Calculate realistic processing time based on complexity
   let baseTime = 1500; // 1.5 seconds base
-  
+
   if (params.masteringChain.compression) baseTime += 500;
   if (params.vocalProcessing.reverb) baseTime += 300;
   if (params.spatialProcessing.depth > 0.7) baseTime += 200;
   if (params.dynamicProcessing.energy > 1.2) baseTime += 100;
-  
+
   return baseTime;
 }
 
 function generateSongSections(melody: any, vocals: any): any {
   const sections = [];
-  
+
   // Generate sections based on melody structure and vocal arrangement
   if (melody.phraseStructure) {
     const phraseDuration = melody.phraseStructure.phraseLength;
     const phraseCount = melody.phraseStructure.phraseCount;
-    
+
     for (let i = 0; i < phraseCount; i++) {
       const startTime = i * phraseDuration;
       const endTime = (i + 1) * phraseDuration;
-      
+
       sections.push({
         id: i + 1,
         type: determineSectionType(i, phraseCount),
@@ -697,7 +736,7 @@ function generateSongSections(melody: any, vocals: any): any {
       });
     }
   }
-  
+
   return sections;
 }
 
@@ -711,11 +750,11 @@ function determineSectionType(index: number, totalPhrases: number): string {
 
 function extractLyricsForSection(vocals: any, startTime: number, endTime: number): string {
   if (!vocals.rawVocals?.phonemeSequence) return '';
-  
+
   const relevantPhonemes = vocals.rawVocals.phonemeSequence.filter((seq: any) =>
     seq.startTime >= startTime && seq.endTime <= endTime
   );
-  
+
   return relevantPhonemes.map((seq: any) => seq.lineText).join('\n');
 }
 
@@ -742,7 +781,7 @@ function calculateSectionEnergy(index: number, melody: any): number {
   const baseEnergy = 0.6;
   const dynamicVariation = melody.dynamicMarkings?.variation?.length || 3;
   const sectionPosition = index / 8; // Assume 8 sections average
-  
+
   // Energy tends to build through a song
   return Math.min(1.0, baseEnergy + (sectionPosition * 0.3) + (dynamicVariation * 0.1));
 }
@@ -750,7 +789,7 @@ function calculateSectionEnergy(index: number, melody: any): number {
 function calculateSectionComplexity(index: number, melody: any): number {
   const baseComplexity = getComplexityFromGenre(melody.genre || 'pop') === 'complex' ? 0.8 : 0.5;
   const motifCount = melody.motifs?.length || 2;
-  
+
   return Math.min(1.0, baseComplexity + (motifCount * 0.1));
 }
 
@@ -770,38 +809,38 @@ function getComplexityFromGenre(genre: string): 'simple' | 'moderate' | 'complex
 
 function calculateVocalIntensity(vocals: any): number {
   if (!vocals.processingMetadata) return 0.7;
-  
+
   const naturalness = vocals.processingMetadata.naturalness || 0.85;
   const melodyAlignment = vocals.processingMetadata.melodyAlignment || 0.88;
-  
+
   return (naturalness + melodyAlignment) / 2;
 }
 
 function calculateHarmonicRichness(melody: any): number {
   const chordCount = melody.chordProgression?.length || 4;
   const uniqueChords = new Set(melody.chordProgression || []).size;
-  
+
   return Math.min(1.0, uniqueChords / chordCount + 0.2);
 }
 
 function calculateRhythmicDensity(melody: any): number {
   const subdivision = melody.rhythmicStructure?.subdivision || 'quarter';
   const syncopation = melody.rhythmicStructure?.syncopation || 'minimal';
-  
+
   let density = 0.5;
-  
+
   switch (subdivision) {
     case 'sixteenth': density += 0.4; break;
     case 'eighth': density += 0.2; break;
     case 'triplet': density += 0.3; break;
   }
-  
+
   switch (syncopation) {
     case 'high': density += 0.3; break;
     case 'moderate': density += 0.2; break;
     case 'programmed': density += 0.4; break;
   }
-  
+
   return Math.min(1.0, density);
 }
 

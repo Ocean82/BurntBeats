@@ -73,6 +73,7 @@ export function registerRoutes(app: express.Application): http.Server {
 
   // Legacy music routes for compatibility
   app.post("/api/songs/generate", MusicAPI.generateSong);
+  app.post("/api/generate", MusicAPI.generateSong); // Main generate endpoint
   app.post("/api/generate-ai-music", MusicAPI.generateAIMusic);
   app.post("/api/demo-music21", MusicAPI.generateMusic21Demo);
   app.get("/api/songs/single/:id", MusicAPI.getSong);
