@@ -47,6 +47,40 @@ const app = express();
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), "uploads");
+
+  // Business profile endpoint for Stripe verification
+  app.get("/api/business-profile", (req: Request, res: Response) => {
+    res.json({
+      businessName: "Burnt Beats",
+      description: "AI-powered music generation platform with commercial licensing",
+      website: "https://burnt-beats-sammyjernigan.replit.app",
+      email: "support@burntbeats.app",
+      social: {
+        instagram: "@burntbeatsmusic",
+        twitter: "@burntbeats"
+      },
+      services: [
+        "AI Music Generation",
+        "Commercial Music Licensing", 
+        "Voice Synthesis",
+        "Beat Production"
+      ],
+      licensing: {
+        types: ["Commercial", "Sync", "Distribution"],
+        pricing: {
+          bonus: "$3 - Demo license with watermark",
+          base: "$8 - Full commercial license MP3 320kbps",
+          top: "$15 - Premium license WAV 24-bit with stems"
+        }
+      },
+      contact: {
+        support: "Available via in-app chat and email",
+        response_time: "24-48 hours"
+      }
+    });
+  });
+
+
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }

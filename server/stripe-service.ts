@@ -136,18 +136,40 @@ export class StripeService {
   }
 
   private static async handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-    const { client_reference_id, customer_email } = session;
+    const { client_reference_id, customer_email, amount_total, currency } = session;
     
     if (client_reference_id) {
       // Parse client reference ID: songId_tier_songTitle
       const [songId, tier, ...titleParts] = client_reference_id.split('_');
       const songTitle = titleParts.join('_').replace(/_/g, ' ');
       
-      console.log(`🎵 Purchase completed via checkout: ${songId} - ${tier} tier`);
-      console.log(`📧 Customer email: ${customer_email}`);
+      console.log(`🎵 PURCHASE COMPLETED: ${songTitle}`);
+      console.log(`💰 Amount: ${amount_total ? amount_total / 100 : 0} ${currency?.toUpperCase()}`);
+      console.log(`🎶 Tier: ${tier} | Song ID: ${songId}`);
+      console.log(`📧 Customer: ${customer_email}`);
+      console.log(`🕒 Timestamp: ${new Date().toISOString()}`);
+      console.log(`🔗 Session ID: ${session.id}`);
       
-      // Generate the purchased file and send download link
-      // This would integrate with your file generation system
+      // Generate license and file
+      try {
+        const { pricingService } = await import('./pricing-service');
+        const license = await pricingService.generateCommercialLicense({
+          songTitle,
+          userId: songId,
+          tier: tier as 'base' | 'top',
+          userEmail: customer_email || 'customer@burntbeats.app',
+          format: 'both'
+        });
+        
+        console.log(`📄 License generated: ${license.licenseId}`);
+        console.log(`📁 Files: ${license.textPath}, ${license.pdfPath}`);
+        
+        // Log successful delivery
+        console.log(`✅ Purchase processing completed successfully`);
+        
+      } catch (error) {
+        console.error(`❌ License generation failed:`, error);
+      }
     }
   }
 
