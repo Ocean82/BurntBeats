@@ -33,7 +33,26 @@ export default function SongForm({ onSongGenerated, user }: SongFormProps) {
     generationStage,
     generationError
   } = useSongGeneration({
-    onGenerationComplete: onSongGenerated,
+    onGenerationComplete: (song) => {
+      console.log("🎵 Song generation completed with audio:", {
+        title: song.title,
+        audioUrl: song.audioUrl,
+        generatedAudioPath: song.generatedAudioPath,
+        status: song.status,
+        sections: song.sections?.length || 0
+      });
+
+      // Set the completed song for the audio player
+      onSongGenerated(song);
+
+      // Auto-advance to next step if using step system
+      // if (typeof currentStep !== 'undefined' && currentStep < 4) {
+      //   setTimeout(() => {
+      //     // Allow time for user to see completion
+      //     console.log("Auto-advancing to audio player step");
+      //   }, 1000);
+      // }
+    },
     userId: user?.id || 1
   });
 

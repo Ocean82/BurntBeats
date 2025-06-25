@@ -95,12 +95,27 @@ export const useSongGeneration = ({
       onGenerationStart?.(tempSong);
     },
     onSuccess: (song) => {
+      // Validate and enhance the song object with proper audio URLs
+      const enhancedSong = {
+        ...song,
+        audioUrl: song.audioUrl || `/api/audio/${song.id}`,
+        previewUrl: song.previewUrl || song.generatedAudioPath || `/api/audio/${song.id}`,
+        downloadUrl: song.downloadUrl || song.generatedAudioPath || `/uploads/${song.title?.toLowerCase().replace(/\s+/g, '_')}.mp3`
+      };
+
       // Check if song is already completed (immediate generation)
-      if (song.status === "completed") {
+      if (enhancedSong.status === "completed") {
         setGeneratingSong(null);
         setGenerationProgress(100);
         
-        onGenerationComplete?.(song);
+        console.log("🎵 Song generation completed:", {
+          title: enhancedSong.title,
+          audioUrl: enhancedSong.audioUrl,
+          hasAudio: !!enhancedSong.generatedAudioPath,
+          sections: enhancedSong.sections?.length || 0
+        });
+        
+        onGenerationComplete?.(enhancedSong);
         
         toast({
           title: "Song Generated Successfully",
@@ -108,8 +123,8 @@ export const useSongGeneration = ({
         });
       } else {
         // Song is still processing, start polling
-        setGeneratingSong(song);
-        startProgressPolling(song.id);
+        setGeneratingSong(enhancedSong);
+        startProgressPolling(enhancedSong.id);
         
         toast({
           title: "Song Generation Started",

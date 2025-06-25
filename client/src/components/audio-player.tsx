@@ -48,20 +48,34 @@ export default function AudioPlayer({
 
   // Validate audio URL helper function
   function validateAudioUrl(url: string | null | undefined): string | null {
-    if (!url) return null;
+    if (!url) {
+      console.warn('Audio URL is null or undefined');
+      return null;
+    }
+
+    // Handle API streaming URLs
+    if (url.startsWith('/api/audio/')) {
+      const baseUrl = window.location.origin;
+      const fullUrl = `${baseUrl}${url}`;
+      console.log('Using API audio stream:', fullUrl);
+      return fullUrl;
+    }
 
     // Handle relative URLs by making them absolute
     if (url.startsWith('/uploads/') || url.startsWith('/songs/')) {
       const baseUrl = window.location.origin;
-      return `${baseUrl}${url}`;
+      const fullUrl = `${baseUrl}${url}`;
+      console.log('Using static file URL:', fullUrl);
+      return fullUrl;
     }
 
-    // Validate URL format
+    // Validate URL format for absolute URLs
     try {
       new URL(url);
+      console.log('Using absolute URL:', url);
       return url;
     } catch {
-      console.warn('Invalid audio URL:', url);
+      console.warn('Invalid audio URL format:', url);
       return null;
     }
   }
