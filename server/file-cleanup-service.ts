@@ -1,4 +1,3 @@
-
 import fs from 'fs';
 import path from 'path';
 
@@ -79,10 +78,10 @@ export class FileCleanupService {
 
     for (const file of files) {
       const filePath = path.join(directory, file);
-      
+
       try {
         const stats = fs.statSync(filePath);
-        
+
         // Skip directories
         if (stats.isDirectory()) {
           continue;
@@ -92,17 +91,17 @@ export class FileCleanupService {
         const shouldExclude = this.options.excludePatterns?.some(pattern => 
           pattern.test(file)
         );
-        
+
         if (shouldExclude) {
           continue;
         }
 
         // Check if file is older than maxAge
         const fileAge = now - stats.mtime.getTime();
-        
+
         if (fileAge > this.options.maxAge) {
           console.log(`🗑️  Deleting old file: ${file} (age: ${Math.round(fileAge / 1000 / 60 / 60)}h)`);
-          
+
           deletedSize += stats.size;
           fs.unlinkSync(filePath);
           deletedCount++;
@@ -127,7 +126,7 @@ export class FileCleanupService {
     for (const file of files) {
       if (pattern.test(file)) {
         const filePath = path.join(directory, file);
-        
+
         try {
           fs.unlinkSync(filePath);
           deletedCount++;
@@ -146,7 +145,7 @@ export class FileCleanupService {
     try {
       const { storage } = await import('./storage');
       const songs = await storage.getUserSongs('all'); // Get all songs
-      
+
       const uploadsDir = path.join(process.cwd(), 'uploads');
       if (!fs.existsSync(uploadsDir)) {
         return;
@@ -175,7 +174,7 @@ export class FileCleanupService {
         if (!referencedFiles.has(file)) {
           const filePath = path.join(uploadsDir, file);
           const stats = fs.statSync(filePath);
-          
+
           // Only delete if file is older than 1 hour (to avoid deleting files mid-generation)
           const fileAge = Date.now() - stats.mtime.getTime();
           if (fileAge > 60 * 60 * 1000) { // 1 hour
@@ -191,6 +190,35 @@ export class FileCleanupService {
       }
     } catch (error) {
       console.error('❌ Orphaned file cleanup error:', error);
+    }
+  }
+
+  private async cleanupOldTemporaryFiles(): Promise<void> {
+    try {
+      console.log('🧹 Cleaning up old temporary files...');
+      // Placeholder for temporary file cleanup logic
+    } catch (error) {
+      console.error('Error during temporary file cleanup:', error);
+    }
+  }
+
+  private async cleanupExpiredSessions(): Promise<void> {
+    try {
+      console.log('🧹 Cleaning up expired sessions...');
+      // Placeholder for session cleanup logic
+      // This would integrate with your session store
+    } catch (error) {
+      console.error('Error during session cleanup:', error);
+    }
+  }
+
+  private async cleanupPreviewFiles(): Promise<void> {
+    try {
+      console.log('🧹 Cleaning up old preview files...');
+      const { audioPreviewService } = await import('./audio-preview-service');
+      await audioPreviewService.cleanupOldPreviews(24); // Clean previews older than 24 hours
+    } catch (error) {
+      console.error('Error during preview cleanup:', error);
     }
   }
 }

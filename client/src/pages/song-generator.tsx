@@ -29,6 +29,7 @@ import { useSongGeneration } from "@/hooks/use-song-generation";
 import { useMainContent } from "@/hooks/use-main-content";
 import { useSteps } from "@/hooks/use-steps";
 import { useMenuState } from "@/hooks/use-menu-state";
+import MusicAnalyticsVisualizer from "@/components/music-analytics-visualizer"; // Added import
 
 interface SongGeneratorProps {
   user: {
@@ -46,15 +47,15 @@ export default function SongGenerator({ user, onLogout }: SongGeneratorProps) {
   const [completedSong, setCompletedSong] = useState<Song | null>(null);
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
-  
+
   // Use custom hooks for state management
   const { currentStep, setCurrentStep, steps, goToStep, resetSteps } = useSteps({
     initialStep: 1,
     persistKey: 'songGenerator'
   });
-  
+
   const { activeMenu, setActiveMenu, clearMenuState } = useMenuState("New Song");
-  
+
   // No plans needed - everyone can create, pay only for downloads
 
   const handleSongGenerated = (song: Song) => {
@@ -119,6 +120,9 @@ export default function SongGenerator({ user, onLogout }: SongGeneratorProps) {
       case "pricing":
         setActiveMenu("Pricing");
         break;
+      case "insights":
+        setActiveMenu("Insights"); //Added menu
+        break;
     }
   };
 
@@ -126,12 +130,12 @@ export default function SongGenerator({ user, onLogout }: SongGeneratorProps) {
     setEditingSong(song);
     setCompletedSong(song); // Ensure the song is available for player
     setActiveMenu("Song Editor");
-    
+
     // Force step 3 to ensure player/edit UI is visible
     goToStep(3);
   };
 
-  
+
 
   const renderUpgradePrompt = (title: string, description: string, requiredPlan: string, price: string) => (
     <div className="flex items-center justify-center h-full">
@@ -204,6 +208,22 @@ export default function SongGenerator({ user, onLogout }: SongGeneratorProps) {
         );
       case "Pricing":
         return <StripeTieredCheckout songId="demo" songTitle="Choose Your Plan" />;
+      case "Insights":
+        return completedSong ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AudioPlayer
+              song={completedSong}
+              autoPlay={false}
+              className="lg:col-span-1"
+            />
+            <MusicAnalyticsVisualizer
+              song={completedSong}
+              className="lg:col-span-1"
+            />
+          </div>
+        ) : (
+          <div className="text-center text-gray-400">No song selected for analysis</div>
+        );
       default:
         return (
           <div className="h-full p-8 overflow-auto">
@@ -292,13 +312,13 @@ export default function SongGenerator({ user, onLogout }: SongGeneratorProps) {
       <div className="flex-1 overflow-auto">
         {renderMainContent()}
       </div>
-      
+
       <div className="w-20 bg-dark-card border-l border-gray-700 p-3 flex flex-col items-center space-y-3">
         <Button
           variant="ghost"
           size="icon"
           className="w-12 h-12 text-gray-400 hover:text-green-400 hover:bg-green-400/10 transition-all duration-200 rounded-lg"
-          onClick={() => setActiveTab("Downloads")}
+          onClick={() => setActiveMenu("Downloads")}
           title="Download Options"
         >
           <Download className="w-6 h-6" />
