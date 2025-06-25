@@ -768,7 +768,6 @@ export class MelodyGenerator {
         ticksPerQuarter: 480
       },
       tempo: tempo,
-```
       tracks: [
         {
           name: "Melody Track",

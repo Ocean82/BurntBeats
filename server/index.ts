@@ -270,22 +270,21 @@ process.on('SIGINT', () => {
 // Register routes before starting server
 registerRoutes(app);
 
-// Serve static files from dist/public in production
-if (process.env.NODE_ENV === 'production') {
-  const publicPath = path.join(process.cwd(), 'dist', 'public');
-  if (fs.existsSync(publicPath)) {
-    app.use(express.static(publicPath));
-    
-    // Catch-all handler for SPA
-    app.get('*', (req, res) => {
-      const indexPath = path.join(publicPath, 'index.html');
-      if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-      } else {
-        res.status(404).send('Page not found');
-      }
-    });
-  }
+// Serve static files from dist/public in production or development
+const publicPath = path.join(process.cwd(), 'dist', 'public');
+if (fs.existsSync(publicPath)) {
+  app.use(express.static(publicPath));
+  console.log('📁 Serving static files from:', publicPath);
+  
+  // Catch-all handler for SPA
+  app.get('*', (req, res) => {
+    const indexPath = path.join(publicPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      res.status(404).send('Page not found');
+    }
+  });
 }
 
 // Health check endpoint

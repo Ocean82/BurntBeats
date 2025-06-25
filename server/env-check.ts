@@ -3,7 +3,7 @@ export function validateEnvironmentVariables() {
   const required = [
     'DATABASE_URL',
     'STRIPE_SECRET_KEY',
-    'STRIPE_PUBLISHABLE_KEY',
+    'VITE_STRIPE_PUBLIC_KEY',
   ];
 
   const optional = [
@@ -46,7 +46,7 @@ export function validateEnvironmentVariables() {
 
   return {
     database: !!process.env.DATABASE_URL,
-    stripe: !!(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PUBLISHABLE_KEY),
+    stripe: !!(process.env.STRIPE_SECRET_KEY && process.env.VITE_STRIPE_PUBLIC_KEY),
     webhooks: !!process.env.STRIPE_WEBHOOK_SECRET,
     aiServices: {
       openai: !!process.env.OPENAI_API_KEY,

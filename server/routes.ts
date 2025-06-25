@@ -17,6 +17,11 @@ import { VoiceCloningService } from "./voice-cloning-service";
 import { TextToSpeechService } from "./text-to-speech-service";
 import { EnhancedVoicePipeline } from "./enhanced-voice-pipeline";
 import { WatermarkService } from "./watermark-service";
+
+// Initialize voice services
+const voiceCloningService = new VoiceCloningService();
+const textToSpeechService = new TextToSpeechService();
+const enhancedVoicePipeline = new EnhancedVoicePipeline();
 import { isAuthenticated } from "./replitAuth";
 import { validateEnvironmentVariables } from "./env-check";
 import {
@@ -44,9 +49,6 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 const app = express();
-
-// Ensure uploads directory exists
-const uploadsDir = path.join(process.cwd(), "uploads");
 
   // Business profile endpoint for Stripe verification
   app.get("/api/business-profile", (req: Request, res: Response) => {
@@ -140,9 +142,9 @@ export function registerRoutes(app: express.Application): http.Server {
   app.get("/api/music", generalRateLimit, optionalAuth, MusicAPI.getUserSongs);
 
   // Legacy music routes for compatibility
-  app.post("/api/songs/generate", requireAuth, enforceUsageLimits, validateMusicGenerationInput, MusicAPI.generateSong);
-  app.post("/api/generate", requireAuth, enforceUsageLimits, validateMusicGenerationInput, MusicAPI.generateSong); // Main generate endpoint
-  app.post("/api/generate-ai-music", requireAuth, enforceUsageLimits, validateMusicGenerationInput, MusicAPI.generateAIMusic);
+  app.post("/api/songs/generate", requireAuth, checkPlanQuota(), validateMusicGenerationInput, MusicAPI.generateSong);
+  app.post("/api/generate", requireAuth, checkPlanQuota(), validateMusicGenerationInput, MusicAPI.generateSong); // Main generate endpoint
+  app.post("/api/generate-ai-music", requireAuth, checkPlanQuota(), validateMusicGenerationInput, MusicAPI.generateAIMusic);
   app.post("/api/demo-music21", optionalAuth, MusicAPI.generateMusic21Demo);
   app.get("/api/songs/single/:id", optionalAuth, MusicAPI.getSong);
   app.get("/api/songs", requireAuth, MusicAPI.getUserSongs);
@@ -665,12 +667,9 @@ export function registerRoutes(app: express.Application): http.Server {
     res.json(routes);
   });
 
-  const voiceCloningService = new VoiceCloningService();
-  const textToSpeechService = new TextToSpeechService();
-  const enhancedVoicePipeline = new EnhancedVoicePipeline();
 
   // Enhanced Voice Pipeline endpoints
-  app.post("/api/voice/generate-enhanced", authenticateOptional, async (req, res) => {
+  app.post("/api/voice/generate-enhanced", optionalAuth, async (req, res) => {
     try {
       const { lyrics, voiceSample, melody, options } = req.body;
 
@@ -703,7 +702,7 @@ export function registerRoutes(app: express.Application): http.Server {
   });
 
   // Voice quality analysis endpoint
-  app.post("/api/voice/analyze-quality", authenticateOptional, async (req, res) => {
+  app.post("/api/voice/analyze-quality", optionalAuth, async (req, res) => {
     try {
       const { voiceSample } = req.body;
 
@@ -726,7 +725,7 @@ export function registerRoutes(app: express.Application): http.Server {
   });
 
   // Real-time voice processing endpoint
-  app.post("/api/voice/process-realtime", authenticateOptional, async (req, res) => {
+  app.post("/api/voice/process-realtime", optionalAuth, async (req, res) => {
     try {
       const { audioChunk, processingOptions } = req.body;
 
@@ -749,7 +748,7 @@ export function registerRoutes(app: express.Application): http.Server {
   });
 
   // Voice cloning endpoints
-  app.post("/api/voice-clone/generate", authenticateOptional, async (req, res) => {
+  app.post("/api/voice-clone/generate", optionalAuth, async (req, res) => {
     // Implementation for voice cloning
     res.status(501).json({ error: "Not implemented" });
   });
@@ -1272,12 +1271,9 @@ export function registerRoutes(app: express.Application): http.Server {
     res.json(routes);
   });
 
-  const voiceCloningService = new VoiceCloningService();
-  const textToSpeechService = new TextToSpeechService();
-  const enhancedVoicePipeline = new EnhancedVoicePipeline();
 
   // Enhanced Voice Pipeline endpoints
-  app.post("/api/voice/generate-enhanced", authenticateOptional, async (req, res) => {
+  app.post("/api/voice/generate-enhanced", optionalAuth, async (req, res) => {
     try {
       const { lyrics, voiceSample, melody, options } = req.body;
 
@@ -1310,7 +1306,7 @@ export function registerRoutes(app: express.Application): http.Server {
   });
 
   // Voice quality analysis endpoint
-  app.post("/api/voice/analyze-quality", authenticateOptional, async (req, res) => {
+  app.post("/api/voice/analyze-quality", optionalAuth, async (req, res) => {
     try {
       const { voiceSample } = req.body;
 
@@ -1333,7 +1329,7 @@ export function registerRoutes(app: express.Application): http.Server {
   });
 
   // Real-time voice processing endpoint
-  app.post("/api/voice/process-realtime", authenticateOptional, async (req, res) => {
+  app.post("/api/voice/process-realtime", optionalAuth, async (req, res) => {
     try {
       const { audioChunk, processingOptions } = req.body;
 
@@ -1356,7 +1352,7 @@ export function registerRoutes(app: express.Application): http.Server {
   });
 
   // Voice cloning endpoints
-  app.post("/api/voice-clone/generate", authenticateOptional, async (req, res) => {
+  app.post("/api/voice-clone/generate", optionalAuth, async (req, res) => {
     // Implementation for voice cloning
     res.status(501).json({ error: "Not implemented" });
   });
