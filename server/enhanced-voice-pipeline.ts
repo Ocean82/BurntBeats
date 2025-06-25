@@ -74,7 +74,8 @@ export class EnhancedVoicePipeline {
           stagesCompleted: 7,
           qualityScore: qualityMetrics.overallScore,
           neuralEnhanced: options.neuralEnhancement,
-          realTimeProcessed: options.realTimeProcessing
+          realTimeProcessed: options.realTimeProcessing,
+          adaptiveFilteringApplied: options.adaptiveFiltering
         }
       };
 

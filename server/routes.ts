@@ -27,6 +27,11 @@ import {
   sanitizeRequest,
   createRateLimiter
 } from './middleware/music-error-handler';
+import { 
+  checkPlanQuota, 
+  requireFeature, 
+  requirePlan 
+} from './middleware/plan-enforcement';
 import { fileCleanupService } from "./file-cleanup-service";
 
 // Import auth middleware from index
@@ -80,7 +85,20 @@ export function registerRoutes(app: express.Application): http.Server {
     message: "Too many music generation requests, please try again later."
   });
 
-  // Music Generation API Routes (protected in production)
+  // API v1 Routes with versioning
+  const v1Router = express.Router();
+  
+  // Music Generation API Routes (v1)
+  v1Router.post("/songs/generate", musicGenerationRateLimit, optionalAuth, checkPlanQuota('free'), validateMusicGenerationInput, MusicAPI.generateSong);
+  v1Router.post("/songs/ai-generate", musicGenerationRateLimit, optionalAuth, requireFeature('neuralSynthesis'), validateMusicGenerationInput, MusicAPI.generateAIMusic);
+  v1Router.post("/music21/demo", generalRateLimit, optionalAuth, MusicAPI.generateMusic21Demo);
+  v1Router.get("/songs/:id", generalRateLimit, MusicAPI.getSong);
+  v1Router.get("/songs", generalRateLimit, optionalAuth, MusicAPI.getUserSongs);
+  
+  // Mount v1 routes
+  app.use("/api/v1", v1Router);
+
+  // Legacy routes for backward compatibility
   app.post("/api/music/generate", musicGenerationRateLimit, optionalAuth, validateMusicGenerationInput, MusicAPI.generateSong);
   app.post("/api/music/ai-generate", musicGenerationRateLimit, optionalAuth, validateMusicGenerationInput, MusicAPI.generateAIMusic);
   app.post("/api/music/demo", generalRateLimit, optionalAuth, MusicAPI.generateMusic21Demo);

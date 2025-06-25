@@ -3,6 +3,9 @@ import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
 import { exec } from 'child_process';
+import { validateSongRequest, validateMusic21Request } from '../utils/validators';
+import { SongGenerator } from '../services/song-generator';
+import { pricingService } from '../pricing-service';
 
 const execAsync = promisify(exec);
 
@@ -49,47 +52,36 @@ export class MusicAPI {
   // Generate basic song using advanced generateSong function
   static async generateSong(req: Request, res: Response) {
     try {
-      const { title, lyrics, genre, tempo, key, duration, userId, vocalStyle, singingStyle, mood, tone } = req.body;
-
-      if (!lyrics) {
-        return res.status(400).json({ error: "Lyrics are required" });
+      // Centralized validation
+      const validation = validateSongRequest(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid request data", 
+          details: validation.error 
+        });
       }
 
-      // Validate inputs
-      if (typeof lyrics !== 'string') {
-        return res.status(400).json({ error: "Lyrics must be a string" });
+      const songData = validation.data;
+      const user = (req as any).user;
+
+      console.log("🎵 Generating song with unified orchestrator...");
+
+      // Use the unified song generator
+      const generationResult = await SongGenerator.generate(songData, {
+        type: 'basic',
+        quality: 'standard',
+        userId: user?.id?.toString(),
+        planRestrictions: true
+      });
+
+      if (generationResult.status === 'failed') {
+        return res.status(400).json({ 
+          error: "Song generation failed", 
+          details: generationResult.error 
+        });
       }
 
-      if (tempo && (isNaN(tempo) || tempo < 60 || tempo > 200)) {
-        return res.status(400).json({ error: "Tempo must be between 60 and 200 BPM" });
-      }
-
-      if (duration && (isNaN(duration) || duration < 10 || duration > 300)) {
-        return res.status(400).json({ error: "Duration must be between 10 and 300 seconds" });
-      }
-
-      console.log("🎵 Generating song with advanced MelodyGenerator + VocalGenerator pipeline...");
-
-      // Import the advanced music generation system
-      const { generateSong } = await import("../music-generator");
-
-      const songData = {
-        title: title || `${genre || 'Pop'} Song`,
-        lyrics,
-        genre: genre || 'pop',
-        tempo: tempo || 120,
-        key: key || 'C',
-        duration: duration || 30,
-        userId: userId || 'guest',
-        mood: mood || 'happy',
-        vocalStyle: vocalStyle || 'smooth',
-        singingStyle: singingStyle || 'melodic',
-        tone: tone || 'warm',
-        songLength: `0:${Math.floor((duration || 30) / 60)}:${String((duration || 30) % 60).padStart(2, '0')}`
-      };
-
-      console.log("🎼 Starting advanced song generation pipeline...");
-      const generatedSong = await generateSong(songData);
+      const generatedSong = generationResult.song;
 
       // Store song in database if storage is available
       let storedSong = null;

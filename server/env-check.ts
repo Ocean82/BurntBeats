@@ -12,7 +12,12 @@ export function validateEnvironmentVariables() {
     'OPENAI_API_KEY',
     'ELEVENLABS_API_KEY',
     'AI_MODEL_PATH',
-    'PORT'
+    'PORT',
+    'TACOTRON2_API_URL',
+    'RVC_MODEL_PATH',
+    'DIFFUSION_MODEL_URL',
+    'ESPEAK_NG_PATH',
+    'CMUDICT_PATH'
   ];
 
   // Production-specific validation
@@ -47,6 +52,15 @@ export function validateEnvironmentVariables() {
       openai: !!process.env.OPENAI_API_KEY,
       elevenlabs: !!process.env.ELEVENLABS_API_KEY,
       localModel: !!process.env.AI_MODEL_PATH
+    },
+    neuralSynthesis: {
+      tacotron2: !!process.env.TACOTRON2_API_URL,
+      rvc: !!process.env.RVC_MODEL_PATH,
+      diffusion: !!process.env.DIFFUSION_MODEL_URL
+    },
+    phonemeLibraries: {
+      espeak: !!process.env.ESPEAK_NG_PATH,
+      cmudict: !!process.env.CMUDICT_PATH
     }
   };
 }
