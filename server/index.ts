@@ -14,6 +14,12 @@ const port = 5000;
 // Validate environment variables
 const envStatus = validateEnvironmentVariables();
 
+// Initialize file cleanup service in production
+if (process.env.NODE_ENV === 'production') {
+  const { fileCleanupService } = require('./file-cleanup-service');
+  fileCleanupService.start();
+}
+
 // Rate limiting for generation endpoints
 const generationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

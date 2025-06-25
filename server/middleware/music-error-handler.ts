@@ -84,6 +84,44 @@ export function musicErrorHandler(error: MusicGenerationError, req: Request, res
   });
 }
 
+export const enforceUsageLimits = async (req: any, res: any, next: any) => {
+  try {
+    // Skip usage checks for demo endpoints
+    if (req.path.includes('/demo')) {
+      return next();
+    }
+
+    // Skip in development mode
+    if (process.env.NODE_ENV === 'development') {
+      return next();
+    }
+
+    // Require user for production usage tracking
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        error: "Authentication required",
+        message: "Please log in to generate songs"
+      });
+    }
+
+    const { pricingService } = await import("../pricing-service");
+    const usageCheck = await pricingService.checkUsageLimit(req.user.id.toString());
+
+    if (!usageCheck.canCreate) {
+      return res.status(429).json({
+        error: "Usage limit exceeded",
+        message: usageCheck.reason,
+        code: "USAGE_LIMIT_EXCEEDED"
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Usage limit check failed:', error);
+    next(error);
+  }
+};
+
 export const validateMusicGenerationInput = (req: any, res: any, next: any) => {
   const { title, lyrics, genre, tempo, duration } = req.body;
 

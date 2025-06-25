@@ -22,8 +22,10 @@ import { validateEnvironmentVariables } from "./env-check";
 import {
   musicErrorHandler,
   validateMusicGenerationInput,
-  validateVoiceInput
+  validateVoiceInput,
+  enforceUsageLimits
 } from './middleware/music-error-handler';
+import { fileCleanupService } from "./file-cleanup-service";
 
 // Import auth middleware from index
 import { requireAuth, optionalAuth } from "./index";
@@ -64,19 +66,19 @@ export function registerRoutes(app: express.Application): http.Server {
   app.get("/api/logout", (req, res) => res.redirect("/"));
 
   // Music Generation API Routes (protected in production)
-  app.post("/api/music/generate", optionalAuth, validateMusicGenerationInput, MusicAPI.generateSong);
-  app.post("/api/music/ai-generate", optionalAuth, validateMusicGenerationInput, MusicAPI.generateAIMusic);
+  app.post("/api/music/generate", requireAuth, enforceUsageLimits, validateMusicGenerationInput, MusicAPI.generateSong);
+  app.post("/api/music/ai-generate", requireAuth, enforceUsageLimits, validateMusicGenerationInput, MusicAPI.generateAIMusic);
   app.post("/api/music/demo", optionalAuth, MusicAPI.generateMusic21Demo);
-  app.get("/api/music/:id", MusicAPI.getSong);
-  app.get("/api/music", optionalAuth, MusicAPI.getUserSongs);
+  app.get("/api/music/:id", optionalAuth, MusicAPI.getSong);
+  app.get("/api/music", requireAuth, MusicAPI.getUserSongs);
 
   // Legacy music routes for compatibility
-  app.post("/api/songs/generate", optionalAuth, validateMusicGenerationInput, MusicAPI.generateSong);
-  app.post("/api/generate", optionalAuth, validateMusicGenerationInput, MusicAPI.generateSong); // Main generate endpoint
-  app.post("/api/generate-ai-music", optionalAuth, validateMusicGenerationInput, MusicAPI.generateAIMusic);
+  app.post("/api/songs/generate", requireAuth, enforceUsageLimits, validateMusicGenerationInput, MusicAPI.generateSong);
+  app.post("/api/generate", requireAuth, enforceUsageLimits, validateMusicGenerationInput, MusicAPI.generateSong); // Main generate endpoint
+  app.post("/api/generate-ai-music", requireAuth, enforceUsageLimits, validateMusicGenerationInput, MusicAPI.generateAIMusic);
   app.post("/api/demo-music21", optionalAuth, MusicAPI.generateMusic21Demo);
-  app.get("/api/songs/single/:id", MusicAPI.getSong);
-  app.get("/api/songs", optionalAuth, MusicAPI.getUserSongs);
+  app.get("/api/songs/single/:id", optionalAuth, MusicAPI.getSong);
+  app.get("/api/songs", requireAuth, MusicAPI.getUserSongs);
 
   // Audio streaming endpoint with proper headers
   app.get("/api/audio/:songId", async (req: Request, res: Response) => {
@@ -144,10 +146,10 @@ export function registerRoutes(app: express.Application): http.Server {
   });
 
   // Voice and Audio API Routes
-  app.post("/api/voice/upload", VoiceAPI.uploadMiddleware, VoiceAPI.uploadVoiceSample);
-  app.get("/api/voice/samples", VoiceAPI.getVoiceSamples);
-  app.post("/api/voice/tts", VoiceAPI.generateTTS);
-  app.post("/api/voice/clone", VoiceAPI.cloneVoice);
+  app.post("/api/voice/upload", requireAuth, VoiceAPI.uploadMiddleware, VoiceAPI.uploadVoiceSample);
+  app.get("/api/voice/samples", requireAuth, VoiceAPI.getVoiceSamples);
+  app.post("/api/voice/tts", requireAuth, VoiceAPI.generateTTS);
+  app.post("/api/voice/clone", requireAuth, VoiceAPI.cloneVoice);
 
   // Pricing and Plans API Routes
   app.get("/api/pricing/plans", PricingAPI.getPricingPlans);
@@ -445,6 +447,59 @@ export function registerRoutes(app: express.Application): http.Server {
     res.json(apiDocs);
   });
 
+  // File Management Routes (Admin only)
+  app.post("/api/admin/cleanup", async (req: Request, res: Response) => {
+    try {
+      // Basic auth check - in production, add proper admin role check
+      if (process.env.NODE_ENV === 'production' && !req.headers.authorization?.includes('admin')) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      await fileCleanupService.cleanup();
+      await fileCleanupService.cleanupOrphanedFiles();
+
+      res.json({ 
+        success: true, 
+        message: "Manual cleanup completed" 
+      });
+    } catch (error: any) {
+      console.error("Manual cleanup error:", error);
+      res.status(500).json({ 
+        error: "Cleanup failed", 
+        message: error.message 
+      });
+    }
+  });
+
+  app.get("/api/admin/storage-stats", async (req: Request, res: Response) => {
+    try {
+      const uploadsDir = path.join(process.cwd(), "uploads");
+      if (!fs.existsSync(uploadsDir)) {
+        return res.json({ totalFiles: 0, totalSize: 0 });
+      }
+
+      const files = fs.readdirSync(uploadsDir);
+      let totalSize = 0;
+      
+      files.forEach(file => {
+        const filePath = path.join(uploadsDir, file);
+        const stats = fs.statSync(filePath);
+        if (stats.isFile()) {
+          totalSize += stats.size;
+        }
+      });
+
+      res.json({
+        totalFiles: files.length,
+        totalSize: totalSize,
+        totalSizeMB: Math.round(totalSize / 1024 / 1024 * 100) / 100,
+        directory: uploadsDir
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: "Failed to get storage stats", message: error.message });
+    }
+  });
+
   // API Routes listing
   app.get("/api", (req: Request, res: Response) => {
     const routes = {
@@ -458,7 +513,8 @@ export function registerRoutes(app: express.Application): http.Server {
         music: "/api/music/*",
         voice: "/api/voice/*",
         pricing: "/api/pricing/*",
-        audio: "/api/audio/*"
+        audio: "/api/audio/*",
+        admin: "/api/admin/*"
       },
       timestamp: new Date().toISOString()
     };
