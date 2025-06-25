@@ -11,8 +11,19 @@ export function validateEnvironmentVariables() {
     'NODE_ENV',
     'OPENAI_API_KEY',
     'ELEVENLABS_API_KEY',
-    'AI_MODEL_PATH'
+    'AI_MODEL_PATH',
+    'PORT'
   ];
+
+  // Production-specific validation
+  if (process.env.NODE_ENV === 'production') {
+    const productionRequired = ['NODE_ENV', 'PORT'];
+    productionRequired.forEach(key => {
+      if (!required.includes(key)) {
+        required.push(key);
+      }
+    });
+  }
 
   const missing = required.filter(key => !process.env[key]);
   
