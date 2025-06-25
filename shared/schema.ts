@@ -67,3 +67,13 @@ export type InsertVoiceSample = typeof voiceSamples.$inferInsert;
 
 export type Song = typeof songs.$inferSelect;
 export type InsertSong = typeof songs.$inferInsert;
+
+export interface GeneratedMelody {
+  phrases: MelodyPhrase[];
+  audioFeatures: AudioFeatures;
+  structure: any;
+  totalDuration: number;
+  noteCount: number;
+  audioPath?: string;
+  midiPath?: string;
+}

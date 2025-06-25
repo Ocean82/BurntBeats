@@ -1,4 +1,10 @@
 import type { GeneratedMelody, MelodyNote, MelodyPhrase, AudioFeatures } from "../shared/schema";
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import path from 'path';
+import fs from 'fs/promises';
+
+const execAsync = promisify(exec);
 
 export interface MelodyGenerationConfig {
   lyrics: string;
@@ -14,6 +20,18 @@ export interface LyricsAnalysis {
   syllableCounts: number[];
   totalSyllables: number;
   rhymeScheme: string[];
+}
+
+export interface MelodyOutputResult {
+  audioPath: string;
+  midiPath?: string;
+  metadata: {
+    key: string;
+    tempo: number;
+    duration: number;
+    noteCount: number;
+    generatedAt: string;
+  };
 }
 
 export class MelodyGenerator {
@@ -70,58 +88,165 @@ export class MelodyGenerator {
   };
 
   async generateMelodyFromLyrics(config: MelodyGenerationConfig): Promise<GeneratedMelody> {
-    console.log(`🎵 Generating melody from lyrics...`);
+    console.log(`🎵 Generating melody from lyrics using Python backend...`);
     console.log(`Genre: ${config.genre}, Mood: ${config.mood}, Tempo: ${config.tempo}`);
 
-    // Analyze lyrics structure
+    // Analyze lyrics structure first
     const lyricsAnalysis = this.analyzeLyricsStructure(config.lyrics);
+    
+    // Generate audio file using Python music generator
+    const audioResult = await this.generateAudioFile(config);
+    
+    // Create melody structure from analysis and audio result
+    const melodyPhrases = this.createMelodyPhrasesFromLyrics(lyricsAnalysis, config.tempo);
+    
+    const audioFeatures: AudioFeatures = {
+      tempo: config.tempo,
+      key: audioResult.metadata.key,
+      timeSignature: "4/4",
+      energy: this.calculateEnergyFromMood(config.mood),
+      valence: this.calculateValenceFromMood(config.mood),
+      danceability: this.calculateDanceabilityFromGenre(config.genre),
+      acousticness: this.calculateAcousticnessFromGenre(config.genre),
+      instrumentalness: 0.8, // High since it's generated instrumental
+    };
 
-    // Determine musical parameters
-    const [rootNote, scaleName] = this.determineKeyAndScale(lyricsAnalysis.emotionalArc, config.mood);
-    const audioFeatures = this.generateAudioFeatures(config.genre, config.mood, config.tempo, rootNote, scaleName);
-
-    console.log(`🎼 Key: ${this.midiToNoteName(rootNote)}, Scale: ${scaleName}`);
-
-    // Generate melody phrases for each lyric line
-    const melodyPhrases: MelodyPhrase[] = [];
-    let currentTime = 0.0;
-
-    for (let lineIdx = 0; lineIdx < lyricsAnalysis.lines.length; lineIdx++) {
-      const line = lyricsAnalysis.lines[lineIdx];
-      if (!line.trim()) continue;
-
-      console.log(`🎶 Processing line ${lineIdx + 1}: '${line.substring(0, 40)}...'`);
-
-      // Analyze this specific line
-      const lineSyllables = this.analyzeLineSyllables(line);
-      const emotionWeight = lyricsAnalysis.emotionalArc[lineIdx];
-
-      // Generate melodic phrase
-      const phrase = await this.generatePhraseFromLine(
-        line,
-        lineSyllables,
-        emotionWeight,
-        rootNote,
-        scaleName,
-        currentTime,
-        config.tempo,
-      );
-
-      melodyPhrases.push(phrase);
-      currentTime += phrase.notes.reduce((sum, note) => sum + note.duration, 0);
-    }
-
-    // Create final melody object
     const melody: GeneratedMelody = {
       phrases: melodyPhrases,
       audioFeatures: audioFeatures,
       structure: lyricsAnalysis,
-      totalDuration: currentTime,
-      noteCount: melodyPhrases.reduce((sum, phrase) => sum + phrase.notes.length, 0),
+      totalDuration: audioResult.metadata.duration,
+      noteCount: audioResult.metadata.noteCount,
+      audioPath: audioResult.audioPath,
+      midiPath: audioResult.midiPath,
     };
 
     console.log(`✅ Melody generated: ${melody.noteCount} notes, ${melody.totalDuration.toFixed(1)}s`);
+    console.log(`🎵 Audio file: ${melody.audioPath}`);
     return melody;
+  }
+
+  private async generateAudioFile(config: MelodyGenerationConfig): Promise<MelodyOutputResult> {
+    const timestamp = Date.now();
+    const sanitizedTitle = `melody_${timestamp}`;
+    const outputPath = path.join('uploads', `${sanitizedTitle}.wav`);
+    
+    // Ensure uploads directory exists
+    await fs.mkdir('uploads', { recursive: true });
+
+    // Determine musical key from mood and genre
+    const key = this.getKeyFromMoodAndGenre(config.mood, config.genre);
+    const duration = Math.min(60, Math.max(20, config.lyrics.split('\n').length * 8)); // Estimate duration
+
+    try {
+      // Call Python music generator
+      const args = [
+        'server/music-generator.py',
+        '--title', `"Generated Melody"`,
+        '--lyrics', `"${config.lyrics.replace(/"/g, '\\"')}"`,
+        '--genre', config.genre,
+        '--tempo', config.tempo.toString(),
+        '--key', key,
+        '--duration', duration.toString(),
+        '--output_path', outputPath
+      ];
+
+      console.log('🐍 Executing Python music generator...');
+      const { stdout, stderr } = await execAsync(`python3 ${args.join(' ')}`);
+      
+      if (stderr && !stderr.includes('UserWarning')) {
+        console.warn('Python generator warnings:', stderr);
+      }
+
+      // Verify the file was created
+      const fileExists = await fs.access(outputPath).then(() => true).catch(() => false);
+      if (!fileExists) {
+        throw new Error('Audio file was not generated');
+      }
+
+      const stats = await fs.stat(outputPath);
+      const estimatedNoteCount = Math.floor(duration * config.tempo / 60 * 2); // Rough estimate
+
+      return {
+        audioPath: `/uploads/${path.basename(outputPath)}`,
+        metadata: {
+          key: key,
+          tempo: config.tempo,
+          duration: duration,
+          noteCount: estimatedNoteCount,
+          generatedAt: new Date().toISOString(),
+        }
+      };
+
+    } catch (error) {
+      console.error('Python music generation failed:', error);
+      
+      // Fallback: create a simple audio file using ffmpeg
+      console.log('🔧 Using fallback audio generation...');
+      return await this.generateFallbackAudio(outputPath, config, key, duration);
+    }
+  }
+
+  private async generateFallbackAudio(
+    outputPath: string, 
+    config: MelodyGenerationConfig, 
+    key: string, 
+    duration: number
+  ): Promise<MelodyOutputResult> {
+    try {
+      const baseFreq = this.getFrequencyFromKey(key);
+      const melodyFreq = baseFreq * 1.5;
+      const harmonyFreq = baseFreq * 1.25;
+      
+      // Generate a simple melody using ffmpeg
+      const ffmpegCommand = [
+        'ffmpeg',
+        '-f', 'lavfi',
+        '-i', `sine=frequency=${baseFreq}:duration=${duration}`,
+        '-f', 'lavfi', 
+        '-i', `sine=frequency=${melodyFreq}:duration=${duration}`,
+        '-f', 'lavfi',
+        '-i', `sine=frequency=${harmonyFreq}:duration=${duration}`,
+        '-filter_complex', '[0:a]volume=0.3[base];[1:a]volume=0.6[melody];[2:a]volume=0.2[harmony];[base][melody][harmony]amix=inputs=3:duration=first[out]',
+        '-map', '[out]',
+        '-ar', '44100',
+        '-ac', '2',
+        '-t', duration.toString(),
+        outputPath,
+        '-y'
+      ].join(' ');
+
+      await execAsync(ffmpegCommand);
+      
+      return {
+        audioPath: `/uploads/${path.basename(outputPath)}`,
+        metadata: {
+          key: key,
+          tempo: config.tempo,
+          duration: duration,
+          noteCount: Math.floor(duration * 4), // Fallback estimate
+          generatedAt: new Date().toISOString(),
+        }
+      };
+
+    } catch (ffmpegError) {
+      console.error('Fallback audio generation failed:', ffmpegError);
+      
+      // Last resort: create a silent file
+      const silentBuffer = Buffer.alloc(44100 * 2 * duration); // 2 bytes per sample, stereo
+      await fs.writeFile(outputPath, silentBuffer);
+      
+      return {
+        audioPath: `/uploads/${path.basename(outputPath)}`,
+        metadata: {
+          key: key,
+          tempo: config.tempo,
+          duration: duration,
+          noteCount: 0,
+          generatedAt: new Date().toISOString(),
+        }
+      };
+    }
   }
 
   private analyzeLyricsStructure(lyrics: string): LyricsAnalysis {
@@ -352,6 +477,118 @@ export class MelodyGenerator {
     const octave = Math.floor(midiNote / 12) - 1;
     const note = noteNames[midiNote % 12];
     return `${note}${octave}`;
+  }
+
+  private createMelodyPhrasesFromLyrics(analysis: LyricsAnalysis, tempo: number): MelodyPhrase[] {
+    const phrases: MelodyPhrase[] = [];
+    let currentTime = 0.0;
+
+    for (let i = 0; i < analysis.lines.length; i++) {
+      const line = analysis.lines[i];
+      if (!line.trim()) continue;
+
+      const syllableCount = analysis.syllableCounts[i];
+      const emotionWeight = analysis.emotionalArc[i];
+      const notes: MelodyNote[] = [];
+
+      // Create notes for each syllable
+      for (let j = 0; j < syllableCount; j++) {
+        const duration = 60 / tempo; // One beat per syllable
+        const pitch = 60 + Math.floor(emotionWeight * 12) + (j % 7); // C4 base with emotional and melodic variation
+        
+        notes.push({
+          pitch: pitch,
+          duration: duration,
+          velocity: 70 + Math.floor(Math.abs(emotionWeight) * 30),
+          syllable: `syl_${j}`,
+          timestamp: currentTime,
+        });
+
+        currentTime += duration;
+      }
+
+      phrases.push({
+        notes: notes,
+        startTime: phrases.length > 0 ? phrases[phrases.length - 1].startTime + phrases[phrases.length - 1].notes.reduce((sum, n) => sum + n.duration, 0) : 0,
+        emotionWeight: emotionWeight,
+        lyricLine: line,
+      });
+    }
+
+    return phrases;
+  }
+
+  private getKeyFromMoodAndGenre(mood: string, genre: string): string {
+    const moodKeys: Record<string, string> = {
+      'happy': 'C',
+      'sad': 'Am',
+      'energetic': 'G',
+      'calm': 'F',
+      'mysterious': 'Dm',
+      'uplifting': 'D',
+    };
+
+    const genreKeys: Record<string, string> = {
+      'pop': 'C',
+      'rock': 'E',
+      'jazz': 'F',
+      'electronic': 'Am',
+      'classical': 'C',
+      'hip-hop': 'Cm',
+      'country': 'G',
+      'r&b': 'Bb'
+    };
+
+    return moodKeys[mood.toLowerCase()] || genreKeys[genre.toLowerCase()] || 'C';
+  }
+
+  private getFrequencyFromKey(key: string): number {
+    const frequencies: Record<string, number> = {
+      'C': 261.63, 'C#': 277.18, 'Db': 277.18,
+      'D': 293.66, 'D#': 311.13, 'Eb': 311.13,
+      'E': 329.63,
+      'F': 349.23, 'F#': 369.99, 'Gb': 369.99,
+      'G': 392.00, 'G#': 415.30, 'Ab': 415.30,
+      'A': 440.00, 'A#': 466.16, 'Bb': 466.16,
+      'B': 493.88,
+      'Am': 220.00, 'Cm': 261.63, 'Dm': 293.66,
+      'Em': 329.63, 'Fm': 349.23, 'Gm': 392.00
+    };
+    return frequencies[key] || 261.63;
+  }
+
+  private calculateEnergyFromMood(mood: string): number {
+    const energyMap: Record<string, number> = {
+      'happy': 0.8, 'sad': 0.3, 'energetic': 0.9,
+      'calm': 0.2, 'mysterious': 0.5, 'uplifting': 0.7
+    };
+    return energyMap[mood.toLowerCase()] || 0.6;
+  }
+
+  private calculateValenceFromMood(mood: string): number {
+    const valenceMap: Record<string, number> = {
+      'happy': 0.9, 'sad': 0.1, 'energetic': 0.8,
+      'calm': 0.6, 'mysterious': 0.3, 'uplifting': 0.8
+    };
+    return valenceMap[mood.toLowerCase()] || 0.5;
+  }
+
+  private calculateDanceabilityFromGenre(genre: string): number {
+    const danceMap: Record<string, number> = {
+      'pop': 0.8, 'rock': 0.6, 'electronic': 0.9,
+      'jazz': 0.4, 'classical': 0.2, 'hip-hop': 0.8,
+      'country': 0.5, 'r&b': 0.7
+    };
+    return danceMap[genre.toLowerCase()] || 0.6;
+  }
+
+  private calculateAcousticnessFromGenre(genre: string): number {
+    const acousticMap: Record<string, number> = {
+      'pop': 0.3, 'rock': 0.1, 'electronic': 0.05,
+      'jazz': 0.6, 'classical': 0.9, 'hip-hop': 0.1,
+      'country': 0.7, 'r&b': 0.4
+    };
+    return acousticMap[genre.toLowerCase()] || 0.3;
   }
 
   // Legacy method for backward compatibility

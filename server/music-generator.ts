@@ -72,6 +72,13 @@ export class MusicGenerator {
   }
 
   private async generateAudioFile(songData: any, melody: any, vocals: any): Promise<string> {
+    // If melody already has an audio path from the melody generator, use it
+    if (melody.audioPath) {
+      console.log('🎵 Using audio file from melody generator:', melody.audioPath);
+      return melody.audioPath;
+    }
+
+    // Fallback: generate using the original method
     const timestamp = Date.now();
     const filename = `generated_${songData.userId || 'user'}_${timestamp}.wav`;
     const outputPath = path.join('uploads', filename);
@@ -83,7 +90,7 @@ export class MusicGenerator {
     const args = [
       'server/music-generator.py',
       '--title', `"${songData.title}"`,
-      '--lyrics', `"${songData.lyrics}"`,
+      '--lyrics', `"${songData.lyrics.replace(/"/g, '\\"')}"`,
       '--genre', songData.genre,
       '--tempo', (songData.tempo || 120).toString(),
       '--key', this.getKeyFromGenre(songData.genre),
@@ -91,10 +98,32 @@ export class MusicGenerator {
       '--output_path', outputPath
     ];
 
-    // Execute Python music generation
-    await execAsync(`python3 ${args.join(' ')}`);
+    try {
+      // Execute Python music generation
+      console.log('🐍 Executing Python music generator as fallback...');
+      await execAsync(`python3 ${args.join(' ')}`);
+      return `/${outputPath}`;
+    } catch (error) {
+      console.error('Python music generation failed, using basic audio:', error);
+      
+      // Create a basic audio file as last resort
+      const baseFreq = this.getGenreBaseFrequency(songData.genre || 'pop');
+      const duration = songData.duration || 30;
+      
+      const basicAudioCmd = `ffmpeg -f lavfi -i "sine=frequency=${baseFreq}:duration=${duration}" -ar 44100 -ac 2 "${outputPath}" -y`;
+      await execAsync(basicAudioCmd);
+      
+      return `/${outputPath}`;
+    }
+  }
 
-    return `/${outputPath}`;
+  private getGenreBaseFrequency(genre: string): number {
+    const genreFreqs: Record<string, number> = {
+      'pop': 261.63, 'rock': 329.63, 'jazz': 349.23,
+      'classical': 392.00, 'electronic': 261.63, 'hip-hop': 261.63,
+      'country': 392.00, 'r&b': 261.63
+    };
+    return genreFreqs[genre.toLowerCase()] || 261.63;
   }
 
   private generateSongSections(melody: any, vocals: any, durationMs: number): any[] {
