@@ -84,21 +84,28 @@ export function musicErrorHandler(error: MusicGenerationError, req: Request, res
   });
 }
 
-export const validateMusicGenerationInput = (req: Request, res: Response, next: NextFunction) => {
+export const validateMusicGenerationInput = (req: any, res: any, next: any) => {
   const { title, lyrics, genre, tempo, duration } = req.body;
 
+  // Add user context for better tracking
+  if (req.user) {
+    req.body.userId = req.user.id;
+  } else {
+    req.body.userId = 'guest';
+  }
+
   // Basic validation
-  if (!title || !lyrics) {
-    return res.status(400).json({ 
-      error: "Title and lyrics are required",
-      code: "MISSING_REQUIRED_FIELDS"
+  if (!title || typeof title !== 'string' || title.trim().length === 0) {
+    return res.status(400).json({
+      error: "Validation Error",
+      message: "Title is required and must be a non-empty string"
     });
   }
 
-  if (typeof title !== 'string' || typeof lyrics !== 'string') {
+  if (!lyrics || typeof lyrics !== 'string' || lyrics.trim().length === 0) {
     return res.status(400).json({
-      error: "Title and lyrics must be strings",
-      code: "INVALID_INPUT_TYPE"
+      error: "Validation Error", 
+      message: "Lyrics are required and must be a non-empty string"
     });
   }
 

@@ -111,7 +111,24 @@ export class MusicAPI {
         console.warn("Could not store song in database:", dbError.message);
       }
 
-      // Return complete Song object
+      // Calculate file size if audio file exists
+      let fileSize = 0;
+      try {
+        if (generationResult.generatedAudioPath) {
+          const cleanPath = generationResult.generatedAudioPath.startsWith('/') 
+            ? generationResult.generatedAudioPath.slice(1) 
+            : generationResult.generatedAudioPath;
+          const fullPath = path.join(process.cwd(), cleanPath);
+          if (fs.existsSync(fullPath)) {
+            const stats = fs.statSync(fullPath);
+            fileSize = stats.size;
+          }
+        }
+      } catch (error) {
+        console.warn("Could not calculate file size:", error);
+      }
+
+      // Return complete Song object with proper URLs
       const song = {
         id: storedSong?.id || Date.now(),
         title,
@@ -123,11 +140,11 @@ export class MusicAPI {
         status: "completed" as const,
         generationProgress: 100,
         generatedAudioPath: generationResult.generatedAudioPath,
-        audioUrl: generationResult.generatedAudioPath,
-        previewUrl: generationResult.generatedAudioPath,
-        downloadUrl: generationResult.generatedAudioPath,
+        audioUrl: `/api/audio/${storedSong?.id || Date.now()}`, // Use streaming endpoint
+        previewUrl: generationResult.generatedAudioPath, // Direct file access for preview
+        downloadUrl: generationResult.generatedAudioPath, // Direct file access for download
         hasWatermark: false,
-        fileSize: 0, // Will be calculated from actual file
+        fileSize,
         sections: generationResult.sections || null,
         settings: generationResult.settings || null,
         melody: generationResult.melody || null,

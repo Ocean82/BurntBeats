@@ -1,128 +1,113 @@
-import express, { type Request, Response, NextFunction } from "express";
+import express from "express";
+import session from "express-session";
 import cors from "cors";
+import { createServer } from "http";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
-import http from 'http';
-import path from 'path';
-import fs from 'fs';
+import { validateEnvironmentVariables } from "./env-check";
+import path from "path";
+import fs from "fs";
+import rateLimit from "express-rate-limit";
 
 const app = express();
+const port = 5000;
 
-// CORS configuration
-const corsOptions = {
-  origin: [
-    'http://localhost:5000',
-    'http://0.0.0.0:5000',
-    'https://burnt-beats-sammyjernigan.replit.app',
-    /\.replit\.app$/,
-    /\.replit\.dev$/
-  ],
+// Validate environment variables
+const envStatus = validateEnvironmentVariables();
+
+// Rate limiting for generation endpoints
+const generationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 generations per 15 minutes per IP
+  message: {
+    error: "Too many generation requests, please try again later",
+    retryAfter: "15 minutes"
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// General API rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // 100 requests per 15 minutes per IP
+  message: {
+    error: "Too many requests, please try again later"
+  }
+});
+
+// Basic middleware
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://your-domain.com'] 
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-requested-with'],
-  optionsSuccessStatus: 200
-};
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+}));
 
-app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+// Apply rate limiting
+app.use('/api', apiLimiter);
+app.use('/api/music/generate', generationLimiter);
+app.use('/api/generate', generationLimiter);
 
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
+// Session configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'burnt-beats-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
 
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
+// Authentication middleware
+const requireAuth = (req: any, res: any, next: any) => {
+  // For now, allow all requests in development
+  if (process.env.NODE_ENV === 'development') {
+    return next();
+  }
 
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
+  // In production, check for valid session or token
+  if (req.session?.user || req.headers.authorization) {
+    return next();
+  }
 
-      log(logLine);
-    }
+  return res.status(401).json({ 
+    error: "Authentication required",
+    message: "Please log in to access this feature"
   });
+};
 
+// Optional auth middleware (doesn't block, just adds user info)
+const optionalAuth = (req: any, res: any, next: any) => {
+  if (req.session?.user) {
+    req.user = req.session.user;
+  }
   next();
-});
+};
 
-(async () => {
-  // Validate environment variables
-  const { validateEnvironmentVariables } = await import("./env-check");
-  const envStatus = validateEnvironmentVariables();
+// Static file serving with better error handling
+const uploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
-  console.log('🔧 Environment Status:', envStatus);
-
-  const server = await registerRoutes(app);
-
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
-  });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+// Serve uploads with proper headers
+app.use('/uploads', (req, res, next) => {
+  // Set appropriate headers for audio files
+  const ext = path.extname(req.path).toLowerCase();
+  if (['.mp3', '.wav', '.m4a', '.ogg'].includes(ext)) {
+    res.setHeader('Content-Type', `audio/${ext.slice(1)}`);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
   }
+  next();
+}, express.static(uploadsDir));
 
-  // Serve static files from uploads directory
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-
-  // Ensure uploads directory exists
-  const uploadsDir = path.join(process.cwd(), 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
-
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
-
-  // Ensure server binds properly
-  server.listen(port, "0.0.0.0", () => {
-    log(`🚀 Server running on http://0.0.0.0:${port}`);
-    log(`📁 Uploads directory: uploads/`);
-    log(`🎵 Music generation ready`);
-  });
-
-  // Add error handling for server
-  server.on('error', (error) => {
-    console.error('Server error:', error);
-  });
-
-  // Graceful shutdown handling
-  process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down gracefully');
-    server.close(() => {
-      console.log('Server closed');
-      process.exit(0);
-    });
-  });
-
-  process.on('SIGINT', () => {
-    console.log('SIGINT received, shutting down gracefully');
-    server.close(() => {
-      console.log('Server closed');
-      process.exit(0);
-    });
-  });
-})();
+// Export middleware for use in routes
+export { requireAuth, optionalAuth };
