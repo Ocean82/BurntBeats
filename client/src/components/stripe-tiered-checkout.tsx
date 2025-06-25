@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Check, Download, Music, Star, Crown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-// Declare Stripe buy button type for TypeScript
+// Declare Stripe components for TypeScript
 declare global {
   namespace JSX {
     interface IntrinsicElements {
@@ -13,6 +13,12 @@ declare global {
         'buy-button-id': string;
         'publishable-key': string;
         'client-reference-id'?: string;
+      };
+      'stripe-pricing-table': {
+        'pricing-table-id': string;
+        'publishable-key': string;
+        'client-reference-id'?: string;
+        'customer-email'?: string;
       };
     }
   }
@@ -116,11 +122,17 @@ export default function StripeTieredCheckout({ songId, songTitle, onPurchaseComp
 
   useEffect(() => {
     // Load Stripe Buy Button script
-    const script = document.createElement('script');
-    script.src = 'https://js.stripe.com/v3/buy-button.js';
-    script.async = true;
-    script.onload = () => setIsStripeLoaded(true);
-    document.head.appendChild(script);
+    const buyButtonScript = document.createElement('script');
+    buyButtonScript.src = 'https://js.stripe.com/v3/buy-button.js';
+    buyButtonScript.async = true;
+    buyButtonScript.onload = () => setIsStripeLoaded(true);
+    document.head.appendChild(buyButtonScript);
+
+    // Load Stripe Pricing Table script
+    const pricingTableScript = document.createElement('script');
+    pricingTableScript.src = 'https://js.stripe.com/v3/pricing-table.js';
+    pricingTableScript.async = true;
+    document.head.appendChild(pricingTableScript);
 
     // Store purchase metadata in localStorage for webhook processing
     const purchaseMetadata = {
@@ -132,7 +144,13 @@ export default function StripeTieredCheckout({ songId, songTitle, onPurchaseComp
     localStorage.setItem('currentPurchase', JSON.stringify(purchaseMetadata));
 
     return () => {
-      document.head.removeChild(script);
+      try {
+        document.head.removeChild(buyButtonScript);
+        document.head.removeChild(pricingTableScript);
+      } catch (error) {
+        // Scripts may have already been removed
+        console.log('Script cleanup completed');
+      }
     };
   }, [songId, songTitle]);
 
@@ -234,6 +252,23 @@ export default function StripeTieredCheckout({ songId, songTitle, onPurchaseComp
       <div className="mt-8 text-center text-sm text-gray-500">
         <p>Secure checkout powered by Stripe • Instant download after payment</p>
         <p>All purchases include a 30-day satisfaction guarantee</p>
+      </div>
+
+      {/* Alternative: Stripe Hosted Pricing Table */}
+      <div className="mt-12 border-t border-gray-200 dark:border-gray-700 pt-8">
+        <div className="text-center mb-6">
+          <h3 className="text-2xl font-bold mb-2">Or Choose a Subscription Plan</h3>
+          <p className="text-gray-600 dark:text-gray-400">
+            Get unlimited access to all features with our subscription plans
+          </p>
+        </div>
+        
+        <div className="max-w-4xl mx-auto">
+          <stripe-pricing-table 
+            pricing-table-id="prctbl_1Rdv9YP38C54URjEsjJEqBzt"
+            publishable-key="pk_live_51RbydHP38C54URjEeayiIsHP9sWHWgaA1dQwP0LxdYqVdj4NBRBD4ABhpfrVF1S6abC1m0XHifAZEZeNWHG8QO1200AP49042o"
+          />
+        </div>
       </div>
     </div>
   );
