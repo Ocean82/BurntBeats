@@ -4,9 +4,13 @@ export function validateEnvironmentVariables() {
     'DATABASE_URL',
   ];
 
-  const optional = [
+  const required = [
+    'DATABASE_URL',
     'STRIPE_SECRET_KEY',
     'STRIPE_PUBLISHABLE_KEY',
+  ];
+
+  const optional = [
     'STRIPE_WEBHOOK_SECRET',
     'NODE_ENV',
     'OPENAI_API_KEY',

@@ -87,14 +87,14 @@ export function registerRoutes(app: express.Application): http.Server {
 
   // API v1 Routes with versioning
   const v1Router = express.Router();
-  
+
   // Music Generation API Routes (v1)
   v1Router.post("/songs/generate", musicGenerationRateLimit, optionalAuth, checkPlanQuota('free'), validateMusicGenerationInput, MusicAPI.generateSong);
   v1Router.post("/songs/ai-generate", musicGenerationRateLimit, optionalAuth, requireFeature('neuralSynthesis'), validateMusicGenerationInput, MusicAPI.generateAIMusic);
   v1Router.post("/music21/demo", generalRateLimit, optionalAuth, MusicAPI.generateMusic21Demo);
   v1Router.get("/songs/:id", generalRateLimit, MusicAPI.getSong);
   v1Router.get("/songs", generalRateLimit, optionalAuth, MusicAPI.getUserSongs);
-  
+
   // Mount v1 routes
   app.use("/api/v1", v1Router);
 
@@ -819,7 +819,7 @@ export function registerRoutes(app: express.Application): http.Server {
 
       if (isWatermarked) {
         previewPath = await audioPreviewService.generateWatermarkedPreview(audioPath, songId.toString());
-      } else {
+      } else{
         previewPath = await audioPreviewService.generateCleanPreview(audioPath, songId.toString());
       }
 

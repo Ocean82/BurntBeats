@@ -30,7 +30,10 @@ const pricingTiers = [
     name: 'Bonus',
     description: 'Demo version with watermark - perfect for samples',
     price: 2.99,
-    buyButtonId: 'buy_btn_1RdOETP5PtizRku7GPX5AMSF', // Your actual Stripe buy button
+    priceWithTax: 3.29, // Assuming ~10% tax
+    stripeProductId: 'prod_bonus_demo_tier',
+    stripePriceId: 'price_1RdOETP5PtizRku7GPX5AMSF_bonus',
+    buyButtonId: 'buy_btn_1RdOETP5PtizRku7GPX5AMSF_bonus',
     features: [
       'MP3 128kbps',
       'Contains Burnt Beats watermark',
@@ -54,7 +57,10 @@ const pricingTiers = [
     name: 'Base',
     description: 'Clean version - no watermarks, high quality',
     price: 4.99,
-    buyButtonId: 'buy_btn_1RdOETP5PtizRku7GPX5AMSF', // Using same for demo - create separate ones
+    priceWithTax: 5.49, // Assuming ~10% tax
+    stripeProductId: 'prod_base_clean_tier',
+    stripePriceId: 'price_1RdOETP5PtizRku7GPX5AMSF_base',
+    buyButtonId: 'buy_btn_1RdOETP5PtizRku7GPX5AMSF_base',
     features: [
       'MP3 320kbps',
       'NO watermarks or overlays',
@@ -78,7 +84,10 @@ const pricingTiers = [
     name: 'Top',
     description: 'Premium studio quality - completely clean',
     price: 9.99,
-    buyButtonId: 'buy_btn_1RdOETP5PtizRku7GPX5AMSF', // Using same for demo - create separate ones
+    priceWithTax: 10.99, // Assuming ~10% tax
+    stripeProductId: 'prod_top_studio_tier',
+    stripePriceId: 'price_1RdOETP5PtizRku7GPX5AMSF_top',
+    buyButtonId: 'buy_btn_1RdOETP5PtizRku7GPX5AMSF_top',
     features: [
       'WAV 24-bit/96kHz',
       'NO watermarks - studio clean',

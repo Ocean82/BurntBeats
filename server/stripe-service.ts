@@ -11,8 +11,11 @@ export interface PaymentIntentData {
   amount: number;
   currency: string;
   customerId?: string;
-  planType: string;
+  planType?: string;
   userId: string;
+  songId?: string;
+  tier?: 'bonus' | 'base' | 'top';
+  songTitle?: string;
 }
 
 export class StripeService {
@@ -90,6 +93,9 @@ export class StripeService {
         case 'payment_intent.succeeded':
           await this.handlePaymentSuccess(event.data.object as Stripe.PaymentIntent);
           break;
+        case 'checkout.session.completed':
+          await this.handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+          break;
         case 'customer.subscription.created':
         case 'customer.subscription.updated':
           await this.handleSubscriptionUpdate(event.data.object as Stripe.Subscription);
@@ -111,13 +117,37 @@ export class StripeService {
   private static async handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
     const userId = paymentIntent.metadata.userId;
     const planType = paymentIntent.metadata.planType;
+    const songId = paymentIntent.metadata.songId;
+    const tier = paymentIntent.metadata.tier;
 
     if (userId && planType) {
-      // Update user plan in database
+      // Update user plan in database for subscription payments
       await storage.updateUser(userId, {
         plan: planType,
         updatedAt: new Date()
       });
+    }
+
+    if (userId && songId && tier) {
+      // Handle song purchase - generate download file
+      console.log(`🎵 Song purchase completed: ${songId} - ${tier} tier for user ${userId}`);
+      // Here you would trigger file generation for the purchased tier
+    }
+  }
+
+  private static async handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+    const { client_reference_id, customer_email } = session;
+    
+    if (client_reference_id) {
+      // Parse client reference ID: songId_tier_songTitle
+      const [songId, tier, ...titleParts] = client_reference_id.split('_');
+      const songTitle = titleParts.join('_').replace(/_/g, ' ');
+      
+      console.log(`🎵 Purchase completed via checkout: ${songId} - ${tier} tier`);
+      console.log(`📧 Customer email: ${customer_email}`);
+      
+      // Generate the purchased file and send download link
+      // This would integrate with your file generation system
     }
   }
 
