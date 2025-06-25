@@ -12,8 +12,11 @@ export class AuthAPI {
         return res.status(400).json({ error: 'Username and password are required' });
       }
 
-      // Admin backdoor - replace with your desired credentials
-      if (username === 'burntbeats_admin' && password === 'FireTracks2024!') {
+      // Admin backdoor - use environment variables or fallback to defaults
+      const adminUsername = process.env.ADMIN_USERNAME || 'burntbeats_admin';
+      const adminPassword = process.env.ADMIN_PASSWORD || 'FireTracks2024!';
+      
+      if (username === adminUsername && password === adminPassword) {
         const adminUser = {
           id: 999,
           username: 'burntbeats_admin',
