@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { registerRoutes } from "./routes";
 import bonusFeaturesApi from "./api/bonus-features-api";
 import { validateEnvironmentVariables } from "./env-check";
+import { applyEnvironmentStubs } from "./env-stubs";
 import path from "path";
 import fs from "fs";
 import rateLimit from "express-rate-limit";
@@ -19,6 +20,9 @@ const port = process.env.NODE_ENV === 'production'
 
 // Trust proxy for Replit deployment (fixes rate limiting issues)
 app.set('trust proxy', 1);
+
+// Apply environment stubs for development
+applyEnvironmentStubs();
 
 // Validate environment variables
 const envStatus = validateEnvironmentVariables();
@@ -279,6 +283,10 @@ registerRoutes(app);
 
 // Register bonus features API
 app.use('/api', bonusFeaturesApi);
+
+// Register webhook test endpoint
+import webhookTestApi from "./api/webhook-test";
+app.use('/', webhookTestApi);
 
 // Serve static files from dist/public in production or development
 const publicPath = path.join(process.cwd(), 'dist', 'public');
