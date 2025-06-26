@@ -216,6 +216,19 @@ export default function SongForm({ onSongGenerated, user }: SongFormProps) {
               </div>
             </div>
 
+            {/* Burnt Beats Ownership Promotion */}
+            <Card className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/20">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Sparkles className="w-5 h-5 text-orange-400" />
+                  <span className="text-orange-200 font-medium">Create, Own, Profit</span>
+                </div>
+                <p className="text-orange-200/80 text-sm">
+                  Every song you generate is 100% yours forever. No royalties, no licensing fees - just pure ownership and creative freedom.
+                </p>
+              </CardContent>
+            </Card>
+
             {/* Error Display */}
             {generationError && (
               <div className="p-4 bg-red-500/10 border border-red-500 rounded-lg">

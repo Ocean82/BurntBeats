@@ -290,6 +290,19 @@ export default function AdvancedVoiceCloning({ userId }: AdvancedVoiceCloningPro
                 </div>
               </div>
 
+              {/* Burnt Beats Ownership Message */}
+              <Card className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <Sparkles className="w-5 h-5 text-orange-400" />
+                    <span className="text-orange-200 font-medium">Own Your Voice, Own Your Music</span>
+                  </div>
+                  <p className="text-orange-200/80 text-sm mt-1">
+                    With Burnt Beats, every song you create is 100% yours. No royalties, no restrictions - just pure ownership.
+                  </p>
+                </CardContent>
+              </Card>
+
               {/* Processing Status */}
               {isProcessing && (
                 <Card className="bg-purple-500/10 border-purple-500/20">
