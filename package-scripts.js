@@ -64,7 +64,24 @@ async function buildServer() {
 }
 
 async function start() {
-  runCommand('cross-env NODE_ENV=production node dist/index.js', 'Starting production server');
+  // Set production environment
+  process.env.NODE_ENV = 'production';
+  process.env.PORT = process.env.PORT || '5000';
+  
+  // Ensure production build exists
+  if (!existsSync('dist/index.cjs')) {
+    console.log('Building production server...');
+    await buildServer();
+  }
+  
+  // Ensure uploads directory exists  
+  if (!existsSync('dist/uploads')) {
+    mkdirSync('dist/uploads', { recursive: true });
+  }
+  
+  // Start production server
+  console.log(`Starting Burnt Beats on port ${process.env.PORT}`);
+  runCommand('node dist/index.cjs', 'Starting production server');
 }
 
 async function dev() {
@@ -136,14 +153,9 @@ async function main() {
         break;
         
       case 'start':
-        console.log('🚀 Starting production server...');
         if (isDryRun) {
-          await dryRun('cross-env NODE_ENV=production node dist/index.js');
+          await dryRun('cross-env NODE_ENV=production node dist/index.cjs');
         } else {
-          if (!existsSync('dist/index.js')) {
-            console.error('❌ Production build not found. Run build first.');
-            process.exit(1);
-          }
           await start();
         }
         break;
