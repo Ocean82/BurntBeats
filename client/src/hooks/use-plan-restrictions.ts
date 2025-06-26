@@ -1,142 +1,68 @@
-
 import { useMemo } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from './use-auth';
 
 type PlanType = 'free' | 'basic' | 'pro' | 'enterprise';
 
-interface PlanLimits {
-  songsPerMonth: number;
+interface CreationLimits {
+  canCreateSongs: boolean;
+  requiresPayment: boolean;
   maxSongLength: number; // in minutes
-  voiceCloning: boolean;
-  textToSpeech: boolean;
-  analytics: boolean;
-  versionControl: boolean;
-  collaboration: boolean;
-  musicTheory: boolean;
-  downloadQuality: 'standard' | 'high' | 'studio';
-  concurrentGenerations: number;
+  downloadQuality: 'demo' | 'standard' | 'high' | 'studio';
+  hasWatermark: boolean;
 }
 
-const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
-  free: {
-    songsPerMonth: Infinity, // Unlimited songs for everyone
-    maxSongLength: 10, // Generous song length
-    voiceCloning: true, // Voice cloning available to all
-    textToSpeech: true, // Text-to-speech available to all
-    analytics: true, // All features unlocked
-    versionControl: true,
-    collaboration: true,
-    musicTheory: true,
-    downloadQuality: 'standard',
-    concurrentGenerations: 1,
-  },
-  basic: {
-    songsPerMonth: 15,
-    maxSongLength: 1,
-    voiceCloning: true,
-    textToSpeech: true,
-    analytics: false,
-    versionControl: false,
-    collaboration: false,
-    musicTheory: false,
-    downloadQuality: 'high',
-    concurrentGenerations: 2,
-  },
-  pro: {
-    songsPerMonth: 50,
-    maxSongLength: 5,
-    voiceCloning: true,
-    textToSpeech: true,
-    analytics: true,
-    versionControl: true,
-    collaboration: true,
-    musicTheory: false,
-    downloadQuality: 'studio',
-    concurrentGenerations: 3,
-  },
-  enterprise: {
-    songsPerMonth: 200,
-    maxSongLength: 10,
-    voiceCloning: true,
-    textToSpeech: true,
-    analytics: true,
-    versionControl: true,
-    collaboration: true,
-    musicTheory: true,
-    downloadQuality: 'studio',
-    concurrentGenerations: 5,
-  },
-};
-
-const PLAN_PRICES = {
-  basic: 6.99,
-  pro: 12.99,
-  enterprise: 39.99,
+const DEFAULT_LIMITS: CreationLimits = {
+  canCreateSongs: true, // Everyone can create songs
+  requiresPayment: true, // Payment required for downloads
+  maxSongLength: 10, // Generous song length for all users
+  downloadQuality: 'demo',
+  hasWatermark: true,
 };
 
 export const usePlanRestrictions = () => {
   const { user } = useAuth();
-  
+
   const currentPlan = useMemo(() => {
     if (!user) return 'free';
     return user.plan as PlanType;
   }, [user]);
 
   const limits = useMemo(() => {
-    return PLAN_LIMITS[currentPlan];
-  }, [currentPlan]);
+    return DEFAULT_LIMITS;
+  }, []);
 
+  // Everyone can use all features - payment is per download
   const canUseFeature = useMemo(() => ({
-    voiceCloning: limits.voiceCloning,
-    textToSpeech: limits.textToSpeech,
-    analytics: limits.analytics,
-    versionControl: limits.versionControl,
-    collaboration: limits.collaboration,
-    musicTheory: limits.musicTheory,
-  }), [limits]);
+    voiceCloning: true,
+    textToSpeech: true,
+    analytics: true,
+    versionControl: true,
+    collaboration: true,
+    musicTheory: true,
+  }), []);
 
+  // Everyone can create songs - no monthly limits
   const canCreateSong = useMemo(() => {
-    if (!user) return false;
-    const currentUsage = (user.songsThisMonth ?? user.songsGenerated ?? 0);
-    return currentUsage < limits.songsPerMonth;
-  }, [user, limits]);
+    return true;
+  }, []);
 
   const remainingSongs = useMemo(() => {
-    if (!user) return 0;
-    const currentUsage = (user.songsThisMonth ?? user.songsGenerated ?? 0);
-    return Math.max(0, limits.songsPerMonth - currentUsage);
-  }, [user, limits]);
+    return Infinity; // No limits on song creation
+  }, []);
 
-  const getUpgradeRequirement = (feature: keyof typeof canUseFeature) => {
-    if (canUseFeature[feature]) return null;
-    
-    // Find the minimum plan that supports this feature
-    for (const [plan, planLimits] of Object.entries(PLAN_LIMITS)) {
-      if (planLimits[feature] && plan !== 'free') {
-        return {
-          plan: plan as PlanType,
-          price: PLAN_PRICES[plan as keyof typeof PLAN_PRICES],
-        };
-      }
-    }
-    return null;
-  };
+  const getUpgradeMessage = useMemo(() => (feature: string) => {
+    return `Pay per song - no subscriptions required! Generate unlimited songs and pay only for downloads.`;
+  }, []);
 
-  const getFeatureRestrictionMessage = (feature: keyof typeof canUseFeature) => {
-    const upgrade = getUpgradeRequirement(feature);
-    if (!upgrade) return null;
-    
-    const featureNames = {
-      voiceCloning: 'Voice Cloning',
-      textToSpeech: 'Text-to-Speech',
-      analytics: 'Analytics Dashboard',
-      versionControl: 'Version Control',
-      collaboration: 'Collaboration Tools',
-      musicTheory: 'Music Theory Tools',
-    };
-    
-    return `${featureNames[feature]} requires ${upgrade.plan.charAt(0).toUpperCase() + upgrade.plan.slice(1)} plan ($${upgrade.price}/month)`;
-  };
+  const getPurchaseOptions = useMemo(() => () => {
+    return [
+      { tier: 'bonus', price: 0.99, quality: 'demo', hasWatermark: true },
+      { tier: 'base', price: 1.99, quality: 'standard', hasWatermark: false },
+      { tier: 'premium', price: 4.99, quality: 'high', hasWatermark: false },
+      { tier: 'ultra', price: 8.99, quality: 'studio', hasWatermark: false },
+      { tier: 'full_license', price: 10.00, quality: 'studio', hasWatermark: false, fullRights: true },
+    ];
+  }, []);
 
   return {
     currentPlan,
@@ -144,8 +70,7 @@ export const usePlanRestrictions = () => {
     canUseFeature,
     canCreateSong,
     remainingSongs,
-    getUpgradeRequirement,
-    getFeatureRestrictionMessage,
-    planPrices: PLAN_PRICES,
+    getUpgradeMessage,
+    getPurchaseOptions,
   };
 };
