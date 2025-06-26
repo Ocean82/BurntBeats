@@ -259,12 +259,7 @@ export default function StripeTieredCheckout({ songId, songTitle, onPurchaseComp
                 }`}
                 disabled={false}
               >
-                <stripe-buy-button
-                  buy-button-id={tier.buyButtonId}
-                  publishable-key={STRIPE_PUBLISHABLE_KEY}
-                  client-reference-id={`${songId}-${tier.id}`}
-                />
-                Download Now
+                Download ${tier.name} - ${tier.price.toFixed(2)}
               </Button>
             </CardContent>
           </Card>

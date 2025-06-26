@@ -1,102 +1,106 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Music, Sparkles, Crown, ArrowRight, Star, Users, Zap } from "lucide-react";
-const burntBeatsLogo = "/burnt-beats-logo.jpeg";
+import { Music, Sparkles, Zap, Crown, Star, Mic } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function LandingPage() {
+  const { login } = useAuth();
+
   const handleLogin = () => {
-    window.location.href = "/api/login";
+    login();
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
-      {/* Header */}
-      <header className="p-6">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center">
-            <img 
-              src={burntBeatsLogo} 
-              alt="Burnt Beats Logo" 
-              className="w-10 h-10 mr-3 rounded-lg object-cover"
-            />
-            <h1 className="text-2xl font-bold text-white">Burnt Beats</h1>
-          </div>
-          <Button onClick={handleLogin} className="bg-gradient-to-r from-spotify-green to-green-600">
-            Sign in with Replit
-          </Button>
-        </div>
-      </header>
-
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-black text-white">
       {/* Hero Section */}
-      <main className="max-w-6xl mx-auto px-6 py-12">
+      <div className="container mx-auto px-4 py-20">
         <div className="text-center mb-16">
-          <h2 className="text-5xl font-bold text-white mb-6">
-            Transform Text into
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent"> Fire Tracks</span>
-          </h2>
-          <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto">
-            AI-powered music creation with attitude. Generate professional songs, clone voices, and collaborate in real-time.
+          <div className="flex items-center justify-center mb-6">
+            <img 
+              src="/burnt-beats-logo.jpeg" 
+              alt="Burnt Beats Logo" 
+              className="w-16 h-16 mr-4 rounded-lg object-cover"
+            />
+            <h1 className="text-6xl font-bold bg-gradient-to-r from-orange-400 to-red-600 bg-clip-text text-transparent">
+              Burnt Beats
+            </h1>
+          </div>
+          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+            Create professional music with AI. No subscriptions, no limits - pay only for what you generate.
           </p>
           <Button 
             onClick={handleLogin}
-            size="lg"
-            className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-lg px-8 py-4"
+            size="lg" 
+            className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-8 py-4 text-lg"
           >
-            Get Started Free <ArrowRight className="ml-2 w-5 h-5" />
+            Start Creating Music
           </Button>
         </div>
 
         {/* Features Grid */}
         <div className="grid md:grid-cols-3 gap-8 mb-16">
           <Card className="bg-gray-800 border-gray-700">
-            <CardHeader>
-              <Music className="w-10 h-10 text-purple-400 mb-4" />
+            <CardHeader className="text-center">
+              <Music className="w-12 h-12 mx-auto mb-4 text-orange-500" />
               <CardTitle className="text-white">AI Music Generation</CardTitle>
             </CardHeader>
-            <CardContent className="text-gray-300">
-              Professional-quality songs generated from your lyrics using advanced AI and Music21 library.
+            <CardContent>
+              <p className="text-gray-300 text-center">
+                Generate complete songs with lyrics, melodies, and professional mixing using advanced AI
+              </p>
             </CardContent>
           </Card>
 
           <Card className="bg-gray-800 border-gray-700">
-            <CardHeader>
-              <Zap className="w-10 h-10 text-blue-400 mb-4" />
+            <CardHeader className="text-center">
+              <Mic className="w-12 h-12 mx-auto mb-4 text-purple-500" />
               <CardTitle className="text-white">Voice Cloning</CardTitle>
             </CardHeader>
-            <CardContent className="text-gray-300">
-              Upload voice samples and transform them into singing voices with genre-specific adaptations.
+            <CardContent>
+              <p className="text-gray-300 text-center">
+                Clone any voice and have it sing your generated songs with realistic vocal synthesis
+              </p>
             </CardContent>
           </Card>
 
           <Card className="bg-gray-800 border-gray-700">
-            <CardHeader>
-              <Users className="w-10 h-10 text-green-400 mb-4" />
-              <CardTitle className="text-white">Real-time Collaboration</CardTitle>
+            <CardHeader className="text-center">
+              <Sparkles className="w-12 h-12 mx-auto mb-4 text-blue-500" />
+              <CardTitle className="text-white">Multiple Formats</CardTitle>
             </CardHeader>
-            <CardContent className="text-gray-300">
-              Work together on songs with live editing, comments, and team management features.
+            <CardContent>
+              <p className="text-gray-300 text-center">
+                Download in MP3, WAV, FLAC with different quality options and commercial licensing
+              </p>
             </CardContent>
           </Card>
         </div>
 
+        {/* Pricing Section */}
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold mb-4">Simple, Fair Pricing</h2>
+          <p className="text-xl text-gray-300 mb-8">
+            No subscriptions. No monthly fees. Pay only for the music you generate.
+          </p>
+        </div>
+
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-4 gap-6">
+        <div className="grid md:grid-cols-5 gap-6 mb-16">
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white text-center">Free</CardTitle>
+              <CardTitle className="text-white text-center">🧪 Bonus Track</CardTitle>
               <div className="text-center">
-                <span className="text-3xl font-bold text-white">$0</span>
-                <span className="text-gray-400">/month</span>
+                <span className="text-3xl font-bold text-white">$0.99</span>
+                <span className="text-gray-400 block">Watermarked demo</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <ul className="space-y-2 text-gray-300">
-                <li>• 2 songs per month</li>
-                <li>• All features included</li>
-                <li>• No storage</li>
-                <li>• MP3 128kbps & 320kbps</li>
-                <li>• WAV & FLAC quality</li>
+                <li>• Demo quality</li>
+                <li>• Perfect for testing</li>
+                <li>• Instant download</li>
               </ul>
               <Button onClick={handleLogin} variant="outline" className="w-full">
                 Get Started
@@ -106,212 +110,106 @@ export default function LandingPage() {
 
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white text-center">Basic</CardTitle>
+              <CardTitle className="text-white text-center">🔉 Base Song</CardTitle>
               <div className="text-center">
-                <span className="text-3xl font-bold text-white">$6.99</span>
-                <span className="text-gray-400">/month</span>
+                <span className="text-3xl font-bold text-white">$1.99</span>
+                <span className="text-gray-400 block">Under 9MB</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <ul className="space-y-2 text-gray-300">
-                <li>• 4 songs per month</li>
-                <li>• Voice cloning & TTS</li>
-                <li>• 5 songs storage</li>
-                <li>• MP3 128kbps & 320kbps</li>
-                <li>• Advanced editing</li>
+                <li>• No watermarks</li>
+                <li>• Great for loops</li>
+                <li>• High quality MP3</li>
               </ul>
               <Button onClick={handleLogin} variant="outline" className="w-full">
-                Choose Basic
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800 border-gray-700 ring-2 ring-vibrant-orange">
-            <CardHeader>
-              <CardTitle className="text-white text-center">Pro</CardTitle>
-              <div className="text-center">
-                <span className="text-3xl font-bold text-white">$12.99</span>
-                <span className="text-gray-400">/month</span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ul className="space-y-2 text-gray-300">
-                <li>• Unlimited songs</li>
-                <li>• All features</li>
-                <li>• 50 songs storage</li>
-                <li>• MP3, WAV quality</li>
-                <li>• Neural synthesis</li>
-              </ul>
-              <Button onClick={handleLogin} className="w-full bg-vibrant-orange">
-                Choose Pro
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800 border-gray-700">
-            <CardHeader>
-              <CardTitle className="text-white text-center">Enterprise</CardTitle>
-              <div className="text-center">
-                <span className="text-3xl font-bold text-white">$39.99</span>
-                <span className="text-gray-400">/month</span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ul className="space-y-2 text-gray-300">
-                <li>• Unlimited everything</li>
-                <li>• Commercial use license</li>
-                <li>• Priority support</li>
-                <li>• All formats (FLAC)</li>
-                <li>• API access</li>
-              </ul>
-              <Button onClick={handleLogin} variant="outline" className="w-full">
-                Choose Enterprise
+                Create Music
               </Button>
             </CardContent>
           </Card>
 
           <Card className="bg-gray-800 border-gray-700 relative">
-            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-              <Badge variant="secondary">Most Popular</Badge>
-            </div>
-            <CardHeader>
-              <CardTitle className="text-white text-center">Basic</CardTitle>
-              <div className="text-center">
-                <span className="text-3xl font-bold text-white">$6.99</span>
-                <span className="text-gray-400">/month</span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ul className="space-y-2 text-gray-300">
-                <li>• 3 songs per month</li>
-                <li>• 5:30 max length</li>
-                <li>• Voice cloning + TTS</li>
-                <li>• MP3 320kbps quality</li>
-                <li>• 5 genres available</li>
-              </ul>
-              <Button onClick={handleLogin} className="w-full bg-vibrant-orange hover:bg-orange-600">
-                Start Basic
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800 border-gray-700 relative">
-            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-              <Badge className="bg-gradient-to-r from-vibrant-orange to-orange-600 text-white">Best Value</Badge>
-            </div>
-            <CardHeader>
-              <CardTitle className="text-white text-center">Pro</CardTitle>
-              <div className="text-center">
-                <span className="text-3xl font-bold text-white">$12.99</span>
-                <span className="text-gray-400">/month</span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ul className="space-y-2 text-gray-300">
-                <li>• 50 songs per month</li>
-                <li>• 5:30 max length</li>
-                <li>• Analytics & collaboration</li>
-                <li>• WAV quality available</li>
-                <li>• 8 genres available</li>
-              </ul>
-              <Button onClick={handleLogin} className="w-full bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-600 hover:to-vibrant-orange">
-                Start Pro
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gray-800 border-yellow-400/50 relative">
-            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-              <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black">Professional</Badge>
-            </div>
-            <CardHeader>
-              <CardTitle className="text-white text-center flex items-center justify-center gap-2">
-                <Crown className="w-5 h-5 text-yellow-400" />
-                Enterprise
-              </CardTitle>
-              <div className="text-center">
-                <span className="text-3xl font-bold text-white">$39.99</span>
-                <span className="text-gray-400">/month</span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <ul className="space-y-2 text-gray-300">
-                <li>• Unlimited songs</li>
-                <li>• 5:30 max length</li>
-                <li>• All features included</li>
-                <li>• FLAC quality available</li>
-                <li>• Commercial use license</li>
-              </ul>
-              <Button onClick={handleLogin} className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 text-black hover:from-yellow-500 hover:to-yellow-700">
-                Start Enterprise
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-b from-orange-900 to-gray-800 border-orange-500 relative">
-            <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-vibrant-orange">
+            <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-blue-500">
               Most Popular
             </Badge>
             <CardHeader>
-              <CardTitle className="text-white text-center">Basic</CardTitle>
+              <CardTitle className="text-white text-center">🎧 Premium Song</CardTitle>
               <div className="text-center">
-                <span className="text-3xl font-bold text-white">$6.99</span>
-                <span className="text-gray-400">/month</span>
+                <span className="text-3xl font-bold text-white">$4.99</span>
+                <span className="text-gray-400 block">9MB-20MB</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <ul className="space-y-2 text-gray-300">
-                <li>• 3 full-length songs</li>
-                <li>• Voice cloning & TTS</li>
-                <li>• Advanced editing tools</li>
-                <li>• High-quality downloads</li>
+                <li>• Professional quality</li>
+                <li>• Multiple formats</li>
+                <li>• Commercial use</li>
               </ul>
-              <Button onClick={handleLogin} className="w-full bg-vibrant-orange hover:bg-orange-600">
-                Upgrade to Basic
+              <Button onClick={handleLogin} className="w-full bg-blue-500 hover:bg-blue-600">
+                Start Creating
               </Button>
             </CardContent>
           </Card>
 
           <Card className="bg-gray-800 border-gray-700">
             <CardHeader>
-              <CardTitle className="text-white text-center flex items-center justify-center">
-                <Crown className="w-5 h-5 mr-2 text-yellow-500" />
-                Pro
-              </CardTitle>
+              <CardTitle className="text-white text-center">💽 Ultra Song</CardTitle>
               <div className="text-center">
-                <span className="text-3xl font-bold text-white">$12.99</span>
-                <span className="text-gray-400">/month</span>
+                <span className="text-3xl font-bold text-white">$8.99</span>
+                <span className="text-gray-400 block">Over 20MB</span>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <ul className="space-y-2 text-gray-300">
-                <li>• 50 songs per month</li>
-                <li>• Analytics & version control</li>
-                <li>• Real-time collaboration</li>
-                <li>• All genres & features</li>
+                <li>• Studio quality</li>
+                <li>• Complex compositions</li>
+                <li>• All formats</li>
               </ul>
-              <Button onClick={handleLogin} className="w-full bg-gradient-to-r from-purple-500 to-blue-500">
-                Upgrade to Pro
+              <Button onClick={handleLogin} variant="outline" className="w-full">
+                Go Premium
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gray-800 border-gray-700 relative">
+            <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black">
+              Full Rights
+            </Badge>
+            <CardHeader>
+              <CardTitle className="text-white text-center">🪪 Full License</CardTitle>
+              <div className="text-center">
+                <span className="text-3xl font-bold text-white">$10.00</span>
+                <span className="text-gray-400 block">Complete ownership</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="space-y-2 text-gray-300">
+                <li>• Full commercial rights</li>
+                <li>• Resale allowed</li>
+                <li>• No royalties ever</li>
+              </ul>
+              <Button onClick={handleLogin} className="w-full bg-yellow-500 text-black hover:bg-yellow-600">
+                Own It
               </Button>
             </CardContent>
           </Card>
         </div>
 
-        {/* Footer */}
-        <div className="text-center mt-16 text-gray-400">
-          <p>Join thousands of creators making fire tracks with Burnt Beats</p>
-          <div className="flex justify-center items-center mt-4 space-x-4">
-            <div className="flex items-center">
-              <Star className="w-4 h-4 text-yellow-500 mr-1" />
-              <span>4.9/5 rating</span>
-            </div>
-            <div>•</div>
-            <div>10,000+ songs generated</div>
-            <div>•</div>
-            <div>Real music, real AI</div>
-          </div>
+        {/* CTA Section */}
+        <div className="text-center">
+          <h3 className="text-2xl font-bold mb-4">Ready to create your next hit?</h3>
+          <p className="text-gray-300 mb-6">
+            Join thousands of creators making professional music with AI
+          </p>
+          <Button 
+            onClick={handleLogin}
+            size="lg" 
+            className="bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white px-8 py-4 text-lg"
+          >
+            Start Creating Now
+          </Button>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

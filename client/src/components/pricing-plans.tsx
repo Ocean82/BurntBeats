@@ -7,93 +7,111 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Crown, Check, X, Music, Mic, BarChart3, GitBranch, Users, Settings, Star, Zap } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery } from "@tanstack/react-query";
-import StripeCheckout from "./stripe-checkout";
-
+import StripeTieredCheckout from "./stripe-tiered-checkout";
 
 interface PricingPlansProps {
-  userId: number;
-  currentPlan: string;
-  onUpgrade: (plan: string) => void;
+  userId?: number;
+  onPurchase?: (tier: string) => void;
   user?: {
     id?: number;
     username?: string;
-    plan?: 'free' | 'basic' | 'pro' | 'enterprise';
-    songsThisMonth?: number;
-    monthlyLimit?: number;
   };
 }
 
-export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: PricingPlansProps) {
+const PRICING_TIERS = [
+  {
+    id: 'bonus',
+    name: '🧪 Bonus Track',
+    description: 'Watermarked demo. Test the vibe before buying.',
+    price: 0.99,
+    icon: <Music className="w-5 h-5" />,
+    badge: null,
+    features: [
+      'Watermarked demo quality',
+      'Perfect for testing concepts',
+      'Instant download',
+      'MP3 format'
+    ]
+  },
+  {
+    id: 'base',
+    name: '🔉 Base Song',
+    description: 'Tracks under 9MB. Great for quick loops or intros.',
+    price: 1.99,
+    icon: <Mic className="w-5 h-5" />,
+    badge: null,
+    features: [
+      'Tracks under 9MB',
+      'No watermarks',
+      'Perfect for loops & intros',
+      'High quality MP3'
+    ]
+  },
+  {
+    id: 'premium',
+    name: '🎧 Premium Song',
+    description: 'Tracks between 9MB and 20MB. Crisp quality with depth.',
+    price: 4.99,
+    icon: <BarChart3 className="w-5 h-5" />,
+    badge: <Badge variant="secondary">Most Popular</Badge>,
+    features: [
+      'Tracks 9MB-20MB',
+      'Crisp quality with depth',
+      'Professional grade',
+      'Multiple formats available'
+    ]
+  },
+  {
+    id: 'ultra',
+    name: '💽 Ultra Super Great Amazing Song',
+    description: 'Tracks over 20MB. Ideal for complex, layered creations.',
+    price: 8.99,
+    icon: <Star className="w-5 h-5" />,
+    badge: <Badge className="bg-gradient-to-r from-vibrant-orange to-orange-600 text-white">Best Value</Badge>,
+    features: [
+      'Tracks over 20MB',
+      'Complex layered creations',
+      'Studio quality',
+      'All formats included'
+    ]
+  },
+  {
+    id: 'full_license',
+    name: '🪪 Full License',
+    description: 'Grants full ownership. Use, distribute, modify, and monetize your track anywhere—forever.',
+    price: 10.00,
+    icon: <Crown className="w-5 h-5 text-yellow-400" />,
+    badge: <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black">Professional</Badge>,
+    features: [
+      'Complete ownership rights',
+      'Commercial use allowed',
+      'No royalties ever',
+      'Resale rights included',
+      'All formats & qualities'
+    ]
+  }
+];
+
+export default function PricingPlans({ userId, onPurchase, user }: PricingPlansProps) {
   const [showCheckout, setShowCheckout] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState("");
+  const [selectedTier, setSelectedTier] = useState("");
 
-  const { data: plans, isLoading } = useQuery({
-    queryKey: ["/api/pricing/plans"],
-  });
-
-  const { data: usage } = useQuery({
-    queryKey: ["/api/pricing/usage", userId],
-  });
-
-  const handleUpgrade = (planName: string) => {
-    if (planName === "free" || planName === currentPlan) {
-      onUpgrade(planName);
-    } else {
-      setSelectedPlan(planName);
-      setShowCheckout(true);
-    }
+  const handlePurchase = (tierName: string) => {
+    setSelectedTier(tierName);
+    setShowCheckout(true);
   };
 
   const handlePaymentSuccess = () => {
     setShowCheckout(false);
-    onUpgrade(selectedPlan);
+    if (onPurchase) {
+      onPurchase(selectedTier);
+    }
   };
 
   const handlePaymentCancel = () => {
     setShowCheckout(false);
-    setSelectedPlan("");
+    setSelectedTier("");
   };
-
-  const getButtonText = (planName: string) => {
-    if (currentPlan === planName) return "Current Plan";
-    if (planName === "free") return "Downgrade";
-    return `Upgrade to ${planName.charAt(0).toUpperCase() + planName.slice(1)}`;
-  };
-
-  const getButtonVariant = (planName: string) => {
-    if (currentPlan === planName) return "secondary";
-    if (planName === "enterprise") return "default";
-    return "outline";
-  };
-
-  const getPlanIcon = (planName: string) => {
-    switch (planName) {
-      case "free": return <Music className="w-5 h-5" />;
-      case "basic": return <Mic className="w-5 h-5" />;
-      case "pro": return <BarChart3 className="w-5 h-5" />;
-      case "enterprise": return <Crown className="w-5 h-5 text-yellow-400" />;
-      default: return <Music className="w-5 h-5" />;
-    }
-  };
-
-  const getPlanBadge = (planName: string) => {
-    switch (planName) {
-      case "basic": return <Badge variant="secondary">Most Popular</Badge>;
-      case "pro": return <Badge className="bg-gradient-to-r from-vibrant-orange to-orange-600 text-white">Best Value</Badge>;
-      case "enterprise": return <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black">Professional</Badge>;
-      default: return null;
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  const planOrder = ["free", "basic", "pro", "enterprise"];
 
   return (
     <div className="space-y-6">
@@ -104,184 +122,62 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
             alt="Burnt Beats Logo" 
             className="w-12 h-12 mr-3 rounded-lg object-cover"
           />
-          <h2 className="text-3xl font-bold">Choose Your Plan</h2>
+          <h2 className="text-3xl font-bold">🎶 Pricing</h2>
         </div>
-        <p className="text-gray-400 mb-4">Unlock powerful AI music creation features</p>
-        {usage && typeof usage === 'object' && 'songsThisMonth' in usage && (
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 rounded-lg">
-            <span className="text-sm text-gray-300">Current usage:</span>
-            <span className="font-semibold text-vibrant-orange">
-              {(usage as any).songsThisMonth}/{(usage as any).monthlyLimit === 999999 ? "∞" : (usage as any).monthlyLimit} songs
-            </span>
-          </div>
-        )}
+        <p className="text-gray-400 mb-4">
+          No subscriptions. No tokens. No limits. Pay only for the music you generate.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {planOrder.map((planName) => {
-          const plan = plans && typeof plans === 'object' ? (plans as any)[planName] : null;
-          if (!plan) return null;
-
-          const isCurrentPlan = currentPlan === planName;
-          const isPopular = planName === "basic";
-          const isBestValue = planName === "pro";
-          const isProfessional = planName === "enterprise";
-
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+        {PRICING_TIERS.map((tier) => {
           return (
             <Card 
-              key={planName}
-              className={`relative ${isCurrentPlan ? "ring-2 ring-vibrant-orange" : ""} ${
-                isProfessional ? "border-yellow-400/50" : ""
-              }`}
+              key={tier.id}
+              className="relative border-gray-700 hover:border-orange-500/50 transition-colors"
             >
-              {getPlanBadge(planName) && (
+              {tier.badge && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  {getPlanBadge(planName)}
+                  {tier.badge}
                 </div>
               )}
 
               <CardHeader className="text-center">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  {getPlanIcon(planName)}
-                  <CardTitle className="capitalize">{planName} Plan</CardTitle>
+                  {tier.icon}
+                  <CardTitle className="text-lg">{tier.name}</CardTitle>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-3xl font-bold">
-                    {plan.pricing.displayPrice}
+                  <div className="text-3xl font-bold text-purple-400">
+                    ${tier.price.toFixed(2)}
                   </div>
-                  {planName !== "free" && (
-                    <CardDescription className="text-sm text-gray-400">
-                      per month, billed monthly
-                    </CardDescription>
-                  )}
+                  <CardDescription className="text-sm text-gray-400">
+                    per song
+                  </CardDescription>
                 </div>
               </CardHeader>
 
               <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Songs per month</span>
-                    <span className="font-semibold">
-                      {plan.songsPerMonth === -1 ? "Unlimited" : plan.songsPerMonth}
-                    </span>
-                  </div>
+                <CardDescription className="text-sm text-gray-300">
+                  {tier.description}
+                </CardDescription>
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Max song length</span>
-                    <span className="font-semibold">{plan.maxSongLength}</span>
-                  </div>
+                <Separator />
 
-                  <Separator />
-
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm">Features</h4>
-
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        {plan.features.voiceCloning ? 
-                          <Check className="w-4 h-4 text-green-400" /> : 
-                          <X className="w-4 h-4 text-gray-500" />
-                        }
-                        <span className="text-sm">Voice Cloning</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {plan.features.textToSpeech ? 
-                          <Check className="w-4 h-4 text-green-400" /> : 
-                          <X className="w-4 h-4 text-gray-500" />
-                        }
-                        <span className="text-sm">Text-to-Speech</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {plan.features.advancedEditing ? 
-                          <Check className="w-4 h-4 text-green-400" /> : 
-                          <X className="w-4 h-4 text-gray-500" />
-                        }
-                        <span className="text-sm">Advanced Editing</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {plan.features.analytics ? 
-                          <Check className="w-4 h-4 text-green-400" /> : 
-                          <X className="w-4 h-4 text-gray-500" />
-                        }
-                        <span className="text-sm">Analytics Dashboard</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {plan.features.versionControl ? 
-                          <Check className="w-4 h-4 text-green-400" /> : 
-                          <X className="w-4 h-4 text-gray-500" />
-                        }
-                        <span className="text-sm">Version Control</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {plan.features.collaboration ? 
-                          <Check className="w-4 h-4 text-green-400" /> : 
-                          <X className="w-4 h-4 text-gray-500" />
-                        }
-                        <span className="text-sm">Collaboration Tools</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {plan.features.realTimeCollaboration ? 
-                          <Check className="w-4 h-4 text-green-400" /> : 
-                          <X className="w-4 h-4 text-gray-500" />
-                        }
-                        <span className="text-sm">Real-time Collaboration</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {plan.features.musicTheoryTools ? 
-                          <Check className="w-4 h-4 text-green-400" /> : 
-                          <X className="w-4 h-4 text-gray-500" />
-                        }
-                        <span className="text-sm">Music Theory Tools</span>
-                      </div>
+                <div className="space-y-2">
+                  {tier.features.map((feature, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-green-400" />
+                      <span className="text-sm text-gray-300">{feature}</span>
                     </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm">Audio Quality</h4>
-                    <div className="space-y-1">
-                      {Object.entries(plan.audioQuality).map(([format, available]) => (
-                        <div key={format} className="flex items-center gap-2">
-                          {available ? 
-                            <Check className="w-4 h-4 text-green-400" /> : 
-                            <X className="w-4 h-4 text-gray-500" />
-                          }
-                          <span className="text-sm">{format.replace('_', ' ').toUpperCase()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-2">
-                    <h4 className="font-semibold text-sm">Available Genres</h4>
-                    <div className="text-sm text-gray-400">
-                      {plan.genres.length} genres: {plan.genres.slice(0, 3).join(", ")}
-                      {plan.genres.length > 3 && "..."}
-                    </div>
-                  </div>
+                  ))}
                 </div>
 
                 <Button
-                  onClick={() => handleUpgrade(planName)}
-                  variant={getButtonVariant(planName)}
-                  className={`w-full ${
-                    isProfessional ? "bg-gradient-to-r from-yellow-400 to-yellow-600 text-black hover:from-yellow-500 hover:to-yellow-700" :
-                    isBestValue ? "bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-500 hover:to-orange-700" :
-                    ""
-                  }`}
-                  disabled={isCurrentPlan}
+                  onClick={() => handlePurchase(tier.id)}
+                  className="w-full bg-gradient-to-r from-vibrant-orange to-orange-600 hover:from-orange-500 hover:to-orange-700"
                 >
-                  {getButtonText(planName)}
+                  Download ${tier.price.toFixed(2)}
                 </Button>
               </CardContent>
             </Card>
@@ -289,23 +185,24 @@ export default function PricingPlans({ userId, currentPlan, onUpgrade, user }: P
         })}
       </div>
 
-      <div className="text-center text-sm text-gray-400">
-        <p>All plans include secure payment processing and 24/7 support</p>
-        <p>Enterprise customers get priority support and custom integrations</p>
+      <div className="text-center text-sm text-gray-400 space-y-2">
+        <p>💰 No subscriptions • No monthly fees • Pay only for what you create</p>
+        <p>🎵 100% ownership • Commercial use allowed • No royalties</p>
+        <p>⚡ Instant downloads • Secure payments • Lifetime access</p>
       </div>
 
       {/* Stripe Checkout Dialog */}
       <Dialog open={showCheckout} onOpenChange={setShowCheckout}>
-        <DialogContent className="sm:max-w-[600px] bg-dark-bg border-gray-800">
+        <DialogContent className="sm:max-w-[800px] bg-dark-bg border-gray-800 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-white text-xl">
-              Complete Your Subscription
+              Complete Your Purchase
             </DialogTitle>
           </DialogHeader>
-          <StripeCheckout
-            plan={selectedPlan}
-            onSuccess={handlePaymentSuccess}
-            onCancel={handlePaymentCancel}
+          <StripeTieredCheckout
+            songId="generated-song"
+            songTitle="Your Generated Song"
+            onPurchaseComplete={handlePaymentSuccess}
           />
         </DialogContent>
       </Dialog>
