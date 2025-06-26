@@ -10,8 +10,9 @@ import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
-import { Alert, AlertDescription } from './ui/alert';
-import { Brain, Zap, Music, Settings, Info } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { Brain, Zap, Music, Settings, Info, Loader2, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface AICapabilities {
   available: boolean;
@@ -34,6 +35,26 @@ interface AIGenerationOptions {
   duration: number;
   useAI: boolean;
   temperature: number;
+  vocalStyle?: string;
+  mood?: string;
+}
+
+interface GenerationResult {
+  success: boolean;
+  audioPath: string;
+  metadata: {
+    title: string;
+    duration: number;
+    aiEnhanced: boolean;
+    modelUsed: boolean;
+    processingTime: number;
+    features: {
+      lstmGenerated: boolean;
+      enhancedHarmony: boolean;
+      trainingDataUsed: boolean;
+    };
+  };
+  error?: string;
 }
 
 export function AIMusicGenerator() {
@@ -45,110 +66,170 @@ export function AIMusicGenerator() {
     key: 'C',
     duration: 30,
     useAI: true,
-    temperature: 0.8
+    temperature: 0.8,
+    vocalStyle: 'neutral',
+    mood: 'happy'
   });
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<GenerationResult | null>(null);
   const [capabilities, setCapabilities] = useState<AICapabilities | null>(null);
   const [isTraining, setIsTraining] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Fetch AI capabilities on component mount
   useEffect(() => {
+    const fetchAICapabilities = async () => {
+      try {
+        const response = await fetch('/api/ai-capabilities');
+        if (!response.ok) throw new Error('Failed to fetch capabilities');
+        const data = await response.json();
+        setCapabilities(data);
+      } catch (err) {
+        console.error('Failed to fetch AI capabilities:', err);
+        toast.error('Failed to load AI capabilities');
+      }
+    };
+
     fetchAICapabilities();
   }, []);
 
-  const fetchAICapabilities = async () => {
-    try {
-      const response = await fetch('/api/ai-capabilities');
-      const data = await response.json();
-      setCapabilities(data);
-    } catch (error) {
-      console.error('Failed to fetch AI capabilities:', error);
-    }
-  };
-
   const handleInputChange = (field: keyof AIGenerationOptions, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear previous results/errors when form changes
+    if (result) setResult(null);
+    if (error) setError(null);
+  };
+
+  const validateForm = (): boolean => {
+    if (!formData.title.trim()) {
+      toast.error('Please enter a song title');
+      return false;
+    }
+    if (!formData.lyrics.trim()) {
+      toast.error('Please enter lyrics');
+      return false;
+    }
+    if (formData.duration < 10 || formData.duration > 300) {
+      toast.error('Duration must be between 10 and 300 seconds');
+      return false;
+    }
+    return true;
   };
 
   const generateAIMusic = async () => {
-    if (!formData.title || !formData.lyrics) {
-      alert('Please fill in title and lyrics');
+    if (!validateForm()) return;
+    if (!capabilities?.available) {
+      toast.error('AI service is currently unavailable');
       return;
     }
 
     setIsGenerating(true);
     setGenerationProgress(0);
     setResult(null);
+    setError(null);
 
-    // Simulate progress
+    // Simulate progress updates
     const progressInterval = setInterval(() => {
       setGenerationProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return 90;
-        }
-        return prev + 10;
+        const increment = prev < 50 ? 10 : 5; // Faster progress at start
+        return Math.min(prev + increment, 90);
       });
     }, 500);
 
     try {
       const response = await fetch('/api/generate-ai-song', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Generation failed');
+      }
+
+      const data: GenerationResult = await response.json();
 
       if (data.success) {
         setResult(data);
         setGenerationProgress(100);
+        toast.success('AI music generated successfully!');
       } else {
-        throw new Error(data.error || 'Generation failed');
+        throw new Error(data.error || 'Unknown error during generation');
       }
-    } catch (error) {
-      console.error('AI generation failed:', error);
-      alert(`Generation failed: ${error.message}`);
+    } catch (err) {
+      console.error('AI generation failed:', err);
+      setError(err instanceof Error ? err.message : 'Generation failed');
+      toast.error('Failed to generate music');
     } finally {
       clearInterval(progressInterval);
       setIsGenerating(false);
-      setTimeout(() => setGenerationProgress(0), 2000);
     }
   };
 
   const trainAIModel = async () => {
+    if (!capabilities?.available) {
+      toast.error('AI service is currently unavailable');
+      return;
+    }
+
     setIsTraining(true);
+    toast.info('Starting AI model training...');
+
     try {
       const response = await fetch('/api/train-ai-model', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           trainingDataPath: 'training_data',
           epochs: 20
         }),
       });
 
-      const data = await response.json();
-      
-      if (data.success) {
-        alert('AI model training completed successfully!');
-        fetchAICapabilities(); // Refresh capabilities
-      } else {
-        throw new Error(data.error);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Training failed');
       }
-    } catch (error) {
-      console.error('Training failed:', error);
-      alert(`Training failed: ${error.message}`);
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('AI model trained successfully!');
+        // Refresh capabilities
+        const capabilitiesResponse = await fetch('/api/ai-capabilities');
+        setCapabilities(await capabilitiesResponse.json());
+      } else {
+        throw new Error(data.error || 'Unknown error during training');
+      }
+    } catch (err) {
+      console.error('Training failed:', err);
+      toast.error('Failed to train AI model');
     } finally {
       setIsTraining(false);
     }
   };
+
+  // Available options for dropdowns
+  const genreOptions = [
+    'pop', 'rock', 'jazz', 'electronic', 'classical', 
+    'hip-hop', 'country', 'r&b', 'metal', 'folk'
+  ];
+
+  const keyOptions = [
+    'C', 'G', 'D', 'A', 'E', 'F', 'B', 'Cm', 'Gm', 'Dm', 'Am', 'Em', 'Fm', 'Bm'
+  ];
+
+  const vocalStyleOptions = [
+    'neutral', 'soft', 'powerful', 'breathy', 'raspy', 
+    'smooth', 'gravelly', 'falsetto', 'vibrato'
+  ];
+
+  const moodOptions = [
+    'happy', 'sad', 'angry', 'energetic', 'calm',
+    'romantic', 'mysterious', 'dreamy', 'melancholic'
+  ];
 
   return (
     <div className="space-y-6">
@@ -164,33 +245,41 @@ export function AIMusicGenerator() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="text-center p-3 rounded-lg bg-blue-50">
               <div className="text-2xl font-bold text-blue-600">
                 {capabilities?.available ? '✓' : '✗'}
               </div>
               <div className="text-sm text-gray-600">AI Available</div>
             </div>
-            <div className="text-center">
+            <div className="text-center p-3 rounded-lg bg-green-50">
               <div className="text-2xl font-bold text-green-600">
                 {capabilities?.modelTrained ? '✓' : '✗'}
               </div>
               <div className="text-sm text-gray-600">Model Trained</div>
             </div>
-            <div className="text-center">
+            <div className="text-center p-3 rounded-lg bg-purple-50">
               <div className="text-2xl font-bold text-purple-600">
                 {capabilities ? Object.values(capabilities.features).filter(Boolean).length : 0}
               </div>
               <div className="text-sm text-gray-600">AI Features</div>
             </div>
-            <div className="text-center">
+            <div className="text-center p-3 rounded-lg bg-orange-50">
               <Button
                 onClick={trainAIModel}
                 disabled={isTraining || !capabilities?.available}
                 size="sm"
                 variant="outline"
+                className="w-full"
               >
-                {isTraining ? 'Training...' : 'Train Model'}
+                {isTraining ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Training...
+                  </>
+                ) : (
+                  'Train Model'
+                )}
               </Button>
             </div>
           </div>
@@ -198,8 +287,13 @@ export function AIMusicGenerator() {
           {capabilities && (
             <div className="mt-4 flex flex-wrap gap-2">
               {Object.entries(capabilities.features).map(([feature, enabled]) => (
-                <Badge key={feature} variant={enabled ? "default" : "secondary"}>
+                <Badge 
+                  key={feature} 
+                  variant={enabled ? "default" : "secondary"}
+                  className={enabled ? "bg-green-100 text-green-800" : ""}
+                >
                   {feature.replace(/_/g, ' ')}
+                  {enabled && <Sparkles className="ml-1 h-3 w-3" />}
                 </Badge>
               ))}
             </div>
@@ -218,7 +312,7 @@ export function AIMusicGenerator() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="title">Song Title</Label>
+              <Label htmlFor="title">Song Title *</Label>
               <Input
                 id="title"
                 value={formData.title}
@@ -227,7 +321,7 @@ export function AIMusicGenerator() {
               />
             </div>
             <div>
-              <Label htmlFor="genre">Genre</Label>
+              <Label htmlFor="genre">Genre *</Label>
               <Select
                 value={formData.genre}
                 onValueChange={(value) => handleInputChange('genre', value)}
@@ -236,27 +330,25 @@ export function AIMusicGenerator() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pop">Pop</SelectItem>
-                  <SelectItem value="rock">Rock</SelectItem>
-                  <SelectItem value="jazz">Jazz</SelectItem>
-                  <SelectItem value="electronic">Electronic</SelectItem>
-                  <SelectItem value="classical">Classical</SelectItem>
-                  <SelectItem value="hip-hop">Hip-Hop</SelectItem>
-                  <SelectItem value="country">Country</SelectItem>
-                  <SelectItem value="r&b">R&B</SelectItem>
+                  {genreOptions.map(genre => (
+                    <SelectItem key={genre} value={genre}>
+                      {genre.charAt(0).toUpperCase() + genre.slice(1)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           <div>
-            <Label htmlFor="lyrics">Lyrics</Label>
+            <Label htmlFor="lyrics">Lyrics *</Label>
             <Textarea
               id="lyrics"
               value={formData.lyrics}
               onChange={(e) => handleInputChange('lyrics', e.target.value)}
               placeholder="Enter your lyrics here..."
               rows={6}
+              className="min-h-[120px]"
             />
           </div>
 
@@ -278,7 +370,7 @@ export function AIMusicGenerator() {
                 value={[formData.duration]}
                 onValueChange={(value) => handleInputChange('duration', value[0])}
                 min={15}
-                max={180}
+                max={300}
                 step={15}
                 className="mt-2"
               />
@@ -293,29 +385,64 @@ export function AIMusicGenerator() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="C">C Major</SelectItem>
-                  <SelectItem value="G">G Major</SelectItem>
-                  <SelectItem value="D">D Major</SelectItem>
-                  <SelectItem value="A">A Major</SelectItem>
-                  <SelectItem value="E">E Major</SelectItem>
-                  <SelectItem value="F">F Major</SelectItem>
-                  <SelectItem value="Am">A Minor</SelectItem>
-                  <SelectItem value="Em">E Minor</SelectItem>
-                  <SelectItem value="Cm">C Minor</SelectItem>
+                  {keyOptions.map(key => (
+                    <SelectItem key={key} value={key}>
+                      {key.includes('m') ? `${key.toUpperCase()} Minor` : `${key} Major`}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {/* AI-Specific Controls */}
-          <Card className="border-purple-200 bg-purple-50/50">
+          {/* Advanced Options */}
+          <Card className="border-blue-200 bg-blue-50/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Settings className="h-4 w-4" />
-                AI Settings
+                Advanced Settings
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="vocalStyle">Vocal Style</Label>
+                  <Select
+                    value={formData.vocalStyle}
+                    onValueChange={(value) => handleInputChange('vocalStyle', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vocalStyleOptions.map(style => (
+                        <SelectItem key={style} value={style}>
+                          {style.charAt(0).toUpperCase() + style.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="mood">Mood</Label>
+                  <Select
+                    value={formData.mood}
+                    onValueChange={(value) => handleInputChange('mood', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {moodOptions.map(mood => (
+                        <SelectItem key={mood} value={mood}>
+                          {mood.charAt(0).toUpperCase() + mood.slice(1)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="flex items-center justify-between">
                 <div>
                   <Label htmlFor="useAI">Enable AI Enhancement</Label>
@@ -361,7 +488,9 @@ export function AIMusicGenerator() {
               <Progress value={generationProgress} />
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Zap className="h-4 w-4 animate-pulse" />
-                AI is analyzing patterns and generating your song...
+                {generationProgress < 30 && "Initializing AI model..."}
+                {generationProgress >= 30 && generationProgress < 70 && "Analyzing musical patterns..."}
+                {generationProgress >= 70 && "Finalizing composition..."}
               </div>
             </div>
           </CardContent>
@@ -377,7 +506,7 @@ export function AIMusicGenerator() {
       >
         {isGenerating ? (
           <>
-            <Zap className="mr-2 h-4 w-4 animate-pulse" />
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Generating AI Music...
           </>
         ) : (
@@ -388,50 +517,97 @@ export function AIMusicGenerator() {
         )}
       </Button>
 
+      {/* Error Display */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertTitle>Generation Error</AlertTitle>
+          <AlertDescription>
+            {error}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Results */}
       {result && (
         <Card className="border-green-200 bg-green-50/50">
           <CardHeader>
-            <CardTitle className="text-green-800">AI Generation Complete!</CardTitle>
+            <CardTitle className="text-green-800 flex items-center gap-2">
+              <Sparkles className="h-5 w-5" />
+              AI Generation Complete!
+            </CardTitle>
             <CardDescription>
               Your AI-enhanced song has been generated successfully
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <Button
-                  onClick={() => window.open(result.audioPath, '_blank')}
-                  variant="outline"
-                >
-                  Download Song
-                </Button>
-                <div className="flex gap-2">
-                  {result.metadata.aiEnhanced && (
-                    <Badge variant="default" className="bg-purple-100 text-purple-800">
-                      AI Enhanced
-                    </Badge>
-                  )}
-                  {result.metadata.modelUsed && (
-                    <Badge variant="default" className="bg-blue-100 text-blue-800">
-                      LSTM Generated
-                    </Badge>
-                  )}
-                </div>
-              </div>
+                  onClick={() =>window.open(result.audioPath, '_blank')}
+                    variant="outline"
+                    >
+                    Download Song
+                    </Button>
+                    <Button
+                    onClick={() => navigator.clipboard.writeText(result.audioPath)}
+                    variant="ghost"
+                    size="sm"
+                    >
+                    Copy Link
+                    </Button>
+                    <div className="flex gap-2">
+                    {result.metadata.aiEnhanced && (
+                      <Badge variant="default" className="bg-purple-100 text-purple-800">
+                        AI Enhanced
+                      </Badge>
+                    )}
+                    {result.metadata.modelUsed && (
+                      <Badge variant="default" className="bg-blue-100 text-blue-800">
+                        LSTM Generated
+                      </Badge>
+                    )}
+                    {result.metadata.features.trainingDataUsed && (
+                      <Badge variant="default" className="bg-green-100 text-green-800">
+                        Trained Model
+                      </Badge>
+                    )}
+                    </div>
+                    </div>
 
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                  Processing time: {(result.metadata.processingTime / 1000).toFixed(1)}s
-                  {result.metadata.features.lstmGenerated && " • Used neural network"}
-                  {result.metadata.features.enhancedHarmony && " • Enhanced harmony"}
-                </AlertDescription>
-              </Alert>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-3 rounded-lg bg-gray-50">
+                    <p className="text-sm text-gray-500">Duration</p>
+                    <p className="font-medium">
+                      {Math.floor(result.metadata.duration / 60)}m {Math.floor(result.metadata.duration % 60)}s
+                    </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-gray-50">
+                    <p className="text-sm text-gray-500">Processing Time</p>
+                    <p className="font-medium">
+                      {(result.metadata.processingTime / 1000).toFixed(1)} seconds
+                    </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-gray-50">
+                    <p className="text-sm text-gray-500">AI Features Used</p>
+                    <p className="font-medium">
+                      {Object.entries(result.metadata.features)
+                        .filter(([_, used]) => used)
+                        .map(([feature]) => feature.replace('_', ' '))
+                        .join(', ')}
+                    </p>
+                    </div>
+                    </div>
+
+                    <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                    Want to generate another variation? Adjust the creativity slider and try again!
+                    </AlertDescription>
+                    </Alert>
+                    </div>
+                    </CardContent>
+                    </Card>
+                    )}
+                    </div>
+                    );
+                    }

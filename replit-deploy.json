@@ -1,27 +1,135 @@
-
 {
-  "entrypoint": "node start-production.js",
-  "build": [
-    "node build-client.js",
-    "node build-server.js"
-  ],
-  "buildScript": "node build-client.js && node build-server.js",
-  "run": "node start-production.js",
-  "env": {
-    "NODE_ENV": "production",
-    "PORT": "5000"
+  "name": "burnt-beats",
+  "version": "1.0.0",
+  "description": "Production configuration for Burnt Beats music generation platform",
+  "entrypoints": {
+    "production": "node start-production.js",
+    "development": "node start-development.js",
+    "test": "node start-test.js"
+  },
+  "build": {
+    "client": {
+      "script": "node build-client.js",
+      "timeout": 180000,
+      "retries": 2
+    },
+    "server": {
+      "script": "node build-server.js",
+      "timeout": 120000,
+      "retries": 2
+    },
+    "sequential": "node build-client.js && node build-server.js",
+    "parallel": "npm-run-all --parallel build:client build:server",
+    "clean": "rm -rf dist/",
+    "full": "npm run clean && npm run build:sequential"
+  },
+  "environment": {
+    "default": {
+      "NODE_ENV": "production",
+      "PORT": "5000",
+      "LOG_LEVEL": "info"
+    },
+    "development": {
+      "NODE_ENV": "development",
+      "PORT": "3000",
+      "LOG_LEVEL": "debug"
+    },
+    "test": {
+      "NODE_ENV": "test",
+      "PORT": "4000",
+      "LOG_LEVEL": "warn"
+    }
   },
   "healthCheck": {
     "path": "/health",
     "method": "GET",
     "timeout": 30000,
-    "interval": 10000
+    "interval": 10000,
+    "threshold": 3,
+    "expectedResponse": {
+      "status": "ok",
+      "services": ["database", "cache", "storage"]
+    }
   },
-  "port": 5000,
+  "network": {
+    "port": 5000,
+    "host": "0.0.0.0",
+    "ssl": {
+      "enabled": false,
+      "cert": "/path/to/cert.pem",
+      "key": "/path/to/key.pem"
+    },
+    "cors": {
+      "origin": ["https://yourdomain.com"],
+      "methods": ["GET", "POST", "PUT", "DELETE"],
+      "allowedHeaders": ["Content-Type", "Authorization"]
+    }
+  },
   "staticFiles": {
-    "/": "dist/public"
+    "routes": [
+      {
+        "path": "/",
+        "directory": "dist/public",
+        "options": {
+          "maxAge": "1d",
+          "redirect": false,
+          "index": "index.html"
+        }
+      },
+      {
+        "path": "/uploads",
+        "directory": "uploads",
+        "options": {
+          "maxAge": "7d",
+          "immutable": true
+        }
+      }
+    ]
   },
-  "buildTimeout": 300000,
-  "startTimeout": 120000,
-  "gracefulShutdownTimeout": 30000
+  "timeouts": {
+    "build": 300000,
+    "start": 120000,
+    "shutdown": 30000,
+    "request": 30000,
+    "socket": 60000
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "directory": "logs/",
+    "rotation": {
+      "size": "10m",
+      "interval": "1d",
+      "history": "7d"
+    }
+  },
+  "monitoring": {
+    "metrics": {
+      "path": "/metrics",
+      "interval": 5000
+    },
+    "alerting": {
+      "cpu": 90,
+      "memory": 80,
+      "restarts": 3
+    }
+  },
+  "scaling": {
+    "instances": 1,
+    "memory": "512MB",
+    "cpu": 0.5
+  },
+  "dependencies": {
+    "required": ["node", "npm"],
+    "versions": {
+      "node": ">=18.0.0",
+      "npm": ">=8.0.0"
+    }
+  },
+  "lifecycle": {
+    "prebuild": "npm ci --only=production",
+    "postbuild": "npm run test",
+    "prestart": "node health-check.js",
+    "poststop": "node cleanup.js"
+  }
 }

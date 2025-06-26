@@ -1,7 +1,19 @@
-externalPorun = "nvm start"
+# Deploy configuration for Burnt Beats Application
+
+# Entry point for the application
+entrypoint = "main.py"
+
+# Command to start the Node.js app
+externalPortCommand = "nvm start"
+
+# Specify the Node.js version to be used
 modules = ["nodejs-20"]
+
+# Local port configuration
 localPort = 5000
 
+# Ports configuration for the deployment
 [[ports]]
 localPort = 5000
 externalPort = 80
+
