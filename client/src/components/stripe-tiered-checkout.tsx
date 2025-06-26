@@ -192,7 +192,7 @@ export default function StripeTieredCheckout({ songId, songTitle, onPurchaseComp
                 {tier.badge}
               </Badge>
             )}
-            
+
             <CardHeader className="text-center pb-4">
               <div className={`w-12 h-12 mx-auto mb-4 rounded-full flex items-center justify-center ${
                 tier.id === 'bonus' ? 'bg-green-100 text-green-600' :
@@ -201,10 +201,10 @@ export default function StripeTieredCheckout({ songId, songTitle, onPurchaseComp
               }`}>
                 {tier.icon}
               </div>
-              
+
               <CardTitle className="text-2xl">{tier.name}</CardTitle>
               <CardDescription className="text-sm">{tier.description}</CardDescription>
-              
+
               <div className="mt-4">
                 <div className="text-3xl font-bold">
                   ${tier.priceWithTax}
@@ -262,7 +262,7 @@ export default function StripeTieredCheckout({ songId, songTitle, onPurchaseComp
             Get unlimited access to all features with our subscription plans
           </p>
         </div>
-        
+
         <div className="max-w-4xl mx-auto">
           <stripe-pricing-table 
             pricing-table-id="prctbl_1Rdv9YP38C54URjEsjJEqBzt"
