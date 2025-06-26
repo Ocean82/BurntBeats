@@ -1,11 +1,23 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 import { Progress } from "@/components/ui/progress"
-import { Play, Pause, Volume2, VolumeX, Download, AlertCircle, Loader2, Music } from "lucide-react"
+import { 
+  Play, 
+  Pause, 
+  Volume2, 
+  VolumeX, 
+  Download, 
+  AlertCircle, 
+  Loader2, 
+  Gauge,
+  ListMusic,
+  SkipBack,
+  SkipForward
+} from "lucide-react"
 import type { Song } from "@shared/schema"
 import { formatTime } from "@/lib/utils"
 import WatermarkIndicator from "./watermark-indicator"
@@ -18,6 +30,7 @@ interface AudioPlayerProps {
   loop?: boolean;
   onTrackEnd?: () => void;
   onNext?: () => void;
+  onPrevious?: () => void;
   showSections?: boolean;
 }
 
@@ -28,222 +41,178 @@ export default function AudioPlayer({
   autoPlay = false,
   loop = false,
   onTrackEnd,
-  onNext 
+  onNext,
+  onPrevious
 }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
+  const [volume, setVolume] = useState(0.7);
   const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
-  const [currentSection, setCurrentSection] = useState<string>('');
+  const [currentSection, setCurrentSection] = useState('');
   const [showSectionList, setShowSectionList] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Validate and normalize audio URL
-  const audioUrl = validateAudioUrl(song?.audioUrl || song?.generatedAudioPath);
+  // Get valid audio URL
+  const getAudioUrl = useCallback(() => {
+    if (!song?.audioUrl && !song?.generatedAudioPath) return null;
 
-  // Validate audio URL helper function
-  function validateAudioUrl(url: string | null | undefined): string | null {
-    if (!url) {
-      console.warn('Audio URL is null or undefined');
-      return null;
-    }
+    const url = song.audioUrl || song.generatedAudioPath;
 
-    // Handle API streaming URLs
-    if (url.startsWith('/api/audio/')) {
-      const baseUrl = window.location.origin;
-      const fullUrl = `${baseUrl}${url}`;
-      console.log('Using API audio stream:', fullUrl);
-      return fullUrl;
-    }
-
-    // Handle relative URLs by making them absolute
-    if (url.startsWith('/uploads/') || url.startsWith('/songs/')) {
-      const baseUrl = window.location.origin;
-      const fullUrl = `${baseUrl}${url}`;
-      console.log('Using static file URL:', fullUrl);
-      return fullUrl;
-    }
-
-    // Validate URL format for absolute URLs
     try {
+      // Handle relative URLs
+      if (url.startsWith('/')) {
+        return `${window.location.origin}${url}`;
+      }
+
+      // Validate absolute URLs
       new URL(url);
-      console.log('Using absolute URL:', url);
       return url;
     } catch {
-      console.warn('Invalid audio URL format:', url);
+      console.warn('Invalid audio URL:', url);
       return null;
     }
-  }
+  }, [song]);
 
+  const audioUrl = getAudioUrl();
+
+  // Initialize audio element
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !audioUrl) return;
 
-    setError(null);
-    setIsReady(false);
-    setIsLoading(true);
+    const handleEvents = () => {
+      const handleLoadStart = () => {
+        setIsLoading(true);
+        setError(null);
+      };
 
-    const handleLoadStart = () => {
-      setIsLoading(true);
-      setError(null);
-    };
+      const handleLoadedMetadata = () => {
+        setDuration(audio.duration || 0);
+        setIsReady(true);
+        setIsLoading(false);
 
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-      setIsReady(true);
-      setIsLoading(false);
-
-      // Attempt autoplay if enabled and user has interacted
-      if (autoPlay && hasUserInteracted) {
-        audio.play().catch(err => {
-          console.log('Autoplay blocked by browser:', err);
-        });
-      }
-    };
-
-    const handleLoadedData = () => {
-      setIsLoading(false);
-    };
-
-    const handleTimeUpdate = () => {
-      if (audio.duration && !isNaN(audio.duration)) {
-        setCurrentTime(audio.currentTime);
-
-        // Update current section based on playback time
-        if (song.sections && Array.isArray(song.sections)) {
-          const currentSec = song.sections.find(section => 
-            audio.currentTime >= section.startTime && audio.currentTime < section.endTime
-          );
-          if (currentSec && currentSec.type !== currentSection) {
-            setCurrentSection(currentSec.type);
-          }
+        // Attempt autoplay if enabled and user has interacted
+        if (autoPlay && hasUserInteracted) {
+          audio.play().catch(err => {
+            console.log('Autoplay blocked:', err);
+          });
         }
-      }
-    };
+      };
 
-    const handleEnded = () => {
-      setIsPlaying(false);
-
-      if (loop) {
-        audio.currentTime = 0;
-        audio.play().catch(console.error);
-      } else {
-        // Call callbacks for track end
-        onTrackEnd?.();
-        if (onNext) {
-          setTimeout(onNext, 1000); // Small delay before auto-advancing
+      const handleTimeUpdate = () => {
+        if (!isDragging && !isNaN(audio.duration)) {
+          setCurrentTime(audio.currentTime);
+          updateCurrentSection(audio.currentTime);
         }
-      }
+      };
+
+      const handleEnded = () => {
+        setIsPlaying(false);
+        if (loop) {
+          audio.currentTime = 0;
+          audio.play().catch(console.error);
+        } else {
+          onTrackEnd?.();
+        }
+      };
+
+      const handleError = () => {
+        const errorMessages = {
+          1: 'Playback aborted',
+          2: 'Network error',
+          3: 'Decoding error',
+          4: 'Unsupported format'
+        };
+        setError(errorMessages[audio.error?.code || 0] || 'Playback error');
+        setIsLoading(false);
+      };
+
+      audio.addEventListener('loadstart', handleLoadStart);
+      audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.addEventListener('timeupdate', handleTimeUpdate);
+      audio.addEventListener('ended', handleEnded);
+      audio.addEventListener('error', handleError);
+
+      return () => {
+        audio.removeEventListener('loadstart', handleLoadStart);
+        audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+        audio.removeEventListener('timeupdate', handleTimeUpdate);
+        audio.removeEventListener('ended', handleEnded);
+        audio.removeEventListener('error', handleError);
+      };
     };
 
-    const handleError = (e: Event) => {
-      const errorTarget = e.target as HTMLAudioElement;
-      const errorCode = errorTarget.error?.code;
+    handleEvents();
+  }, [audioUrl, autoPlay, loop, onTrackEnd, hasUserInteracted, isDragging]);
 
-      let errorMessage = 'Failed to load audio';
-      switch (errorCode) {
-        case MediaError.MEDIA_ERR_ABORTED:
-          errorMessage = 'Audio loading was aborted';
-          break;
-        case MediaError.MEDIA_ERR_NETWORK:
-          errorMessage = 'Network error while loading audio';
-          break;
-        case MediaError.MEDIA_ERR_DECODE:
-          errorMessage = 'Audio file is corrupted or unsupported';
-          break;
-        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-          errorMessage = 'Audio format not supported';
-          break;
-      }
+  // Update current section
+  const updateCurrentSection = useCallback((time: number) => {
+    if (!song.sections?.length) return;
 
-      setError(errorMessage);
-      setIsLoading(false);
-      setIsReady(false);
-      console.error('Audio error:', errorMessage, 'URL:', audioUrl);
-    };
+    const section = song.sections.find(s => 
+      time >= s.startTime && time < s.endTime
+    );
+    setCurrentSection(section?.type || '');
+  }, [song.sections]);
 
-    const handleCanPlayThrough = () => {
-      setIsReady(true);
-      setIsLoading(false);
-    };
-
-    audio.addEventListener('loadstart', handleLoadStart);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('loadeddata', handleLoadedData);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('error', handleError);
-    audio.addEventListener('canplaythrough', handleCanPlayThrough);
-
-    return () => {
-      audio.removeEventListener('loadstart', handleLoadStart);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('loadeddata', handleLoadedData);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('error', handleError);
-      audio.removeEventListener('canplaythrough', handleCanPlayThrough);
-    };
-  }, [audioUrl, autoPlay, hasUserInteracted, loop, onTrackEnd, onNext]);
-
-  const togglePlay = async () => {
+  // Play/pause toggle
+  const togglePlay = useCallback(async () => {
     const audio = audioRef.current;
-    if (!audio || !isReady) return;
+    if (!audio) return;
 
-    // Mark user interaction for autoplay permissions
-    if (!hasUserInteracted) {
-      setHasUserInteracted(true);
-    }
+    setHasUserInteracted(true);
 
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-    } else {
-      try {
+    try {
+      if (isPlaying) {
+        audio.pause();
+        setIsPlaying(false);
+      } else {
         await audio.play();
         setIsPlaying(true);
         setError(null);
-      } catch (error) {
-        const err = error as Error;
-        console.error('Error playing audio:', err);
-
-        if (err.name === 'NotAllowedError') {
-          setError('Playback blocked by browser. Please interact with the page first.');
-        } else if (err.name === 'NotSupportedError') {
-          setError('Audio format not supported by your browser');
-        } else {
-          setError('Failed to play audio. Please try again.');
-        }
       }
+    } catch (err) {
+      setError('Failed to play audio. Try interacting with the page first.');
     }
-  };
+  }, [isPlaying]);
 
-  const handleSeek = (value: number[]) => {
+  // Handle seeking
+  const handleSeekStart = useCallback(() => {
+    setIsDragging(true);
+  }, []);
+
+  const handleSeekEnd = useCallback(() => {
+    setIsDragging(false);
     const audio = audioRef.current;
-    if (!audio || !isReady || !duration) return;
+    if (audio) {
+      audio.currentTime = currentTime;
+    }
+  }, [currentTime]);
 
-    const seekTime = Math.min(Math.max(value[0], 0), duration);
-    audio.currentTime = seekTime;
-    setCurrentTime(seekTime);
-  };
+  const handleSeek = useCallback(([value]: number[]) => {
+    setCurrentTime(Math.min(Math.max(value, 0), duration));
+  }, [duration]);
 
-  const handleVolumeChange = (value: number[]) => {
+  // Volume control
+  const handleVolumeChange = useCallback(([value]: number[]) => {
+    const newVolume = Math.min(Math.max(value, 0), 1);
+    setVolume(newVolume);
+    setIsMuted(newVolume === 0);
+
     const audio = audioRef.current;
-    const newVolume = value[0];
-
     if (audio) {
       audio.volume = newVolume;
     }
-    setVolume(newVolume);
-    setIsMuted(newVolume === 0);
-  };
+  }, []);
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
@@ -254,23 +223,49 @@ export default function AudioPlayer({
       audio.volume = 0;
       setIsMuted(true);
     }
-  };
+  }, [isMuted, volume]);
 
-  const jumpToSection = (startTime: number) => {
+  // Playback speed
+  const changePlaybackRate = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const rates = [0.5, 0.75, 1, 1.25, 1.5, 2];
+    const newRate = rates[(rates.indexOf(playbackRate) + 1) % rates.length];
+
+    audio.playbackRate = newRate;
+    setPlaybackRate(newRate);
+  }, [playbackRate]);
+
+  // Section navigation
+  const jumpToSection = useCallback((startTime: number) => {
     const audio = audioRef.current;
     if (!audio || !isReady) return;
 
-    if (!hasUserInteracted) {
-      setHasUserInteracted(true);
-    }
-
+    setHasUserInteracted(true);
     audio.currentTime = startTime;
     setCurrentTime(startTime);
+    updateCurrentSection(startTime);
 
     if (!isPlaying) {
       togglePlay();
     }
-  };
+  }, [isPlaying, isReady, togglePlay, updateCurrentSection]);
+
+  // Skip forward/backward
+  const skipForward = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.currentTime = Math.min(audio.currentTime + 15, duration);
+  }, [duration]);
+
+  const skipBackward = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.currentTime = Math.max(audio.currentTime - 15, 0);
+  }, []);
 
   if (!audioUrl) {
     return (
@@ -278,30 +273,7 @@ export default function AudioPlayer({
         <CardContent className="p-6">
           <div className="text-center text-white/60 flex items-center justify-center space-x-2">
             <AlertCircle className="h-5 w-5" />
-            <span>No valid audio URL available for this song</span>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (error) {
-    return (
-      <Card className={`bg-white/5 border-white/10 backdrop-blur-lg ${className}`}>
-        <CardContent className="p-6">
-          <div className="text-center text-red-400 flex items-center justify-center space-x-2">
-            <AlertCircle className="h-5 w-5" />
-            <span>{error}</span>
-          </div>
-          <div className="mt-4 text-center">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => window.location.reload()}
-              className="text-white/60 hover:text-white"
-            >
-              Retry
-            </Button>
+            <span>Audio unavailable for this song</span>
           </div>
         </CardContent>
       </Card>
@@ -329,12 +301,10 @@ export default function AudioPlayer({
               {isLoading && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
             </h3>
             <p className="text-sm text-white/60 capitalize">{song.genre}</p>
-            {!isReady && !error && (
-              <p className="text-xs text-white/40 mt-1">Loading audio...</p>
-            )}
+            {song.watermark && <WatermarkIndicator />}
           </div>
 
-          {/* Progress Bar - only show when ready */}
+          {/* Progress Display */}
           {showFullControls && (
             <div className="space-y-2">
               <Progress value={progress} className="h-2" />
@@ -342,29 +312,39 @@ export default function AudioPlayer({
                 <span>{formatTime(currentTime)}</span>
                 <span>{formatTime(duration)}</span>
               </div>
+              <Slider
+                value={[currentTime]}
+                max={duration}
+                step={0.1}
+                onValueChange={handleSeek}
+                onPointerDown={handleSeekStart}
+                onPointerUp={handleSeekEnd}
+                className="w-full"
+              />
             </div>
           )}
 
-          {/* Seek Slider - only show when ready */}
-          {showFullControls && (
-            <Slider
-              value={[currentTime]}
-              max={duration}
-              step={1}
-              onValueChange={handleSeek}
-              className="w-full"
-              disabled={!isReady}
-            />
-          )}
-
-          {/* Controls */}
+          {/* Main Controls */}
           <div className="flex items-center justify-center space-x-4">
+            {onPrevious && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onPrevious}
+                className="h-10 w-10"
+                aria-label="Previous track"
+              >
+                <SkipBack className="h-4 w-4" />
+              </Button>
+            )}
+
             <Button
               variant="ghost"
               size="icon"
               onClick={togglePlay}
               disabled={!isReady || isLoading}
-              className="h-12 w-12 rounded-full bg-white/10 hover:bg-white/20 text-white disabled:opacity-50"
+              className="h-12 w-12 rounded-full bg-white/10 hover:bg-white/20"
+              aria-label={isPlaying ? "Pause" : "Play"}
             >
               {isLoading ? (
                 <Loader2 className="h-6 w-6 animate-spin" />
@@ -375,27 +355,27 @@ export default function AudioPlayer({
               )}
             </Button>
 
-            {/* Next button if callback provided */}
             {onNext && (
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onNext}
-                className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 text-white"
+                className="h-10 w-10"
+                aria-label="Next track"
               >
-                <Download className="h-4 w-4 rotate-90" />
+                <SkipForward className="h-4 w-4" />
               </Button>
             )}
           </div>
 
-          {/* Volume Control - only show when ready */}
-          {showFullControls && (
+          {/* Secondary Controls */}
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={toggleMute}
-                className="text-white/60 hover:text-white"
+                aria-label={isMuted ? "Unmute" : "Mute"}
               >
                 {isMuted ? (
                   <VolumeX className="h-4 w-4" />
@@ -406,43 +386,78 @@ export default function AudioPlayer({
               <Slider
                 value={[isMuted ? 0 : volume]}
                 max={1}
-                step={0.1}
+                step={0.05}
                 onValueChange={handleVolumeChange}
-                className="flex-1"
-                disabled={!isReady}
+                className="w-24"
               />
             </div>
-          )}
 
-          {/* Enhanced Section Navigation with Scrubbing */}
-          {showFullControls && song.sections && Array.isArray(song.sections) && song.sections.length > 0 && (
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={skipBackward}
+                className="text-xs"
+                aria-label="Skip backward 15 seconds"
+              >
+                -15s
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={changePlaybackRate}
+                className="text-xs flex items-center"
+                aria-label={`Playback speed (${playbackRate}x)`}
+              >
+                <Gauge className="h-3 w-3 mr-1" />
+                {playbackRate}x
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={skipForward}
+                className="text-xs"
+                aria-label="Skip forward 15 seconds"
+              >
+                +15s
+              </Button>
+            </div>
+          </div>
+
+          {/* Section Navigation */}
+          {showFullControls && song.sections?.length > 0 && (
             <div className="space-y-3 border-t border-white/10 pt-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-white/60">Current: {currentSection || 'Loading...'}</span>
+                <span className="text-sm text-white/60">
+                  Current: {currentSection || 'Intro'}
+                </span>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowSectionList(!showSectionList)}
-                  className="text-white/60 hover:text-white text-xs"
+                  className="text-xs flex items-center"
+                  aria-label={showSectionList ? "Hide sections" : "Show sections"}
                 >
+                  <ListMusic className="h-3 w-3 mr-1" />
                   {showSectionList ? 'Hide' : 'Show'} Sections
                 </Button>
               </div>
 
-              {/* Section Timeline Scrubber */}
+              {/* Visual Timeline */}
               <div className="relative h-8 bg-white/5 rounded-lg overflow-hidden">
                 {song.sections.map((section, index) => {
                   const sectionWidth = ((section.endTime - section.startTime) / duration) * 100;
                   const sectionLeft = (section.startTime / duration) * 100;
-                  const isCurrentSection = currentTime >= section.startTime && currentTime < section.endTime;
-                  
+                  const isCurrent = currentTime >= section.startTime && currentTime < section.endTime;
+
                   return (
                     <button
                       key={index}
                       onClick={() => jumpToSection(section.startTime)}
-                      disabled={!isReady}
-                      className={`absolute h-full text-xs font-medium transition-all hover:brightness-125 disabled:opacity-50 ${
-                        isCurrentSection 
+                      className={`absolute h-full text-xs transition-all ${
+                        isCurrent 
                           ? 'bg-purple-500/80 text-white' 
                           : 'bg-white/20 text-white/70 hover:bg-white/30'
                       }`}
@@ -450,73 +465,41 @@ export default function AudioPlayer({
                         left: `${sectionLeft}%`,
                         width: `${sectionWidth}%`,
                       }}
-                      title={`Jump to ${section.type} (${formatTime(section.startTime)})`}
+                      aria-label={`Jump to ${section.type}`}
                     >
-                      <span className="px-1 truncate block">
-                        {section.type}
-                      </span>
+                      <span className="px-1 truncate">{section.type}</span>
                     </button>
                   );
                 })}
-                
-                {/* Progress indicator overlay */}
                 <div 
-                  className="absolute top-0 h-full bg-gradient-to-r from-purple-600 to-purple-400 opacity-40 pointer-events-none"
+                  className="absolute top-0 h-full bg-purple-500/30 pointer-events-none"
                   style={{ width: `${progress}%` }}
                 />
               </div>
 
-              {/* Quick Jump Buttons */}
-              <div className="flex flex-wrap gap-2">
-                {song.sections.map((section, index) => (
-                  <Button
-                    key={index}
-                    variant={currentSection === section.type ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => jumpToSection(section.startTime)}
-                    className="text-xs text-white/70 hover:text-white hover:bg-white/10 flex-shrink-0"
-                    disabled={!isReady}
-                  >
-                    <span className="flex items-center space-x-1">
-                      <span>{section.type}</span>
-                      <span className="text-white/40">({formatTime(section.startTime)})</span>
-                    </span>
-                  </Button>
-                ))}
-              </div>
-
+              {/* Detailed Section List */}
               {showSectionList && (
-                <div className="space-y-2 max-h-32 overflow-y-auto">
+                <div className="space-y-2 max-h-40 overflow-y-auto">
                   {song.sections.map((section, index) => (
                     <div 
                       key={index}
-                      className={`flex items-center justify-between p-2 rounded-md transition-colors ${
+                      className={`flex items-center justify-between p-2 rounded-md ${
                         currentSection === section.type 
                           ? 'bg-purple-500/20 border border-purple-500/40' 
                           : 'bg-white/5 hover:bg-white/10'
                       }`}
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-sm font-medium text-white">
-                            {section.type}
-                          </span>
-                          <span className="text-xs text-white/60">
-                            {formatTime(section.startTime)} - {formatTime(section.endTime)}
-                          </span>
+                      <div>
+                        <div className="text-sm font-medium">{section.type}</div>
+                        <div className="text-xs text-white/60">
+                          {formatTime(section.startTime)} - {formatTime(section.endTime)}
                         </div>
-                        {section.lyrics && (
-                          <p className="text-xs text-white/50 mt-1 line-clamp-2">
-                            {section.lyrics}
-                          </p>
-                        )}
                       </div>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => jumpToSection(section.startTime)}
-                        disabled={!isReady}
-                        className="text-white/60 hover:text-white ml-2"
+                        aria-label={`Jump to ${section.type}`}
                       >
                         Jump
                       </Button>
@@ -526,40 +509,7 @@ export default function AudioPlayer({
               )}
             </div>
           )}
-
-          {/* Debug info in development */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="text-xs text-white/30 mt-4 space-y-1">
-              <p>Audio URL: {audioUrl}</p>
-              <p>Ready: {isReady ? 'Yes' : 'No'} | Duration: {duration}s</p>
-              <p>User Interaction: {hasUserInteracted ? 'Yes' : 'No'}</p>
-              <p>Sections: {song.sections ? song.sections.length : 0}</p>
-            </div>
-          )}
         </div>
-
-        {/* Song Sections Navigation */}
-        {song?.sections && song.sections.length > 0 && (
-          <div className="mt-4">
-            <h4 className="text-sm font-medium text-gray-300 mb-2">Song Sections</h4>
-            <div className="flex flex-wrap gap-2">
-              {song.sections.map((section: any, index: number) => (
-                <button
-                  key={index}
-                  onClick={() => jumpToSection(section.startTime || 0)}
-                  className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                    currentTime >= (section.startTime || 0) && 
-                    currentTime < (section.endTime || duration)
-                      ? 'bg-green-500/20 border-green-500 text-green-400'
-                      : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  {section.type || `Section ${index + 1}`}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

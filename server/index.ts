@@ -11,29 +11,82 @@ import fs from "fs";
 import rateLimit from "express-rate-limit";
 import { WebSocket, WebSocketServer } from 'ws';
 import { IncomingMessage } from 'http';
+import helmet from "helmet";
+import compression from "compression";
 
+// Initialize Express app
 const app = express();
-// Use different ports for development vs production deployment
 const port = process.env.NODE_ENV === 'production' 
   ? parseInt(process.env.PORT || '80', 10)
   : parseInt(process.env.PORT || '5000', 10);
 
-// Trust proxy for Replit deployment (fixes rate limiting issues)
-app.set('trust proxy', 1);
-
 // Apply environment stubs for development
-applyEnvironmentStubs();
+if (process.env.NODE_ENV !== 'production') {
+  applyEnvironmentStubs();
+}
 
 // Validate environment variables
 const envStatus = validateEnvironmentVariables();
 
-// Initialize file cleanup service in production
-if (process.env.NODE_ENV === 'production') {
-  const { fileCleanupService } = require('./file-cleanup-service');
-  fileCleanupService.start();
-}
+// ======================
+// SECURITY MIDDLEWARE
+// ======================
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https://*.your-domain.com"],
+      connectSrc: ["'self'", "ws://localhost:*", "wss://your-domain.com"]
+    }
+  },
+  crossOriginEmbedderPolicy: false
+}));
 
-// Rate limiting for generation endpoints
+// Trust proxy for production deployment
+app.set('trust proxy', process.env.NODE_ENV === 'production' ? 1 : false);
+
+// ======================
+// CORS CONFIGURATION
+// ======================
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://your-domain.com'] 
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+};
+
+app.use(cors(corsOptions));
+
+// ======================
+// BODY PARSING
+// ======================
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// ======================
+// SESSION CONFIGURATION
+// ======================
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'burnt-beats-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+  },
+  name: 'burntBeats.sid',
+  proxy: process.env.NODE_ENV === 'production'
+}));
+
+// ======================
+// RATE LIMITING
+// ======================
 const generationLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // 5 generations per 15 minutes per IP
@@ -45,7 +98,6 @@ const generationLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// General API rate limiting
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // 100 requests per 15 minutes per IP
@@ -54,44 +106,18 @@ const apiLimiter = rateLimit({
   }
 });
 
-// Basic middleware
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://your-domain.com'] 
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
-}));
-
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-// Apply rate limiting
 app.use('/api', apiLimiter);
 app.use('/api/music/generate', generationLimiter);
 app.use('/api/generate', generationLimiter);
 
-// Session configuration
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'burnt-beats-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: { 
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
-
-// Authentication middleware
-const requireAuth = (req: any, res: any, next: any) => {
-  // For now, allow all requests in development
+// ======================
+// AUTHENTICATION MIDDLEWARE
+// ======================
+export const requireAuth = (req: any, res: any, next: any) => {
   if (process.env.NODE_ENV === 'development') {
     return next();
   }
 
-  // In production, check for valid session or token
   if (req.session?.user || req.headers.authorization) {
     return next();
   }
@@ -102,23 +128,22 @@ const requireAuth = (req: any, res: any, next: any) => {
   });
 };
 
-// Optional auth middleware (doesn't block, just adds user info)
-const optionalAuth = (req: any, res: any, next: any) => {
+export const optionalAuth = (req: any, res: any, next: any) => {
   if (req.session?.user) {
     req.user = req.session.user;
   }
   next();
 };
 
-// Static file serving with better error handling
+// ======================
+// FILE HANDLING
+// ======================
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// Serve uploads with proper headers
 app.use('/uploads', (req, res, next) => {
-  // Set appropriate headers for audio files
   const ext = path.extname(req.path).toLowerCase();
   if (['.mp3', '.wav', '.m4a', '.ogg'].includes(ext)) {
     res.setHeader('Content-Type', `audio/${ext.slice(1)}`);
@@ -128,10 +153,9 @@ app.use('/uploads', (req, res, next) => {
   next();
 }, express.static(uploadsDir));
 
-// Export middleware for use in routes
-export { requireAuth, optionalAuth };
-
-// WebSocket handling for real-time features with heartbeat
+// ======================
+// WEBSOCKET SERVER
+// ======================
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 const HEARTBEAT_INTERVAL = 30000; // 30 seconds
@@ -151,7 +175,6 @@ wss.on('connection', (ws: ExtendedWebSocket, req: IncomingMessage) => {
   ws.lastSeen = Date.now();
   ws.clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-  // Send welcome message with heartbeat info
   ws.send(JSON.stringify({
     type: 'connection_established',
     clientId: ws.clientId,
@@ -162,25 +185,21 @@ wss.on('connection', (ws: ExtendedWebSocket, req: IncomingMessage) => {
     try {
       ws.lastSeen = Date.now();
 
-      // Validate WebSocket message
-      const { validateWebSocketMessage } = await import('./middleware/music-error-handler');
-      const validation = validateWebSocketMessage(message.toString());
-
-      if (!validation.success) {
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: `Message validation failed: ${validation.error}`,
-          code: 'INVALID_MESSAGE'
-        }));
-        return;
+      // Validate message format
+      let data;
+      try {
+        data = JSON.parse(message.toString());
+      } catch (e) {
+        throw new Error('Invalid JSON format');
       }
 
-      const data = validation.data;
+      if (!data.type) {
+        throw new Error('Missing message type');
+      }
 
       // Handle different message types
       switch (data.type) {
         case 'ping':
-          // Respond to client ping with pong
           ws.send(JSON.stringify({
             type: 'pong',
             timestamp: Date.now()
@@ -188,12 +207,10 @@ wss.on('connection', (ws: ExtendedWebSocket, req: IncomingMessage) => {
           break;
 
         case 'pong':
-          // Client responded to our ping
           ws.isAlive = true;
           break;
 
         case 'progress_request':
-          // Send progress updates for song generation
           ws.send(JSON.stringify({
             type: 'progress_update',
             songId: data.songId,
@@ -203,7 +220,6 @@ wss.on('connection', (ws: ExtendedWebSocket, req: IncomingMessage) => {
           break;
 
         case 'collaboration_event':
-          // Broadcast to other clients (future feature)
           wss.clients.forEach((client: ExtendedWebSocket) => {
             if (client !== ws && client.readyState === WebSocket.OPEN) {
               client.send(JSON.stringify({
@@ -220,10 +236,10 @@ wss.on('connection', (ws: ExtendedWebSocket, req: IncomingMessage) => {
           console.log('Unknown WebSocket message type:', data.type);
       }
     } catch (error) {
-      console.error('WebSocket message parsing error:', error);
+      console.error('WebSocket message error:', error);
       ws.send(JSON.stringify({
         type: 'error',
-        message: 'Invalid message format'
+        message: error.message || 'Invalid message'
       }));
     }
   });
@@ -236,25 +252,22 @@ wss.on('connection', (ws: ExtendedWebSocket, req: IncomingMessage) => {
     console.error(`WebSocket error for client ${ws.clientId}:`, error);
   });
 
-  // Handle pong messages to track client responsiveness
   ws.on('pong', () => {
     ws.isAlive = true;
     ws.lastSeen = Date.now();
   });
 });
 
-// Heartbeat mechanism to detect and clean up dead connections
+// Heartbeat mechanism
 const heartbeatInterval = setInterval(() => {
   const now = Date.now();
 
   wss.clients.forEach((ws: ExtendedWebSocket) => {
-    // Check if client is responsive
     if (ws.isAlive === false || (ws.lastSeen && now - ws.lastSeen > CLIENT_TIMEOUT)) {
       console.log(`🔌 Terminating unresponsive client ${ws.clientId}`);
       return ws.terminate();
     }
 
-    // Send ping to check if client is alive
     ws.isAlive = false;
     try {
       ws.ping();
@@ -269,32 +282,25 @@ const heartbeatInterval = setInterval(() => {
   });
 }, HEARTBEAT_INTERVAL);
 
-// Clean up heartbeat interval on server shutdown
-process.on('SIGTERM', () => {
-  clearInterval(heartbeatInterval);
-});
-
-process.on('SIGINT', () => {
-  clearInterval(heartbeatInterval);
-});
-
-// Register routes before starting server
+// ======================
+// ROUTES AND API ENDPOINTS
+// ======================
 registerRoutes(app);
-
-// Register bonus features API
 app.use('/api', bonusFeaturesApi);
 
-// Register webhook test endpoint
+// Webhook test endpoint
 import webhookTestApi from "./api/webhook-test";
 app.use('/', webhookTestApi);
 
-// Serve static files from dist/public in production or development
+// ======================
+// STATIC FILE SERVING
+// ======================
 const publicPath = path.join(process.cwd(), 'dist', 'public');
 if (fs.existsSync(publicPath)) {
   app.use(express.static(publicPath));
   console.log('📁 Serving static files from:', publicPath);
-  
-  // Catch-all handler for SPA
+
+  // SPA fallback
   app.get('*', (req, res) => {
     const indexPath = path.join(publicPath, 'index.html');
     if (fs.existsSync(indexPath)) {
@@ -305,19 +311,58 @@ if (fs.existsSync(publicPath)) {
   });
 }
 
-// Health check endpoint
+// ======================
+// HEALTH CHECK
+// ======================
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
-    port: port
+    port: port,
+    websocketClients: wss.clients.size
   });
 });
 
+// ======================
+// ERROR HANDLING
+// ======================
+app.use((err: Error, req: any, res: any, next: any) => {
+  console.error('Server error:', err.stack);
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+});
+
+// ======================
+// SERVER STARTUP
+// ======================
 server.listen(port, () => {
   console.log(`🚀 Burnt Beats server running on http://0.0.0.0:${port}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
   console.log(`📊 Environment status:`, JSON.stringify(envStatus, null, 2));
   console.log('🎵 Ready to create amazing music!');
 });
+
+// ======================
+// GRACEFUL SHUTDOWN
+// ======================
+function shutdown() {
+  console.log('Shutting down gracefully...');
+
+  clearInterval(heartbeatInterval);
+
+  wss.clients.forEach(client => {
+    client.close(1001, 'Server shutting down');
+  });
+
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+}
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
+

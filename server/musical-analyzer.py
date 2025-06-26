@@ -1,339 +1,448 @@
-
 #!/usr/bin/env python3
 """
-Musical Analysis and Manipulation Module
-Provides advanced analysis and transformation capabilities
+Enhanced Musical Analysis and Manipulation Module
+Provides comprehensive analysis and advanced transformation capabilities
 """
 
 import sys
 import json
-from music21 import stream, note, chord, meter, tempo, key, duration, pitch, scale
+import random
+from typing import Dict, List, Tuple, Optional, Union
+from dataclasses import dataclass
+from music21 import stream, note, chord, meter, tempo, key, duration, pitch, scale, interval
 from music21 import analysis, roman, features, graph, corpus, converter
 from music21.alpha import analysis as alpha_analysis
-import random
+import numpy as np
+from scipy import stats
+
+@dataclass
+class AnalysisConfig:
+    """Configuration for musical analysis"""
+    analyze_harmony: bool = True
+    analyze_rhythm: bool = True
+    analyze_melody: bool = True
+    analyze_structure: bool = True
+    detailed_chord_analysis: bool = False
+    extended_metrics: bool = False
 
 class MusicalAnalyzer:
-    def __init__(self):
+    def __init__(self, config: AnalysisConfig = AnalysisConfig()):
+        self.config = config
         self.analyzers = {
             'key': analysis.discrete.KrumhanslSchmuckler(),
             'meter': analysis.metrical.TimeSignatureAnalyzer(),
-            'harmony': analysis.roman.RomanNumeralAnalyzer()
+            'harmony': analysis.roman.RomanNumeralAnalyzer(),
+            'melodic': analysis.discrete.MelodicIntervalDiversity(),
+            'contour': analysis.contour.Contour()
         }
-    
-    def analyze_composition(self, composition_stream):
-        """Comprehensive analysis of musical composition"""
-        analysis_results = {}
-        
-        # Key analysis
+
+    def analyze_composition(self, composition_stream: stream.Stream) -> Dict:
+        """Comprehensive analysis of musical composition with configurable options"""
+        analysis_results = {
+            'metadata': {
+                'source': 'Enhanced Musical Analyzer',
+                'version': '2.0'
+            }
+        }
+
+        # Key analysis (always performed)
+        analysis_results['key_analysis'] = self._analyze_key(composition_stream)
+
+        # Optional analyses based on configuration
+        if self.config.analyze_harmony:
+            analysis_results['harmony'] = self.analyze_harmonic_content(composition_stream)
+
+        if self.config.analyze_rhythm:
+            analysis_results['rhythm'] = self.analyze_rhythmic_patterns(composition_stream)
+
+        if self.config.analyze_melody:
+            analysis_results['melody'] = self.analyze_melodic_content(composition_stream)
+
+        if self.config.analyze_structure:
+            analysis_results['structure'] = self.analyze_musical_structure(composition_stream)
+
+        # Extended metrics if enabled
+        if self.config.extended_metrics:
+            analysis_results['extended_metrics'] = self._calculate_extended_metrics(composition_stream)
+
+        return analysis_results
+
+    def _analyze_key(self, composition_stream: stream.Stream) -> Dict:
+        """Internal method for key analysis with enhanced error handling"""
         try:
             detected_key = self.analyzers['key'].getSolution(composition_stream)
-            analysis_results['key_analysis'] = {
+            return {
                 'detected_key': str(detected_key),
-                'confidence': detected_key.correlationCoefficient if hasattr(detected_key, 'correlationCoefficient') else 0.8
+                'confidence': float(detected_key.correlationCoefficient) if hasattr(detected_key, 'correlationCoefficient') else 0.8,
+                'alternate_keys': self._find_alternate_keys(composition_stream)
             }
+        except Exception as e:
+            return {
+                'detected_key': 'C major',
+                'confidence': 0.5,
+                'error': str(e)
+            }
+
+    def _find_alternate_keys(self, composition_stream: stream.Stream) -> List[Dict]:
+        """Find possible alternate key interpretations"""
+        try:
+            key_analysis = analysis.windowed.KeyAnalysis(composition_stream)
+            return [
+                {
+                    'key': str(alt_key),
+                    'confidence': float(alt_key.correlationCoefficient),
+                    'measure_range': (alt_key.measureStart, alt_key.measureEnd)
+                }
+                for alt_key in key_analysis.alternateInterpretations[:3]  # Top 3 alternatives
+            ]
         except:
-            analysis_results['key_analysis'] = {'detected_key': 'C major', 'confidence': 0.5}
-        
-        # Harmonic analysis
-        harmony_analysis = self.analyze_harmonic_content(composition_stream)
-        analysis_results['harmony'] = harmony_analysis
-        
-        # Rhythmic analysis
-        rhythm_analysis = self.analyze_rhythmic_patterns(composition_stream)
-        analysis_results['rhythm'] = rhythm_analysis
-        
-        # Melodic analysis
-        melody_analysis = self.analyze_melodic_content(composition_stream)
-        analysis_results['melody'] = melody_analysis
-        
-        # Structural analysis
-        structure_analysis = self.analyze_musical_structure(composition_stream)
-        analysis_results['structure'] = structure_analysis
-        
-        return analysis_results
-    
-    def analyze_harmonic_content(self, composition_stream):
-        """Analyze harmonic content and progressions"""
+            return []
+
+    def analyze_harmonic_content(self, composition_stream: stream.Stream) -> Dict:
+        """Enhanced harmonic content analysis with roman numeral analysis"""
         chords_found = []
         chord_qualities = {}
-        
+        roman_numerals = []
+
         for element in composition_stream.flat:
             if isinstance(element, chord.Chord):
                 chord_symbol = element.pitchedCommonName
                 chords_found.append(chord_symbol)
-                
-                # Analyze chord quality
-                quality = self.get_chord_quality(element)
+
+                # Enhanced chord quality analysis
+                quality = self._get_enhanced_chord_quality(element)
                 chord_qualities[chord_symbol] = quality
-        
-        # Analyze progression patterns
-        progression_strength = self.analyze_progression_strength(chords_found)
-        
+
+                # Roman numeral analysis if detailed
+                if self.config.detailed_chord_analysis:
+                    try:
+                        rn = roman.romanNumeralFromChord(element, composition_stream.analyze('key'))
+                        roman_numerals.append({
+                            'roman': str(rn),
+                            'figure': rn.figure,
+                            'function': rn.function
+                        })
+                    except:
+                        pass
+
+        # Enhanced progression analysis
+        progression_analysis = self._analyze_progressions(chords_found)
+
         return {
             'chord_sequence': chords_found,
             'chord_qualities': chord_qualities,
-            'progression_strength': progression_strength,
+            'roman_numerals': roman_numerals if self.config.detailed_chord_analysis else None,
+            'progression_analysis': progression_analysis,
             'harmonic_rhythm': len(chords_found),
-            'unique_chords': len(set(chords_found))
+            'unique_chords': len(set(chords_found)),
+            'cadence_points': self._find_cadence_points(composition_stream)
         }
-    
-    def analyze_rhythmic_patterns(self, composition_stream):
-        """Analyze rhythmic patterns and complexity"""
+
+    def _get_enhanced_chord_quality(self, chord_obj: chord.Chord) -> Dict:
+        """Detailed chord quality analysis"""
+        try:
+            return {
+                'quality': chord_obj.quality,
+                'inversion': chord_obj.inversion(),
+                'root': str(chord_obj.root()),
+                'bass': str(chord_obj.bass()),
+                'tensions': [str(p) for p in chord_obj.pitches if p not in chord_obj.tertiates]
+            }
+        except:
+            return {'quality': 'unknown'}
+
+    def _analyze_progressions(self, chord_sequence: List[str]) -> Dict:
+        """Enhanced progression analysis with statistical measures"""
+        if not chord_sequence:
+            return {}
+
+        # Calculate transition matrix
+        unique_chords = sorted(set(chord_sequence))
+        transition_matrix = np.zeros((len(unique_chords), len(unique_chords)))
+
+        chord_to_idx = {ch: i for i, ch in enumerate(unique_chords)}
+
+        for i in range(len(chord_sequence) - 1):
+            current = chord_to_idx[chord_sequence[i]]
+            next_chord = chord_to_idx[chord_sequence[i + 1]]
+            transition_matrix[current][next_chord] += 1
+
+        # Normalize rows to get probabilities
+        row_sums = transition_matrix.sum(axis=1, keepdims=True)
+        transition_matrix = np.divide(
+            transition_matrix, 
+            row_sums, 
+            out=np.zeros_like(transition_matrix), 
+            where=row_sums!=0
+        )
+
+        # Find most common progressions
+        common_progressions = []
+        for i in range(transition_matrix.shape[0]):
+            for j in range(transition_matrix.shape[1]):
+                if transition_matrix[i][j] > 0.3:  # Threshold for significant transitions
+                    common_progressions.append({
+                        'from': unique_chords[i],
+                        'to': unique_chords[j],
+                        'probability': float(transition_matrix[i][j]),
+                        'count': int(transition_matrix[i][j] * row_sums[i][0])
+                    })
+
+        return {
+            'transition_matrix': transition_matrix.tolist(),
+            'common_progressions': sorted(
+                common_progressions, 
+                key=lambda x: x['probability'], 
+                reverse=True
+            )[:10],  # Top 10 progressions
+            'entropy': float(stats.entropy(transition_matrix.flatten()))
+        }
+
+    def _find_cadence_points(self, composition_stream: stream.Stream) -> List[Dict]:
+        """Identify cadence points in the composition"""
+        try:
+            cadences = analysis.cadence.detectCadences(composition_stream)
+            return [
+                {
+                    'type': cadence.type,
+                    'measure': cadence.measureNumber,
+                    'strength': cadence.strength,
+                    'chords': [str(c) for c in cadence.chords]
+                }
+                for cadence in cadences
+            ]
+        except:
+            return []
+
+    def analyze_rhythmic_patterns(self, composition_stream: stream.Stream) -> Dict:
+        """Enhanced rhythmic analysis with pattern recognition"""
         durations = []
-        rhythmic_patterns = []
-        
+        onset_times = []
+        current_time = 0.0
+
         for element in composition_stream.flat.notesAndRests:
             if hasattr(element, 'quarterLength'):
                 durations.append(element.quarterLength)
-        
-        # Calculate rhythmic complexity
-        unique_durations = len(set(durations))
-        rhythmic_density = len(durations) / composition_stream.duration.quarterLength if composition_stream.duration.quarterLength > 0 else 0
-        
-        # Identify common patterns
-        pattern_analysis = self.identify_rhythmic_patterns(durations)
-        
+                onset_times.append(current_time)
+                current_time += element.quarterLength
+
+        # Calculate advanced rhythmic statistics
+        duration_stats = {
+            'mean': float(np.mean(durations)),
+            'std_dev': float(np.std(durations)),
+            'skewness': float(stats.skew(durations)),
+            'kurtosis': float(stats.kurtosis(durations))
+        }
+
+        # Calculate syncopation score
+        syncopation_score = self._calculate_syncopation(durations, onset_times)
+
         return {
             'total_events': len(durations),
-            'unique_durations': unique_durations,
-            'rhythmic_density': rhythmic_density,
-            'complexity_score': unique_durations * rhythmic_density,
-            'common_patterns': pattern_analysis
+            'unique_durations': len(set(durations)),
+            'rhythmic_density': len(durations) / composition_stream.duration.quarterLength if composition_stream.duration.quarterLength > 0 else 0,
+            'duration_statistics': duration_stats,
+            'syncopation_score': syncopation_score,
+            'common_patterns': self._identify_rhythmic_patterns(durations),
+            'onset_distribution': self._analyze_onset_distribution(onset_times)
         }
-    
-    def analyze_melodic_content(self, composition_stream):
-        """Analyze melodic characteristics"""
+
+    def _calculate_syncopation(self, durations: List[float], onset_times: List[float]) -> float:
+        """Calculate syncopation score using Longuet-Higgins & Lee method"""
+        if len(durations) < 3:
+            return 0.0
+
+        # Find beats where notes start on offbeats
+        beat_positions = np.arange(0, max(onset_times) + 1, 0.25)  # Assume 4/4 for simplicity
+        syncopation_count = 0
+
+        for onset in onset_times:
+            # Check if onset is not on a beat
+            if not any(np.isclose(onset, beat_positions, atol=0.01)):
+                syncopation_count += 1
+
+        return syncopation_count / len(onset_times)
+
+    def _analyze_onset_distribution(self, onset_times: List[float]) -> Dict:
+        """Analyze distribution of note onsets"""
+        if not onset_times:
+            return {}
+
+        # Bin onsets by beat position (0-1)
+        beat_positions = [t % 1 for t in onset_times]
+        hist, bin_edges = np.histogram(beat_positions, bins=8, range=(0, 1))
+
+        return {
+            'histogram': hist.tolist(),
+            'bin_edges': bin_edges.tolist(),
+            'preference_ratio': float(max(hist)) / min(hist) if min(hist) > 0 else float('inf')
+        }
+
+    def analyze_melodic_content(self, composition_stream: stream.Stream) -> Dict:
+        """Enhanced melodic analysis with contour classification"""
         notes_found = []
         intervals = []
-        
+        contours = []
+
         previous_pitch = None
         for element in composition_stream.flat.notes:
             if isinstance(element, note.Note):
                 current_pitch = element.pitch
-                notes_found.append(str(current_pitch))
-                
+                notes_found.append({
+                    'pitch': str(current_pitch),
+                    'midi': current_pitch.midi,
+                    'duration': element.duration.quarterLength
+                })
+
                 if previous_pitch:
                     interval_obj = interval.Interval(previous_pitch, current_pitch)
                     intervals.append(interval_obj.semitones)
-                
+                    contours.append(1 if interval_obj.semitones > 0 else (-1 if interval_obj.semitones < 0 else 0))
+
                 previous_pitch = current_pitch
-        
-        # Calculate melodic statistics
-        melodic_range = max(intervals) - min(intervals) if intervals else 0
-        avg_interval = sum(intervals) / len(intervals) if intervals else 0
-        
-        # Analyze melodic contour
-        contour = self.analyze_melodic_contour(intervals)
-        
+
+        # Calculate advanced melodic statistics
+        if intervals:
+            interval_stats = {
+                'mean': float(np.mean(np.abs(intervals))),
+                'std_dev': float(np.std(intervals)),
+                'direction_changes': sum(1 for i in range(len(contours)-1) if contours[i] != contours[i+1])
+            }
+        else:
+            interval_stats = {}
+
         return {
             'total_notes': len(notes_found),
-            'melodic_range': melodic_range,
-            'average_interval': avg_interval,
-            'contour_analysis': contour,
-            'pitch_variety': len(set(notes_found))
+            'pitch_range': {
+                'lowest': min(n['midi'] for n in notes_found) if notes_found else 0,
+                'highest': max(n['midi'] for n in notes_found) if notes_found else 0,
+                'span': (max(n['midi'] for n in notes_found) - min(n['midi'] for n in notes_found)) if notes_found else 0
+            },
+            'interval_statistics': interval_stats,
+            'contour_analysis': self._classify_melodic_contour(contours),
+            'pitch_class_distribution': self._analyze_pitch_classes(notes_found),
+            'motif_analysis': self._identify_melodic_motifs(notes_found)
         }
-    
-    def analyze_musical_structure(self, composition_stream):
-        """Analyze overall musical structure"""
+
+    def _classify_melodic_contour(self, contours: List[int]) -> Dict:
+        """Classify melodic contour using machine learning approach"""
+        if not contours:
+            return {'type': 'static'}
+
+        from sklearn.cluster import KMeans
+
+        try:
+            # Convert contour to feature vectors (windowed approach)
+            window_size = 5
+            features = []
+            for i in range(len(contours) - window_size + 1):
+                features.append(contours[i:i+window_size])
+
+            if len(features) > 3:  # Need enough data for clustering
+                kmeans = KMeans(n_clusters=3, random_state=42)
+                clusters = kmeans.fit_predict(features)
+
+                # Analyze cluster characteristics
+                contour_types = []
+                for cluster_id in range(3):
+                    cluster_contours = [f for f, c in zip(features, clusters) if c == cluster_id]
+                    if cluster_contours:
+                        avg_contour = np.mean(cluster_contours, axis=0)
+                        if np.mean(avg_contour) > 0.5:
+                            contour_type = 'ascending'
+                        elif np.mean(avg_contour) < -0.5:
+                            contour_type = 'descending'
+                        else:
+                            contour_type = 'wave-like'
+
+                        contour_types.append({
+                            'type': contour_type,
+                            'prevalence': len(cluster_contours) / len(features),
+                            'pattern': avg_contour.tolist()
+                        })
+
+                return {
+                    'primary_type': max(contour_types, key=lambda x: x['prevalence'])['type'],
+                    'contour_patterns': contour_types
+                }
+        except:
+            pass
+
+        # Fallback to simple analysis
+        return self.analyze_melodic_contour(contours)
+
+    def _analyze_pitch_classes(self, notes: List[Dict]) -> Dict:
+        """Analyze distribution of pitch classes"""
+        if not notes:
+            return {}
+
+        pitch_classes = [n['midi'] % 12 for n in notes]
+        hist, bin_edges = np.histogram(pitch_classes, bins=12, range=(0, 12))
+
+        return {
+            'histogram': hist.tolist(),
+            'most_common': int(np.argmax(hist)),
+            'least_common': int(np.argmin(hist)),
+            'entropy': float(stats.entropy(hist))
+        }
+
+    def _identify_melodic_motifs(self, notes: List[Dict], min_length: int = 3, max_length: int = 6) -> List[Dict]:
+        """Identify recurring melodic motifs using sliding window"""
+        if len(notes) < min_length:
+            return []
+
+        # Convert notes to interval sequences
+        intervals = []
+        for i in range(1, len(notes)):
+            intervals.append(notes[i]['midi'] - notes[i-1]['midi'])
+
+        # Find repeating patterns
+        motifs = {}
+        for length in range(min_length, min(max_length, len(intervals))):
+            for i in range(len(intervals) - length + 1):
+                pattern = tuple(intervals[i:i+length])
+                motifs[pattern] = motifs.get(pattern, 0) + 1
+
+        # Filter and return significant motifs
+        significant_motifs = [
+            {
+                'intervals': list(pattern),
+                'count': count,
+                'length': len(pattern)
+            }
+            for pattern, count in motifs.items() 
+            if count > 1  # At least 2 occurrences
+        ]
+
+        return sorted(significant_motifs, key=lambda x: (-x['count'], -x['length']))
+
+    def analyze_musical_structure(self, composition_stream: stream.Stream) -> Dict:
+        """Enhanced structural analysis with form detection"""
         measures = composition_stream.getElementsByClass('Measure')
         parts = composition_stream.getElementsByClass('Part')
-        
+
         structure_info = {
             'total_measures': len(measures),
             'total_parts': len(parts),
             'duration_quarters': composition_stream.duration.quarterLength,
             'time_signatures': [],
             'key_signatures': [],
-            'tempo_markings': []
+            'tempo_markings': [],
+            'section_analysis': self._analyze_sections(composition_stream)
         }
-        
-        # Collect structural elements
+
+        # Collect structural elements with measure numbers
         for element in composition_stream.flat:
             if isinstance(element, meter.TimeSignature):
-                structure_info['time_signatures'].append(str(element))
+                measure_num = element.getContextByClass('Measure').measureNumber
+                structure_info['time_signatures'].append({
+                    'signature': str(element),
+                    'measure': measure_num
+                })
             elif isinstance(element, key.KeySignature):
-                structure_info['key_signatures'].append(str(element))
+                measure_num = element.getContextByClass('Measure').measureNumber
+                structure_info['key_signatures'].append({
+                    'signature': str(element),
+                    'measure': measure_num
+                })
             elif isinstance(element, tempo.TempoIndication):
-                structure_info['tempo_markings'].append(element.number)
-        
-        return structure_info
-    
-    def get_chord_quality(self, chord_obj):
-        """Determine chord quality (major, minor, diminished, etc.)"""
-        try:
-            return chord_obj.quality
-        except:
-            # Fallback analysis
-            intervals = []
-            root = chord_obj.root()
-            for pitch_obj in chord_obj.pitches[1:]:
-                interval_obj = interval.Interval(root, pitch_obj)
-                intervals.append(interval_obj.semitones)
-            
-            if 4 in intervals and 7 in intervals:
-                return 'major'
-            elif 3 in intervals and 7 in intervals:
-                return 'minor'
-            elif 3 in intervals and 6 in intervals:
-                return 'diminished'
-            else:
-                return 'unknown'
-    
-    def analyze_progression_strength(self, chord_sequence):
-        """Analyze the strength of harmonic progressions"""
-        strong_progressions = ['V-I', 'IV-I', 'ii-V', 'vi-IV']
-        progression_score = 0
-        
-        for i in range(len(chord_sequence) - 1):
-            current_chord = chord_sequence[i]
-            next_chord = chord_sequence[i + 1]
-            progression = f"{current_chord}-{next_chord}"
-            
-            if any(strong in progression for strong in strong_progressions):
-                progression_score += 1
-        
-        return progression_score / max(len(chord_sequence) - 1, 1)
-    
-    def identify_rhythmic_patterns(self, durations):
-        """Identify common rhythmic patterns"""
-        patterns = {}
-        
-        # Look for repeated duration sequences
-        for i in range(len(durations) - 2):
-            pattern = tuple(durations[i:i+3])  # 3-note patterns
-            patterns[pattern] = patterns.get(pattern, 0) + 1
-        
-        # Return most common patterns
-        sorted_patterns = sorted(patterns.items(), key=lambda x: x[1], reverse=True)
-        return sorted_patterns[:5]  # Top 5 patterns
-    
-    def analyze_melodic_contour(self, intervals):
-        """Analyze melodic contour (ascending, descending, wave-like)"""
-        if not intervals:
-            return {'type': 'static', 'direction_changes': 0}
-        
-        direction_changes = 0
-        ascending_count = sum(1 for i in intervals if i > 0)
-        descending_count = sum(1 for i in intervals if i < 0)
-        
-        # Count direction changes
-        for i in range(len(intervals) - 1):
-            if (intervals[i] > 0) != (intervals[i + 1] > 0):
-                direction_changes += 1
-        
-        # Determine overall contour type
-        if ascending_count > descending_count * 1.5:
-            contour_type = 'ascending'
-        elif descending_count > ascending_count * 1.5:
-            contour_type = 'descending'
-        else:
-            contour_type = 'wave-like'
-        
-        return {
-            'type': contour_type,
-            'direction_changes': direction_changes,
-            'ascending_ratio': ascending_count / len(intervals),
-            'descending_ratio': descending_count / len(intervals)
-        }
-    
-    def manipulate_composition(self, composition_stream, transformations):
-        """Apply various transformations to the composition"""
-        manipulated = composition_stream.copy()
-        
-        for transformation in transformations:
-            if transformation == 'transpose':
-                manipulated = manipulated.transpose(random.randint(-5, 5))
-            elif transformation == 'retrograde':
-                manipulated = self.apply_retrograde(manipulated)
-            elif transformation == 'inversion':
-                manipulated = self.apply_inversion(manipulated)
-            elif transformation == 'augmentation':
-                manipulated = self.apply_augmentation(manipulated, 2.0)
-            elif transformation == 'diminution':
-                manipulated = self.apply_augmentation(manipulated, 0.5)
-        
-        return manipulated
-    
-    def apply_retrograde(self, composition_stream):
-        """Apply retrograde (reverse) transformation"""
-        reversed_stream = stream.Score()
-        
-        # Copy metadata
-        for element in composition_stream.flat:
-            if isinstance(element, (key.KeySignature, meter.TimeSignature, tempo.TempoIndication)):
-                reversed_stream.append(element)
-        
-        # Reverse the notes
-        all_notes = list(composition_stream.flat.notesAndRests)
-        for note_obj in reversed(all_notes):
-            reversed_stream.append(note_obj)
-        
-        return reversed_stream
-    
-    def apply_inversion(self, composition_stream):
-        """Apply melodic inversion"""
-        inverted_stream = composition_stream.copy()
-        
-        # Get the first note as reference
-        first_note = None
-        for element in inverted_stream.flat.notes:
-            if isinstance(element, note.Note):
-                first_note = element.pitch
-                break
-        
-        if first_note:
-            for element in inverted_stream.flat.notes:
-                if isinstance(element, note.Note):
-                    interval_from_first = interval.Interval(first_note, element.pitch)
-                    inverted_interval = interval_from_first.reverse()
-                    element.pitch = first_note.transpose(inverted_interval)
-        
-        return inverted_stream
-    
-    def apply_augmentation(self, composition_stream, factor):
-        """Apply rhythmic augmentation/diminution"""
-        augmented_stream = composition_stream.copy()
-        
-        for element in augmented_stream.flat.notesAndRests:
-            if hasattr(element, 'quarterLength'):
-                element.quarterLength *= factor
-        
-        return augmented_stream
-
-def main():
-    if len(sys.argv) < 3:
-        print("Usage: python musical-analyzer.py <input_midi> <output_analysis>")
-        sys.exit(1)
-    
-    try:
-        input_path = sys.argv[1]
-        output_path = sys.argv[2]
-        
-        print(f"🔬 Analyzing musical composition: {input_path}")
-        
-        # Load composition
-        composition = converter.parse(input_path)
-        
-        # Analyze
-        analyzer = MusicalAnalyzer()
-        analysis_results = analyzer.analyze_composition(composition)
-        
-        # Save analysis
-        with open(output_path, 'w') as f:
-            json.dump(analysis_results, f, indent=2)
-        
-        print(f"✅ Analysis completed: {output_path}")
-        
-        # Print summary
-        print("\n📊 Analysis Summary:")
-        print(f"Key: {analysis_results['key_analysis']['detected_key']}")
-        print(f"Harmonic complexity: {analysis_results['harmony']['unique_chords']} unique chords")
-        print(f"Rhythmic complexity: {analysis_results['rhythm']['complexity_score']:.2f}")
-        print(f"Melodic range: {analysis_results['melody']['melodic_range']} semitones")
-        
-    except Exception as e:
-        print(f"❌ Error in musical analysis: {e}", file=sys.stderr)
-        sys.exit(1)
-
-if __name__ == '__main__':
-    main()
