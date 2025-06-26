@@ -4,7 +4,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["ffmpeg", "glibcLocales", "libxcrypt", "pkg-config", "portmidi", "xsimd", "run"]
+packages = ["ffmpeg", "glibcLocales", "libxcrypt", "pkg-config", "portmidi", "run", "xsimd"]
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -20,7 +20,7 @@ localPort = 5000
 externalPort = 80
 
 [workflows]
-runButton = "Production Build & Start"
+runButton = "Start Application"
 
 [[workflows.workflow]]
 name = "Project"
@@ -74,3 +74,12 @@ args = "node quick-deploy.js build"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node quick-deploy.js start"
+
+[[workflows.workflow]]
+name = "Start Application"
+author = 41134091
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
