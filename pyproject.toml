@@ -8,6 +8,7 @@ dependencies = [
     "music21>=9.7.1",
     "numpy>=2.3.0",
     "pretty-midi>=0.2.10",
+    "requests>=2.32.4",
     "scikit-learn>=1.7.0",
     "scipy>=1.15.3",
     "tensorflow>=2.14.0",
