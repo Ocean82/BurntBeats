@@ -1,6 +1,5 @@
 
 import { Request, Response } from 'express';
-import { hashPassword, verifyPassword } from '../db';
 
 export class AuthAPI {
   // Login endpoint
@@ -95,12 +94,14 @@ export class AuthAPI {
         songsGenerated: 0,
         maxSongs: 3,
         features: {
-          voiceCloning: false,
-          advancedEditing: false,
-          collaboration: false,
-          analytics: false,
-          versionControl: false,
-          socialFeatures: false,
+          voiceCloning: true,
+          advancedEditing: true,
+          collaboration: true,
+          analytics: true,
+          versionControl: true,
+          socialFeatures: true,
+          musicTheoryTools: true,
+          allFeaturesUnlocked: true,
           prioritySupport: false,
           customization: false
         }
