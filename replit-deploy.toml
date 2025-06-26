@@ -1,0 +1,12 @@
+[deployment]
+run = ["node", "start-server.js"]
+deploymentTarget = "cloudrun"
+buildCommand = "npm run build"
+
+[env]
+NODE_ENV = "production"
+PORT = "5000"
+
+[[ports]]
+localPort = 5000
+externalPort = 80

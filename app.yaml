@@ -1,0 +1,14 @@
+runtime: nodejs20
+
+env_variables:
+  NODE_ENV: production
+  PORT: 5000
+
+automatic_scaling:
+  min_instances: 0
+  max_instances: 10
+  target_cpu_utilization: 0.6
+
+handlers:
+- url: /.*
+  script: auto

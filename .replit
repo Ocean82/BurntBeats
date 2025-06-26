@@ -1,5 +1,6 @@
-run = "npm run dev"
+externalPorun = "nvm start"
 modules = ["nodejs-20"]
+localPort = 5000
 
 [[ports]]
 localPort = 5000
