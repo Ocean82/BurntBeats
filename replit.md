@@ -240,6 +240,15 @@ The application uses three main database tables:
 
 ## Changelog
 
+### Sassy AI Chat Component Restoration + Pricing System Update (June 26, 2025)
+- **SASSY AI CHAT RESTORED**: Re-integrated sassy AI assistant directly beside lyrics text input box in song creation form
+- **REAL-TIME LYRIC FEEDBACK**: AI provides attitude and roasts while users write lyrics, with randomized responses to keep interactions fresh
+- **5-TIER PRICING STRUCTURE**: Updated to Bonus Track ($0.99), Base Song ($1.99), Premium Song ($4.99), Ultra Song ($8.99), Full License ($10.00)
+- **SIZE-BASED TIERS**: Pricing based on file size (under 9MB, 9-20MB, 20MB+) plus demo and full license options
+- **STRIPE COMPONENT FIXED**: Corrected broken Stripe checkout component with proper tier definitions and metadata
+- **UI LAYOUT IMPROVED**: Split song form into two-column layout with lyrics input on left and AI chat on right
+- **MAINTAINED FREE MODEL**: All features remain unlimited and free, with pay-per-download monetization only
+
 ### Node.js Installation Fix + Application Startup Verification (June 26, 2025)
 - **NODE.JS INSTALLATION**: Fixed "npm: command not found" error by installing Node.js 20 with npm 11.4.2
 - **APPLICATION STARTUP**: Verified complete application stack is running successfully on port 5000
