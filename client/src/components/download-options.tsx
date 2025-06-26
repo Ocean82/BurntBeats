@@ -85,51 +85,83 @@ export default function DownloadOptions({ song }: DownloadOptionsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Demo Version */}
-            <Card className="border-orange-500/20 bg-orange-500/5">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            {/* Bonus Track */}
+            <Card className="border-yellow-500/20 bg-yellow-500/5">
               <CardContent className="p-4 text-center">
-                <h4 className="font-semibold text-orange-300 mb-2">Demo ($2.99)</h4>
-                <p className="text-sm text-gray-400 mb-3">Watermarked preview</p>
+                <h4 className="font-semibold text-yellow-300 mb-2">🧪 Bonus Track ($0.99)</h4>
+                <p className="text-sm text-gray-400 mb-3">Watermarked demo. Test the vibe before buying.</p>
                 <Button 
-                  onClick={() => downloadMutation.mutate({ format: 'mp3-demo' })}
-                  className="w-full bg-orange-500 hover:bg-orange-600"
+                  onClick={() => downloadMutation.mutate({ format: 'bonus-demo' })}
+                  className="w-full bg-yellow-500 hover:bg-yellow-600"
                   disabled={downloadMutation.isPending}
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Download Demo
+                  Download Bonus
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Clean Version */}
+            {/* Base Song */}
             <Card className="border-green-500/20 bg-green-500/5">
               <CardContent className="p-4 text-center">
-                <h4 className="font-semibold text-green-300 mb-2">Clean ($4.99)</h4>
-                <p className="text-sm text-gray-400 mb-3">High-quality, no watermark</p>
+                <h4 className="font-semibold text-green-300 mb-2">🔉 Base Song ($1.99)</h4>
+                <p className="text-sm text-gray-400 mb-3">Tracks under 9MB. Great for quick loops or intros.</p>
                 <Button 
-                  onClick={() => downloadMutation.mutate({ format: 'mp3-clean' })}
+                  onClick={() => downloadMutation.mutate({ format: 'base-song' })}
                   className="w-full bg-green-500 hover:bg-green-600"
                   disabled={downloadMutation.isPending}
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Download Clean
+                  Download Base
                 </Button>
               </CardContent>
             </Card>
 
-            {/* Studio Version */}
+            {/* Premium Song */}
             <Card className="border-blue-500/20 bg-blue-500/5">
               <CardContent className="p-4 text-center">
-                <h4 className="font-semibold text-blue-300 mb-2">Studio ($9.99)</h4>
-                <p className="text-sm text-gray-400 mb-3">Professional WAV + stems</p>
+                <h4 className="font-semibold text-blue-300 mb-2">🎧 Premium Song ($4.99)</h4>
+                <p className="text-sm text-gray-400 mb-3">Tracks 9MB-20MB. Crisp quality with depth.</p>
                 <Button 
-                  onClick={() => downloadMutation.mutate({ format: 'wav-studio' })}
+                  onClick={() => downloadMutation.mutate({ format: 'premium-song' })}
                   className="w-full bg-blue-500 hover:bg-blue-600"
                   disabled={downloadMutation.isPending}
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Download Studio
+                  Download Premium
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Ultra Super Great Amazing Song */}
+            <Card className="border-indigo-500/20 bg-indigo-500/5">
+              <CardContent className="p-4 text-center">
+                <h4 className="font-semibold text-indigo-300 mb-2">💽 Ultra Song ($8.99)</h4>
+                <p className="text-sm text-gray-400 mb-3">Tracks over 20MB. Complex, layered creations.</p>
+                <Button 
+                  onClick={() => downloadMutation.mutate({ format: 'ultra-song' })}
+                  className="w-full bg-indigo-500 hover:bg-indigo-600"
+                  disabled={downloadMutation.isPending}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Ultra
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Full License */}
+            <Card className="border-purple-500/20 bg-purple-500/5">
+              <CardContent className="p-4 text-center">
+                <h4 className="font-semibold text-purple-300 mb-2">🪪 Full License ($10.00)</h4>
+                <p className="text-sm text-gray-400 mb-3">Full ownership. Use, distribute, monetize—forever.</p>
+                <Button 
+                  onClick={() => downloadMutation.mutate({ format: 'full-license' })}
+                  className="w-full bg-purple-500 hover:bg-purple-600"
+                  disabled={downloadMutation.isPending}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Download License
                 </Button>
               </CardContent>
             </Card>

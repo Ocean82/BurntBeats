@@ -11,6 +11,7 @@ import { Loader2, Crown, Music, Sparkles } from "lucide-react";
 import { useSongGeneration } from "@/hooks/use-song-generation";
 import GenerationProgress from "./generation-progress";
 import UpgradeModal from "./upgrade-modal";
+import SassyAIChat from "./sassy-ai-chat";
 
 interface SongFormProps {
   onSongGenerated: (song: any) => void;
@@ -36,10 +37,9 @@ export default function SongForm({ onSongGenerated, user }: SongFormProps) {
     onGenerationComplete: (song) => {
       console.log("🎵 Song generation completed with audio:", {
         title: song.title,
-        audioUrl: song.audioUrl,
         generatedAudioPath: song.generatedAudioPath,
         status: song.status,
-        sections: song.sections?.length || 0
+        sections: song.sections ? Object.keys(song.sections).length : 0
       });
 
       // Set the completed song for the audio player
@@ -130,20 +130,34 @@ export default function SongForm({ onSongGenerated, user }: SongFormProps) {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Lyrics Input */}
-            <div className="space-y-2">
-              <Label htmlFor="lyrics">Enter Your Lyrics</Label>
-              <Textarea
-                id="lyrics"
-                placeholder="Enter your song lyrics here... (e.g., 'Verse 1: Walking down the street...')"
-                value={lyrics}
-                onChange={(e) => setLyrics(e.target.value)}
-                className="min-h-[120px] bg-gray-800 border-gray-700 text-white"
-                required
-              />
-              <p className="text-sm text-gray-400">
-                Tip: Structure your lyrics with verses, choruses, and bridges for best results
-              </p>
+            {/* Lyrics Input with AI Chat */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Lyrics Input */}
+              <div className="space-y-2">
+                <Label htmlFor="lyrics">Enter Your Lyrics</Label>
+                <Textarea
+                  id="lyrics"
+                  placeholder="Enter your song lyrics here... (e.g., 'Verse 1: Walking down the street...')"
+                  value={lyrics}
+                  onChange={(e) => setLyrics(e.target.value)}
+                  className="min-h-[200px] bg-gray-800 border-gray-700 text-white"
+                  required
+                />
+                <p className="text-sm text-gray-400">
+                  Tip: Structure your lyrics with verses, choruses, and bridges for best results
+                </p>
+              </div>
+
+              {/* Sassy AI Chat */}
+              <div className="space-y-2">
+                <Label>AI Assistant with Attitude 🤖</Label>
+                <div className="h-[240px] border border-gray-700 rounded-lg">
+                  <SassyAIChat user={user} />
+                </div>
+                <p className="text-sm text-gray-400">
+                  Get real-time feedback and roasts on your lyrics
+                </p>
+              </div>
             </div>
 
             {/* Generate Button */}
