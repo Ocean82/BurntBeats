@@ -1,0 +1,19 @@
+[build]
+run = "npm start"
+buildCommand = "npm run build"
+
+[deployment]
+run = "cd dist && npm start"
+buildCommand = "node production-deploy.cjs"
+deploymentTarget = "autoscale"
+
+[env]
+NODE_ENV = "production"
+PORT = "5000"
+
+[nix]
+channel = "stable-24_05"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
