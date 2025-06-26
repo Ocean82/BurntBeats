@@ -19,14 +19,14 @@ interface PlanLimits {
 
 const PLAN_LIMITS: Record<PlanType, PlanLimits> = {
   free: {
-    songsPerMonth: 3,
-    maxSongLength: 1,
-    voiceCloning: false,
-    textToSpeech: false,
-    analytics: false,
-    versionControl: false,
-    collaboration: false,
-    musicTheory: false,
+    songsPerMonth: Infinity, // Unlimited songs for everyone
+    maxSongLength: 10, // Generous song length
+    voiceCloning: true, // Voice cloning available to all
+    textToSpeech: true, // Text-to-speech available to all
+    analytics: true, // All features unlocked
+    versionControl: true,
+    collaboration: true,
+    musicTheory: true,
     downloadQuality: 'standard',
     concurrentGenerations: 1,
   },

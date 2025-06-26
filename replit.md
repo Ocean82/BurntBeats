@@ -58,6 +58,7 @@ The application uses three main database tables:
 - **Real-time Collaboration**: Live editing with multiple users and team management
 - **Voice Samples**: Upload and manage multiple voice profiles
 - **Preview Quality**: Stream watermarked previews of all generated content
+- **100% Song Ownership**: Every song you create belongs to you completely - sell, remix, use commercially without restrictions
 
 #### Pay-Per-Download Tiers
 - **Bonus Tier ($2.99)**: Demo version with watermark - perfect for samples and sharing
@@ -238,6 +239,17 @@ The application uses three main database tables:
 **Launch Readiness:** Platform is fully functional with no subscription barriers
 
 ## Changelog
+
+### Voice Cloning Available to All Users + Ownership Promotion (June 25, 2025)
+- **VOICE CLONING UNLOCKED**: Removed all tier restrictions - voice cloning now available to all users for free
+- **UNLIMITED FEATURE ACCESS**: Updated plan restrictions to give everyone access to voice cloning, text-to-speech, analytics, collaboration, and music theory tools
+- **OWNERSHIP MESSAGING**: Added prominent promotional content about 100% song ownership throughout the app
+  * Song creation form now highlights "Create, Own, Profit" messaging
+  * Voice cloning interface emphasizes "Own Your Voice, Own Your Music"
+  * Download page showcases complete ownership rights with commercial use permissions
+  * Clear messaging that users keep 100% of profits with no royalties or restrictions
+- **PAY-PER-DOWNLOAD FOCUS**: Reinforced the core business model - unlimited free creation, pay only for high-quality downloads
+- **MARKETING INTEGRATION**: Strategic placement of ownership benefits in key user interaction points to drive conversion
 
 ### Deployment Crash Loop Fix (June 25, 2025)
 - **DEPLOYMENT ISSUE RESOLVED**: Fixed critical crash loop in production deployment caused by esbuild ES module compatibility issues
