@@ -295,20 +295,29 @@ app.use('/', webhookTestApi);
 // ======================
 // STATIC FILE SERVING
 // ======================
-const publicPath = path.join(process.cwd(), 'dist', 'public');
-if (fs.existsSync(publicPath)) {
-  app.use(express.static(publicPath));
-  console.log('📁 Serving static files from:', publicPath);
+if (process.env.NODE_ENV === 'production') {
+  const publicPath = path.join(process.cwd(), 'dist', 'public');
+  if (fs.existsSync(publicPath)) {
+    app.use(express.static(publicPath, {
+      maxAge: '1y',
+      etag: true,
+      lastModified: true
+    }));
+    console.log('📁 Serving static files from:', publicPath);
 
-  // SPA fallback
-  app.get('*', (req, res) => {
-    const indexPath = path.join(publicPath, 'index.html');
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      res.status(404).send('Page not found');
-    }
-  });
+    // SPA fallback
+    app.get('*', (req, res) => {
+      const indexPath = path.join(publicPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send('Page not found');
+      }
+    });
+  }
+} else {
+  // Development mode - use Vite middleware
+  console.log('🔧 Development mode - using Vite dev server');
 }
 
 // ======================

@@ -1,24 +1,35 @@
-import React from 'react';
-import { createRoot } from 'react-dom/client';
-import App from './App';
-import './index.css';
+import React, { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import App from "./App";
+import "./index.css";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
-// Get the root DOM element
-const rootElement = document.getElementById('root');
+console.log("Burnt Beats Frontend Loading...");
 
-// Check if the root element exists
-if (!rootElement) {
-  throw new Error('Failed to find the root element');
-}
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: 1,
+    },
+  },
+});
 
-// Create a root and render the app
-const root = createRoot(rootElement);
-root.render(<App />);
+try {
+  const rootElement = document.getElementById("root");
+  if (!rootElement) {
+    throw new Error("Root element not found");
+  }
 
-// Optional: Add error boundary for the root component
-if (process.env.NODE_ENV === 'production') {
-  rootElement.addEventListener('error', (event) => {
-    console.error('Root error:', event.error);
-    // You could render a fallback UI here if needed
-  });
+  createRoot(rootElement).render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <App />
+      </QueryClientProvider>
+    </StrictMode>
+  );
+
+  console.log("Burnt Beats Frontend Loaded Successfully");
+} catch (error) {
+  console.error("Failed to load Burnt Beats Frontend:", error);
 }
