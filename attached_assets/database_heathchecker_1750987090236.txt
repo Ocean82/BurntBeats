@@ -1,0 +1,31 @@
+import { Logger } from '../utils/logger';
+import { env } from '../config/env';
+
+const logger = new Logger({ name: 'DatabaseHealthChecker' });
+
+export class DatabaseHealthChecker {
+  static async checkConnection(): Promise<{ status: string; details?: string }> {
+    try {
+      // In a real implementation, this would check the actual database connection
+      // This is a simplified version for demonstration
+      
+      if (env.DB_ENABLED !== 'true') {
+        return { status: 'disabled' };
+      }
+
+      // Simulate database check
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      return { 
+        status: 'connected',
+        details: 'PostgreSQL 14.3' 
+      };
+    } catch (error) {
+      logger.error('Database health check failed', { error: error.message });
+      return { 
+        status: 'disconnected',
+        details: error.message 
+      };
+    }
+  }
+}
