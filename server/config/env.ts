@@ -54,6 +54,10 @@ export const env = {
   ESPEAK_NG_PATH: process.env.ESPEAK_NG_PATH || '',
   CMUDICT_PATH: process.env.CMUDICT_PATH || '',
 
+  // Google Cloud Storage
+  GOOGLE_CLOUD_KEY_FILE: process.env.GOOGLE_CLOUD_KEY_FILE || '',
+  GOOGLE_CLOUD_BUCKET: process.env.GOOGLE_CLOUD_BUCKET || 'burnt-beats-storage',
+
   // Health API Configuration
   HEALTH_API_KEY: process.env.HEALTH_API_KEY || 'health-check-key-dev',
 };
