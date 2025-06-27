@@ -101,32 +101,68 @@ async function testLicenseGeneration() {
 }
 
 async function testBeatPopularity(beatId) {
-  console.log('\n📊 Testing Beat Popularity Tracking...');
+  console.log('\n📊 Testing Beat Analytics...');
   
+  // Test recording a play
+  const playResult = await makeRequest('POST', `/api/play/${beatId}`, {
+    userId: 'test-user-123',
+    sessionId: 'test-session-456'
+  });
+  
+  if (playResult.status === 200) {
+    console.log('✅ Beat play recorded successfully');
+  } else {
+    console.log(`❌ Play recording failed: ${playResult.data?.message || playResult.error}`);
+  }
+
   // Test getting beat stats
   const statsResult = await makeRequest('GET', `/api/beats/popularity/${beatId}`);
   
   if (statsResult.status === 200) {
-    console.log('✅ Beat popularity stats retrieved');
-    console.log(`   Total Licenses: ${statsResult.data.totalLicenses}`);
-    console.log(`   Total Revenue: $${statsResult.data.totalRevenue}`);
-    console.log(`   Popularity Score: ${statsResult.data.popularityScore}`);
+    console.log('✅ Beat analytics stats retrieved');
+    console.log(`   Total Plays: ${statsResult.data.totalPlays}`);
+    console.log(`   Unique Plays: ${statsResult.data.uniquePlays}`);
+    console.log(`   Popularity Score: ${statsResult.data.popularityScore?.toFixed(2)}`);
   } else {
     console.log(`❌ Beat stats failed: ${statsResult.data?.message || statsResult.error}`);
   }
 
   // Test top performing beats
-  const topBeatsResult = await makeRequest('GET', '/api/beats/top-performing?limit=5');
+  const topBeatsResult = await makeRequest('GET', '/api/top-beats?limit=5');
   
   if (topBeatsResult.status === 200) {
     console.log('✅ Top performing beats retrieved');
     console.log(`   Found ${topBeatsResult.data.count} top beats`);
-    if (topBeatsResult.data.topBeats.length > 0) {
+    if (topBeatsResult.data.topBeats?.length > 0) {
       const topBeat = topBeatsResult.data.topBeats[0];
-      console.log(`   Top Beat: "${topBeat.songTitle}" (Score: ${topBeat.popularityScore})`);
+      console.log(`   Top Beat: ${topBeat.beatId} (Score: ${topBeat.popularityScore?.toFixed(2)})`);
     }
   } else {
     console.log(`❌ Top beats failed: ${topBeatsResult.data?.message || topBeatsResult.error}`);
+  }
+
+  // Test trending beats
+  const trendingResult = await makeRequest('GET', '/api/trending-beats?days=7&limit=3');
+  
+  if (trendingResult.status === 200) {
+    console.log('✅ Trending beats retrieved');
+    console.log(`   Found ${trendingResult.data.count} trending beats`);
+  } else {
+    console.log(`❌ Trending beats failed: ${trendingResult.data?.message || trendingResult.error}`);
+  }
+
+  // Test analytics summary
+  const summaryResult = await makeRequest('GET', '/api/analytics/summary');
+  
+  if (summaryResult.status === 200) {
+    const summary = summaryResult.data.summary;
+    console.log('✅ Analytics summary retrieved');
+    console.log(`   Total Beats: ${summary.totalBeats}`);
+    console.log(`   Total Plays: ${summary.totalPlays}`);
+    console.log(`   Unique Listeners: ${summary.totalUniqueListeners}`);
+  } else {
+    console.log(`❌ Analytics summary failed: ${summaryResult.data?.message || summaryResult.error}`);
+  }atsResult.error}`);
   }
 }
 

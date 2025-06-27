@@ -1,199 +1,313 @@
-import { Request, Response, Router } from 'express';
-import { AIChatService } from '../ai-chat-service';
-import { storage } from '../storage';
+import { Request, Response, Router, NextFunction } from 'express';
+import { AIChatService } from '../services/aiChatService';
+import { LicenseGenerator } from '../services/licenseGenerator';
+import { BeatAnalyticsService } from '../services/beatAnalyticsService';
+import { PurchaseService } from '../services/purchaseService';
+import { validateApiKey } from '../middleware/apiKeyValidator';
+import { rateLimiter } from '../middleware/rateLimiter';
+import { RequestValidator } from '../middleware/requestValidator';
+import { Logger } from '../utils/logger';
+import { env } from '../config/env';
 
 const router = Router();
+const logger = new Logger({ name: 'LicensingAPI' });
 
-// Post-purchase AI feedback endpoint
-router.post("/ai-feedback/:songId", async (req: Request, res: Response) => {
-  try {
-    const { songId } = req.params;
-    const { tier, userEmail } = req.body;
-    
-    // For testing, create a mock song if not found
-    let song = null;
+// Middleware
+const validateLicenseRequest = RequestValidator.validate({
+  songId: { type: 'string', required: true },
+  songTitle: { type: 'string', required: true },
+  tier: { type: 'string', enum: ['basic', 'premium', 'exclusive'], required: true },
+  userEmail: { type: 'string', format: 'email', required: true },
+  artistName: { type: 'string', required: false }
+});
+
+/**
+ * Generate AI feedback for a purchased song
+ */
+router.post(
+  "/ai-feedback/:songId",
+  rateLimiter(5, '1 minute'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    const requestId = req.id;
+    const startTime = process.hrtime();
+
     try {
-      song = await storage.getSong(parseInt(songId));
-    } catch (error) {
-      // If storage fails, create mock song for testing
-      song = {
-        id: parseInt(songId),
-        title: 'Test Song',
-        lyrics: `Verse 1:
-Living life in the fast lane
-Money, power, respect my name
-Never looking back again
-Success flowing through my veins
+      const { songId } = req.params;
+      const { tier, userEmail } = req.body;
 
-Chorus:
-We rise up, we never fall
-Standing tall through it all
-Dreams become reality
-This is our destiny`
-      };
-    }
-
-    if (!song) {
-      return res.status(404).json({ message: "Song not found" });
-    }
-
-    const feedback = await AIChatService.generatePostPurchaseFeedback(
-      songId,
-      song.title || 'Untitled',
-      song.lyrics || '',
-      tier,
-      userEmail || 'unknown@example.com'
-    );
-
-    res.json(feedback);
-  } catch (error: any) {
-    console.error("AI feedback generation failed:", error);
-    res.status(500).json({ message: "Error generating AI feedback: " + error.message });
-  }
-});
-
-// Get AI feedback for a song
-router.get("/ai-feedback/:songId", async (req: Request, res: Response) => {
-  try {
-    const { songId } = req.params;
-    const fs = await import('fs/promises');
-    const path = await import('path');
-    
-    const feedbackPath = path.join(process.cwd(), 'uploads/feedback', `${songId}_feedback.json`);
-    
-    try {
-      const feedbackData = await fs.readFile(feedbackPath, 'utf8');
-      const feedback = JSON.parse(feedbackData);
-      res.json(feedback);
-    } catch (error) {
-      res.status(404).json({ message: "AI feedback not found for this song" });
-    }
-  } catch (error: any) {
-    res.status(500).json({ message: "Error retrieving AI feedback: " + error.message });
-  }
-});
-
-// Generate license certificate with artist name & beat ID
-router.post("/license/generate", async (req: Request, res: Response) => {
-  try {
-    const { songId, songTitle, tier, userEmail, artistName } = req.body;
-    const { generateLicense } = await import('../utils/license-generator');
-    
-    const beatId = `BB-${songId}-${Date.now().toString(36).toUpperCase()}`;
-    
-    const licensePath = generateLicense({
-      songTitle,
-      userId: songId,
-      tier,
-      userEmail,
-      artistName: artistName || userEmail?.split('@')[0] || 'Artist',
-      beatId
-    });
-
-    res.json({
-      success: true,
-      licensePath,
-      beatId,
-      licenseId: `BBX-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Date.now()}`,
-      message: "License certificate generated successfully"
-    });
-  } catch (error: any) {
-    console.error("License generation failed:", error);
-    res.status(500).json({ message: "Error generating license: " + error.message });
-  }
-});
-
-// Beat popularity tracking endpoints
-router.get("/beats/popularity/:beatId", async (req: Request, res: Response) => {
-  try {
-    const { beatId } = req.params;
-    const { getBeatPopularityStats } = await import('../utils/license-generator');
-    
-    const stats = getBeatPopularityStats(beatId);
-    
-    if (!stats) {
-      return res.status(404).json({ message: "Beat statistics not found" });
-    }
-
-    res.json(stats);
-  } catch (error: any) {
-    res.status(500).json({ message: "Error retrieving beat stats: " + error.message });
-  }
-});
-
-// Get top performing beats
-router.get("/beats/top-performing", async (req: Request, res: Response) => {
-  try {
-    const limit = parseInt(req.query.limit as string) || 10;
-    const { getTopPerformingBeats } = await import('../utils/license-generator');
-    
-    const topBeats = getTopPerformingBeats(limit);
-    
-    res.json({
-      success: true,
-      topBeats,
-      count: topBeats.length,
-      message: `Top ${topBeats.length} performing beats retrieved`
-    });
-  } catch (error: any) {
-    res.status(500).json({ message: "Error retrieving top beats: " + error.message });
-  }
-});
-
-// Purchase summary dashboard endpoint
-router.get("/purchases/summary/:userEmail", async (req: Request, res: Response) => {
-  try {
-    const { userEmail } = req.params;
-    const fs = await import('fs/promises');
-    const path = await import('path');
-    
-    // Get all feedback files for user
-    const feedbackDir = path.join(process.cwd(), 'uploads/feedback');
-    
-    let userPurchases = [];
-    let totalSpent = 0;
-    
-    try {
-      const feedbackFiles = await fs.readdir(feedbackDir);
-      
-      for (const file of feedbackFiles) {
-        if (file.endsWith('_feedback.json')) {
-          const feedbackData = JSON.parse(await fs.readFile(path.join(feedbackDir, file), 'utf8'));
-          
-          if (feedbackData.userEmail === userEmail) {
-            const tierPricing = { bonus: 2.99, base: 4.99, top: 9.99 };
-            totalSpent += tierPricing[feedbackData.purchaseTier as keyof typeof tierPricing];
-            
-            userPurchases.push({
-              songId: feedbackData.songId,
-              songTitle: feedbackData.songTitle,
-              tier: feedbackData.purchaseTier,
-              purchaseDate: feedbackData.generatedAt,
-              aiScore: feedbackData.analysis.overallScore,
-              mood: feedbackData.analysis.mood,
-              genre: feedbackData.analysis.genre
-            });
-          }
-        }
+      // Validate input
+      if (!songId || !tier || !userEmail) {
+        logger.warn('Missing required parameters', { requestId });
+        return res.status(400).json({ 
+          error: 'Missing required parameters',
+          requestId,
+        });
       }
-    } catch (error) {
-      // Directory might not exist yet
-      userPurchases = [];
-    }
 
-    res.json({
-      success: true,
-      userEmail,
-      totalPurchases: userPurchases.length,
-      totalSpent: totalSpent.toFixed(2),
-      purchases: userPurchases.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()),
-      averageAiScore: userPurchases.length > 0 
-        ? (userPurchases.reduce((sum, p) => sum + p.aiScore, 0) / userPurchases.length).toFixed(1)
-        : 0
-    });
-  } catch (error: any) {
-    res.status(500).json({ message: "Error retrieving purchase summary: " + error.message });
+      // Get song details
+      const song = await PurchaseService.getSongDetails(songId);
+      if (!song) {
+        logger.warn('Song not found', { songId, requestId });
+        return res.status(404).json({ 
+          error: 'Song not found',
+          requestId,
+        });
+      }
+
+      // Generate AI feedback
+      const feedback = await AIChatService.generatePostPurchaseFeedback({
+        songId,
+        songTitle: song.title,
+        lyrics: song.lyrics,
+        tier,
+        userEmail,
+        requestId,
+      });
+
+      // Calculate processing time
+      const [seconds, nanoseconds] = process.hrtime(startTime);
+      const processingTime = `${seconds}.${nanoseconds.toString().padStart(9, '0')}s`;
+
+      logger.info('AI feedback generated', { 
+        songId, 
+        processingTime,
+        requestId,
+      });
+
+      res.json({
+        ...feedback,
+        processingTime,
+        requestId,
+      });
+
+    } catch (error) {
+      logger.error('AI feedback generation failed', {
+        error: error.message,
+        stack: error.stack,
+        requestId: req.id,
+      });
+
+      next(error);
+    }
   }
+);
+
+/**
+ * Retrieve AI feedback for a song
+ */
+router.get(
+  "/ai-feedback/:songId",
+  rateLimiter(10, '1 minute'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    const requestId = req.id;
+
+    try {
+      const { songId } = req.params;
+
+      const feedback = await PurchaseService.getFeedback(songId);
+      if (!feedback) {
+        logger.warn('Feedback not found', { songId, requestId });
+        return res.status(404).json({ 
+          error: 'AI feedback not found for this song',
+          requestId,
+        });
+      }
+
+      logger.info('Retrieved AI feedback', { songId, requestId });
+      res.json(feedback);
+
+    } catch (error) {
+      logger.error('Failed to retrieve AI feedback', {
+        error: error.message,
+        stack: error.stack,
+        requestId,
+      });
+
+      next(error);
+    }
+  }
+);
+
+/**
+ * Generate license certificate
+ */
+router.post(
+  "/license/generate",
+  validateApiKey(env.LICENSE_API_KEY),
+  rateLimiter(3, '1 minute'),
+  validateLicenseRequest,
+  async (req: Request, res: Response, next: NextFunction) => {
+    const requestId = req.id;
+    const startTime = process.hrtime();
+
+    try {
+      const { songId, songTitle, tier, userEmail, artistName } = req.body;
+
+      // Generate license
+      const license = await LicenseGenerator.generate({
+        songId,
+        songTitle,
+        tier,
+        userEmail,
+        artistName: artistName || userEmail.split('@')[0] || 'Artist',
+        requestId,
+      });
+
+      // Calculate processing time
+      const [seconds, nanoseconds] = process.hrtime(startTime);
+      const processingTime = `${seconds}.${nanoseconds.toString().padStart(9, '0')}s`;
+
+      logger.info('License generated', { 
+        licenseId: license.licenseId,
+        processingTime,
+        requestId,
+      });
+
+      res.json({
+        success: true,
+        ...license,
+        processingTime,
+        requestId,
+      });
+
+    } catch (error) {
+      logger.error('License generation failed', {
+        error: error.message,
+        stack: error.stack,
+        requestId,
+      });
+
+      next(error);
+    }
+  }
+);
+
+/**
+ * Get beat popularity statistics
+ */
+router.get(
+  "/beats/popularity/:beatId",
+  rateLimiter(10, '1 minute'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    const requestId = req.id;
+
+    try {
+      const { beatId } = req.params;
+
+      const stats = await BeatAnalyticsService.getBeatStats(beatId);
+      if (!stats) {
+        logger.warn('Beat stats not found', { beatId, requestId });
+        return res.status(404).json({ 
+          error: 'Beat statistics not found',
+          requestId,
+        });
+      }
+
+      logger.info('Retrieved beat stats', { beatId, requestId });
+      res.json(stats);
+
+    } catch (error) {
+      logger.error('Failed to retrieve beat stats', {
+        error: error.message,
+        stack: error.stack,
+        requestId,
+      });
+
+      next(error);
+    }
+  }
+);
+
+/**
+ * Get top performing beats
+ */
+router.get(
+  "/beats/top-performing",
+  rateLimiter(10, '1 minute'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    const requestId = req.id;
+
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      const topBeats = await BeatAnalyticsService.getTopBeats(limit);
+
+      logger.info('Retrieved top performing beats', { 
+        count: topBeats.length,
+        requestId,
+      });
+
+      res.json({
+        success: true,
+        topBeats,
+        count: topBeats.length,
+        requestId,
+      });
+
+    } catch (error) {
+      logger.error('Failed to retrieve top beats', {
+        error: error.message,
+        stack: error.stack,
+        requestId,
+      });
+
+      next(error);
+    }
+  }
+);
+
+/**
+ * Get purchase summary for user
+ */
+router.get(
+  "/purchases/summary/:userEmail",
+  rateLimiter(10, '1 minute'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    const requestId = req.id;
+
+    try {
+      const { userEmail } = req.params;
+
+      const summary = await PurchaseService.getUserPurchaseSummary(userEmail);
+
+      logger.info('Retrieved purchase summary', { 
+        userEmail,
+        purchaseCount: summary.purchases.length,
+        requestId,
+      });
+
+      res.json({
+        ...summary,
+        requestId,
+      });
+
+    } catch (error) {
+      logger.error('Failed to retrieve purchase summary', {
+        error: error.message,
+        stack: error.stack,
+        requestId,
+      });
+
+      next(error);
+    }
+  }
+);
+
+// Error handling middleware
+router.use((error: Error, req: Request, res: Response, next: NextFunction) => {
+  const requestId = req.id;
+
+  logger.error('API error', {
+    error: error.message,
+    stack: error.stack,
+    requestId,
+  });
+
+  res.status(500).json({
+    error: 'Internal server error',
+    requestId,
+    details: env.NODE_ENV === 'development' ? error.message : undefined,
+  });
 });
 
 export default router;

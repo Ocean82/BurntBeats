@@ -174,14 +174,37 @@ export default function AudioPlayer({
         audio.pause();
         setIsPlaying(false);
       } else {
-        await audio.play();
-        setIsPlaying(true);
-        setError(null);
+        await handlePlay();
       }
     } catch (err) {
       setError('Failed to play audio. Try interacting with the page first.');
     }
   }, [isPlaying]);
+
+  const handlePlay = async () => {
+    if (audioRef.current) {
+      audioRef.current.play();
+      setIsPlaying(true);
+
+      // Track play analytics
+      try {
+        const sessionId = sessionStorage.getItem('sessionId') || 
+          Math.random().toString(36).substring(2, 15);
+        sessionStorage.setItem('sessionId', sessionId);
+
+        await fetch(`/api/play/${song.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            sessionId,
+            userId: null // Add user ID if you have auth
+          })
+        });
+      } catch (error) {
+        console.warn('Failed to track play:', error);
+      }
+    }
+  };
 
   // Handle seeking
   const handleSeekStart = useCallback(() => {
