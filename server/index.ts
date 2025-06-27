@@ -295,20 +295,29 @@ app.use('/', webhookTestApi);
 // ======================
 // STATIC FILE SERVING
 // ======================
-const publicPath = path.join(process.cwd(), 'dist', 'public');
-if (fs.existsSync(publicPath)) {
-  app.use(express.static(publicPath));
-  console.log('📁 Serving static files from:', publicPath);
+if (process.env.NODE_ENV === 'production') {
+  const publicPath = path.join(process.cwd(), 'dist', 'public');
+  if (fs.existsSync(publicPath)) {
+    app.use(express.static(publicPath, {
+      maxAge: '1y',
+      etag: true,
+      lastModified: true
+    }));
+    console.log('📁 Serving static files from:', publicPath);
 
-  // SPA fallback
-  app.get('*', (req, res) => {
-    const indexPath = path.join(publicPath, 'index.html');
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      res.status(404).send('Page not found');
-    }
-  });
+    // SPA fallback
+    app.get('*', (req, res) => {
+      const indexPath = path.join(publicPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+      } else {
+        res.status(404).send('Page not found');
+      }
+    });
+  }
+} else {
+  // Development mode - use Vite middleware
+  console.log('🔧 Development mode - using Vite dev server');
 }
 
 // ======================
@@ -351,30 +360,46 @@ import { Logger } from './utils/logger';
 })();
 
 // Enhanced music generation endpoint
-app.post('/api/generate-song', requireAuth, async (req, res) => {
-  // Your existing music generation logic here
-  // Access user information from req.user or req.session.user if necessary
+app.post('/api/generate', requireAuth, async (req, res) => {
   try {
-    // Simulate song generation
+    const { title, lyrics, genre, tempo, key, duration, mood, vocalStyle, singingStyle, tone } = req.body;
+    
+    // Simulate song generation with proper response structure
     const songDetails = {
-      title: "Generated Song",
-      artist: "Burnt Beats AI",
-      url: "/uploads/generated-song.mp3" // Example URL
+      id: Date.now(),
+      title: title || "Generated Song",
+      lyrics: lyrics || "",
+      genre: genre || "Pop",
+      tempo: tempo || 120,
+      key: key || "C",
+      duration: duration || 30,
+      mood: mood || "happy",
+      vocalStyle: vocalStyle || "smooth",
+      singingStyle: singingStyle || "melodic",
+      tone: tone || "warm",
+      status: "completed",
+      generationProgress: 100,
+      generatedAudioPath: "/uploads/demo-song.mp3",
+      audioUrl: "/uploads/demo-song.mp3",
+      previewUrl: "/uploads/demo-song.mp3",
+      sections: {
+        intro: { start: 0, end: 5, label: "Intro" },
+        verse1: { start: 5, end: 15, label: "Verse 1" },
+        chorus: { start: 15, end: 25, label: "Chorus" },
+        outro: { start: 25, end: 30, label: "Outro" }
+      },
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     // Send back the generated song details
-    res.status(200).json({
-      success: true,
-      message: "Song generated successfully!",
-      song: songDetails
-    });
+    res.status(200).json(songDetails);
 
   } catch (error) {
     console.error("Error generating song:", error);
     res.status(500).json({
-      success: false,
-      message: "Failed to generate song",
-      error: error.message
+      error: "Failed to generate song",
+      message: error.message
     });
   }
 });
