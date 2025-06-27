@@ -335,6 +335,50 @@ app.use((err: Error, req: any, res: any, next: any) => {
   });
 });
 
+// Initialize voice cloning service and voice bank
+import { VoiceCloningService } from './services/voice-cloning-service';
+import { logger } from './utils/logger';
+
+// Initialize voice bank on startup
+(async () => {
+  try {
+    const voiceService = VoiceCloningService.getInstance();
+    await voiceService.initializeVoiceBank();
+    logger.info('Voice bank initialized successfully');
+  } catch (error) {
+    logger.error('Failed to initialize voice bank', { error: error.message });
+  }
+})();
+
+// Enhanced music generation endpoint
+app.post('/api/generate-song', requireAuth, async (req, res) => {
+  // Your existing music generation logic here
+  // Access user information from req.user or req.session.user if necessary
+  try {
+    // Simulate song generation
+    const songDetails = {
+      title: "Generated Song",
+      artist: "Burnt Beats AI",
+      url: "/uploads/generated-song.mp3" // Example URL
+    };
+
+    // Send back the generated song details
+    res.status(200).json({
+      success: true,
+      message: "Song generated successfully!",
+      song: songDetails
+    });
+
+  } catch (error) {
+    console.error("Error generating song:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate song",
+      error: error.message
+    });
+  }
+});
+
 // ======================
 // SERVER STARTUP
 // ======================
@@ -365,4 +409,3 @@ function shutdown() {
 
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
-
