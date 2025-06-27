@@ -41,18 +41,21 @@ export const songs = pgTable("songs", {
   vocalStyle: text("vocal_style"),
   tempo: integer("tempo"),
   songLength: integer("song_length"),
+  duration: decimal("duration"), // Duration in seconds
+  audioUrl: text("audio_url"), // Public URL for audio file
   voiceSampleId: integer("voice_sample_id").references(() => voiceSamples.id),
   generatedAudioPath: text("generated_audio_path"),
   status: text("status").default("pending"),
   generationProgress: integer("generation_progress").default(0),
   sections: jsonb("sections"),
   settings: jsonb("settings"),
+  watermark: jsonb("watermark"), // Watermark configuration
   planRestricted: boolean("plan_restricted").default(false),
   playCount: integer("play_count").default(0),
   likes: integer("likes").default(0),
   rating: decimal("rating"),
-  parentSongId: integer("parent_song_id").references(() => songs.id), // For remixes/forks
-  forkedFromId: integer("forked_from_id").references(() => songs.id), // Original source
+  parentSongId: integer("parent_song_id"), // For remixes/forks - references songs.id
+  forkedFromId: integer("forked_from_id"), // Original source - references songs.id
   isRemix: boolean("is_remix").default(false),
   isDeleted: boolean("is_deleted").default(false),
   createdAt: timestamp("created_at").defaultNow(),
@@ -111,6 +114,14 @@ export interface AudioFeatures {
   energy: number;
   valence: number;
   danceability: number;
+}
+
+export interface WatermarkConfig {
+  hasWatermark: boolean;
+  watermarkType?: 'audio' | 'visual' | 'both';
+  intensity?: 'light' | 'medium' | 'heavy';
+  position?: 'start' | 'middle' | 'end' | 'throughout';
+  text?: string;
 }
 
 export interface MelodyPhrase {

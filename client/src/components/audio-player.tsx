@@ -18,14 +18,16 @@ import {
   SkipBack,
   SkipForward
 } from "lucide-react"
-import type { Song, SongSection } from "@shared/schema"
+import type { Song, SongSection, WatermarkConfig } from "@shared/schema"
 import { formatTime } from "@/lib/utils"
-import WatermarkIndicator from "./watermark-indicator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
-
 interface AudioPlayerProps {
-  song: Song;
+  song: Song & {
+    duration?: number | string;
+    audioUrl?: string;
+    watermark?: WatermarkConfig | null;
+  };
   className?: string;
   onUpgrade?: () => void;
   autoPlay?: boolean;
@@ -38,9 +40,25 @@ interface AudioPlayerProps {
   purchaseStatus?: 'none' | 'pending' | 'completed';
 }
 
+interface WatermarkIndicatorProps {
+  watermark?: WatermarkConfig | null;
+  hasWatermark: boolean;
+}
+
+const WatermarkIndicator = ({ watermark, hasWatermark }: WatermarkIndicatorProps) => {
+  if (!hasWatermark || !watermark?.hasWatermark) return null;
+  
+  return (
+    <div className="flex items-center gap-1 text-xs text-orange-500">
+      <AlertCircle className="w-3 h-3" />
+      <span>Watermarked</span>
+    </div>
+  );
+};
+
 const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
-export default function AudioPlayer({ 
+export default function AudioPlayerFixed({ 
   song, 
   className = "", 
   onUpgrade,
@@ -49,71 +67,73 @@ export default function AudioPlayer({
   onTrackEnd,
   onNext,
   onPrevious,
+  showSections = true,
   onPurchaseRequired,
   purchaseStatus = 'none'
 }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(song.duration || 0);
-  const [volume, setVolume] = useState(0.7);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isReady, setIsReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasUserInteracted, setHasUserInteracted] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const [currentSection, setCurrentSection] = useState('');
-  const [showSectionList, setShowSectionList] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState<typeof PLAYBACK_RATES[number]>(1);
+  const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
 
-  // Memoize audio URL to prevent unnecessary recalculations
-  const audioUrl = useMemo(() => {
-    if (!song?.audioUrl && !song?.generatedAudioPath) return null;
+  // Get audio URL from song
+  const audioUrl = song.audioUrl || song.generatedAudioPath || null;
+  
+  // Parse duration safely
+  const songDuration = useMemo(() => {
+    if (typeof song.duration === 'number') return song.duration;
+    if (typeof song.duration === 'string') return parseFloat(song.duration) || 0;
+    return 0;
+  }, [song.duration]);
 
-    const url = song.audioUrl || song.generatedAudioPath;
-
+  // Parse sections safely
+  const sections = useMemo(() => {
     try {
-      // Handle relative URLs
-      if (url.startsWith('/')) {
-        return `${window.location.origin}${url}`;
+      if (Array.isArray(song.sections)) return song.sections as SongSection[];
+      if (typeof song.sections === 'object' && song.sections) {
+        return Object.values(song.sections).filter(s => s && typeof s === 'object') as SongSection[];
       }
-
-      // Validate absolute URLs
-      new URL(url);
-      return url;
+      return [];
     } catch {
-      console.warn('Invalid audio URL:', url);
+      return [];
+    }
+  }, [song.sections]);
+
+  // Parse watermark safely
+  const watermarkConfig = useMemo(() => {
+    try {
+      if (typeof song.watermark === 'object' && song.watermark) {
+        return song.watermark as WatermarkConfig;
+      }
+      return null;
+    } catch {
       return null;
     }
-  }, [song]);
+  }, [song.watermark]);
 
-  // Initialize audio element and event listeners
+  // Audio event handlers
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !audioUrl) return;
 
-    const handleLoadStart = () => {
-      setIsLoading(true);
+    const handleLoadStart = () => setIsLoading(true);
+    
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration || songDuration);
+      setIsLoading(false);
       setError(null);
     };
 
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration || 0);
-      setIsReady(true);
-      setIsLoading(false);
-
-      // Attempt autoplay if enabled and user has interacted
-      if (autoPlay && hasUserInteracted) {
-        audio.play().catch(err => {
-          console.log('Autoplay blocked:', err);
-        });
-      }
-    };
-
     const handleTimeUpdate = () => {
-      if (!isDragging && !isNaN(audio.duration)) {
+      if (!isDragging) {
         setCurrentTime(audio.currentTime);
         updateCurrentSection(audio.currentTime);
       }
@@ -121,18 +141,15 @@ export default function AudioPlayer({
 
     const handleEnded = () => {
       setIsPlaying(false);
-      if (loop) {
-        audio.currentTime = 0;
-        audio.play().catch(console.error);
-      } else {
-        onTrackEnd?.();
+      if (onTrackEnd) {
+        onTrackEnd();
       }
     };
 
     const handleError = () => {
-      const errorMessages = {
+      const errorMessages: Record<number, string> = {
         1: 'Playback aborted',
-        2: 'Network error',
+        2: 'Network error', 
         3: 'Decoding error',
         4: 'Unsupported format'
       };
@@ -153,130 +170,68 @@ export default function AudioPlayer({
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
     };
-  }, [audioUrl, autoPlay, loop, onTrackEnd, hasUserInteracted, isDragging]);
+  }, [audioUrl, autoPlay, loop, onTrackEnd, hasUserInteracted, isDragging, songDuration]);
 
   // Update current section
   const updateCurrentSection = useCallback((time: number) => {
-    if (!song.sections?.length) return;
+    if (!sections.length) return;
 
-    const section = song.sections.find(s => 
-      time >= s.startTime && time < s.endTime
+    const section = sections.find((s: SongSection) => 
+      time >= s.start && time < s.end
     );
-    setCurrentSection(section?.type || '');
-  }, [song.sections]);
+    setCurrentSection(section?.label || '');
+  }, [sections]);
 
-  // Play/pause toggle with better error handling
+  // Play/pause toggle
   const togglePlay = useCallback(async () => {
     const audio = audioRef.current;
-    if (!audio) return;
+    if (!audio || !audioUrl) return;
 
-    setHasUserInteracted(true);
+    if (!hasUserInteracted) {
+      setHasUserInteracted(true);
+    }
 
     try {
       if (isPlaying) {
         audio.pause();
         setIsPlaying(false);
       } else {
-        await handlePlay();
+        await audio.play();
+        setIsPlaying(true);
       }
     } catch (err) {
-      setError('Failed to play audio. Try interacting with the page first.');
+      setError('Playback failed');
       console.error('Playback error:', err);
     }
-  }, [isPlaying]);
+  }, [isPlaying, audioUrl, hasUserInteracted]);
 
-  const handlePlay = async () => {
-    if (audioRef.current) {
-      try {
-        await audioRef.current.play();
-        setIsPlaying(true);
-        trackPlayAnalytics();
-      } catch (err) {
-        if (err instanceof Error && err.name === 'NotAllowedError') {
-          setError('Playback blocked. Please interact with the page first.');
-        }
-      }
-    }
-  };
-
-  // Track play analytics with payment status
-  const trackPlayAnalytics = useCallback(async () => {
-    try {
-      const sessionId = sessionStorage.getItem('sessionId') || 
-        crypto.randomUUID();
-      sessionStorage.setItem('sessionId', sessionId);
-
-      // Check if this is a paid/purchased track
-      const isPurchased = await fetch(`/api/verify-purchase/${song.id}`, {
-        method: 'GET',
-        credentials: 'include'
-      }).then(res => res.ok).catch(() => false);
-
-      const response = await fetch(`/api/play/${song.id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ 
-          sessionId,
-          userId: null, // Add user ID if you have auth
-          isPurchased,
-          playType: isPurchased ? 'purchased' : 'preview'
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to track play');
-      }
-    } catch (error) {
-      console.warn('Failed to track play:', error);
-      // Implement retry logic here if needed
-    }
-  }, [song.id]);
-
-  // Handle seeking with debouncing
-  const handleSeekStart = useCallback(() => {
+  // Time seeking
+  const handleTimeChange = useCallback((values: number[]) => {
+    const newTime = values[0];
+    setCurrentTime(newTime);
     setIsDragging(true);
-  }, []);
-
-  const handleSeekEnd = useCallback(() => {
-    setIsDragging(false);
+    
     const audio = audioRef.current;
     if (audio) {
-      audio.currentTime = currentTime;
+      audio.currentTime = newTime;
     }
-  }, [currentTime]);
+    
+    setTimeout(() => setIsDragging(false), 100);
+  }, []);
 
-  const handleSeek = useCallback(([value]: number[]) => {
-    setCurrentTime(Math.min(Math.max(value, 0), duration));
-  }, [duration]);
-
-  // Volume control with persistence
-  const handleVolumeChange = useCallback(([value]: number[]) => {
-    const newVolume = Math.min(Math.max(value, 0), 1);
+  // Volume control
+  const handleVolumeChange = useCallback((values: number[]) => {
+    const newVolume = values[0];
     setVolume(newVolume);
     setIsMuted(newVolume === 0);
-
+    
     const audio = audioRef.current;
     if (audio) {
       audio.volume = newVolume;
     }
-
-    // Persist volume preference
-    localStorage.setItem('audioPlayerVolume', newVolume.toString());
   }, []);
 
-  // Initialize volume from localStorage
-  useEffect(() => {
-    const savedVolume = localStorage.getItem('audioPlayerVolume');
-    if (savedVolume) {
-      const volumeValue = parseFloat(savedVolume);
-      if (!isNaN(volumeValue)) {
-        setVolume(volumeValue);
-        setIsMuted(volumeValue === 0);
-      }
-    }
-  }, []);
-
+  // Mute toggle
   const toggleMute = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -290,494 +245,220 @@ export default function AudioPlayer({
     }
   }, [isMuted, volume]);
 
-  // Playback speed cycling
-  const changePlaybackRate = useCallback(() => {
+  // Playback rate change
+  const handlePlaybackRateChange = useCallback((rate: number) => {
+    setPlaybackRate(rate);
     const audio = audioRef.current;
-    if (!audio) return;
-
-    const currentIndex = PLAYBACK_RATES.indexOf(playbackRate);
-    const newIndex = (currentIndex + 1) % PLAYBACK_RATES.length;
-    const newRate = PLAYBACK_RATES[newIndex];
-
-    audio.playbackRate = newRate;
-    setPlaybackRate(newRate);
-  }, [playbackRate]);
-
-  // Section navigation
-  const jumpToSection = useCallback((startTime: number) => {
-    const audio = audioRef.current;
-    if (!audio || !isReady) return;
-
-    setHasUserInteracted(true);
-    audio.currentTime = startTime;
-    setCurrentTime(startTime);
-    updateCurrentSection(startTime);
-
-    if (!isPlaying) {
-      togglePlay();
+    if (audio) {
+      audio.playbackRate = rate;
     }
-  }, [isPlaying, isReady, togglePlay, updateCurrentSection]);
+  }, []);
 
-  // Skip forward/backward
+  // Skip controls
   const skipForward = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio) return;
-
-    audio.currentTime = Math.min(audio.currentTime + 15, duration);
+    if (audio) {
+      audio.currentTime = Math.min(audio.currentTime + 10, duration);
+    }
   }, [duration]);
 
   const skipBackward = useCallback(() => {
     const audio = audioRef.current;
-    if (!audio) return;
-
-    audio.currentTime = Math.max(audio.currentTime - 15, 0);
+    if (audio) {
+      audio.currentTime = Math.max(audio.currentTime - 10, 0);
+    }
   }, []);
 
-  // Keyboard shortcuts using native event handlers
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      // Only handle if audio player is focused or no input is focused
-      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
-        return;
-      }
+  // Progress calculation
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
-      switch (e.code) {
-        case 'Space':
-          e.preventDefault();
-          togglePlay();
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          skipForward();
-          break;
-        case 'ArrowLeft':
-          e.preventDefault();
-          skipBackward();
-          break;
-        case 'KeyM':
-          e.preventDefault();
-          toggleMute();
-          break;
-        case 'KeyR':
-          e.preventDefault();
-          changePlaybackRate();
-          break;
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyPress);
-    return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [togglePlay, skipForward, skipBackward, toggleMute, changePlaybackRate]);
-
-  // Download handler with payment verification
-  const handleDownload = useCallback(async () => {
-    if (!audioUrl || !song?.id) return;
-
-    setIsDownloading(true);
-    try {
-      // First verify if user has purchased this song
-      const verifyResponse = await fetch(`/api/verify-purchase/${song.id}`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (!verifyResponse.ok) {
-        // If not purchased, trigger payment flow
-        if (onUpgrade) {
-          onUpgrade(); // This should open the payment modal
-          setError('Purchase required to download this song');
-          return;
-        } else {
-          setError('Download not available - payment required');
-          return;
-        }
-      }
-
-      const purchaseData = await verifyResponse.json();
-      if (!purchaseData.verified) {
-        setError('Purchase verification failed - please contact support');
-        return;
-      }
-
-      // If verified, proceed with download using the secure endpoint
-      const downloadResponse = await fetch(`/api/download/secure/${song.id}`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${purchaseData.sessionId}`,
-        }
-      });
-
-      if (!downloadResponse.ok) {
-        throw new Error('Download failed - server error');
-      }
-
-      const blob = await downloadResponse.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `${song.title.replace(/[^a-z0-9]/gi, '_')}_${purchaseData.tier}.${purchaseData.format || 'mp3'}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(downloadUrl);
-      document.body.removeChild(a);
-
-      // Track successful download
-      trackPlayAnalytics();
-    } catch (err) {
-      console.error('Download failed:', err);
-      setError('Failed to download audio - please try again');
-    } finally {
-      setIsDownloading(false);
-    }
-  }, [audioUrl, song, onUpgrade]);
-
-  if (!audioUrl) {
+  // Error state
+  if (error) {
     return (
-      <Card className={`bg-white/5 border-white/10 backdrop-blur-lg ${className}`}>
+      <Card className={`w-full ${className}`}>
         <CardContent className="p-6">
-          <div className="text-center text-white/60 flex items-center justify-center space-x-2">
-            <AlertCircle className="h-5 w-5" />
-            <span>Audio unavailable for this song</span>
+          <div className="flex items-center gap-3 text-red-500">
+            <AlertCircle className="w-5 h-5" />
+            <span>{error}</span>
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const showFullControls = isReady && duration > 0;
+  // No audio URL state
+  if (!audioUrl) {
+    return (
+      <Card className={`w-full ${className}`}>
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3 text-gray-500">
+            <AlertCircle className="w-5 h-5" />
+            <span>No audio available</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card className={`bg-white/5 border-white/10 backdrop-blur-lg ${className}`}>
+    <Card className={`w-full ${className}`}>
+      <audio
+        ref={audioRef}
+        src={audioUrl}
+        loop={loop}
+        preload="metadata"
+      />
+      
       <CardContent className="p-6">
-        <audio
-          ref={audioRef}
-          src={audioUrl}
-          preload="metadata"
-          loop={loop}
-        />
-
-        <div className="space-y-4">
-          {/* Song Info */}
-          <div className="text-center">
-            <h3 className="text-lg font-semibold text-white flex items-center justify-center">
-              {song.title}
-              {isLoading && <Loader2 className="h-4 w-4 ml-2 animate-spin" />}
-            </h3>
-            <p className="text-sm text-white/60 capitalize">{song.genre}</p>
-            {song.watermark && <WatermarkIndicator />}
+        {/* Song Info Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex-1">
+            <h3 className="font-semibold text-lg mb-1">{song.title}</h3>
+            <p className="text-sm text-muted-foreground">
+              {song.genre} • {formatTime(duration)}
+            </p>
           </div>
+          
+          <div className="flex items-center gap-2">
+            <WatermarkIndicator 
+              watermark={watermarkConfig}
+              hasWatermark={watermarkConfig?.hasWatermark || false}
+            />
+          </div>
+        </div>
 
-          {/* Error Display */}
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-md p-3 text-sm text-red-300">
-              <div className="flex items-center space-x-2">
-                <AlertCircle className="h-4 w-4" />
-                <span>{error}</span>
-              </div>
-            </div>
-          )}
+        {/* Progress Bar */}
+        <div className="space-y-2 mb-4">
+          <Slider
+            value={[currentTime]}
+            onValueChange={handleTimeChange}
+            max={duration}
+            step={0.1}
+            className="w-full"
+            disabled={isLoading}
+          />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{formatTime(currentTime)}</span>
+            <span>{formatTime(duration)}</span>
+          </div>
+        </div>
 
-          {/* Progress Display */}
-          {showFullControls && (
-            <div className="space-y-2">
-              <Progress value={progress} className="h-2" />
-              <div className="flex justify-between text-xs text-white/60">
-                <span>{formatTime(currentTime)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
-              <Slider
-                value={[currentTime]}
-                max={duration}
-                step={0.1}
-                onValueChange={handleSeek}
-                onPointerDown={handleSeekStart}
-                onPointerUp={handleSeekEnd}
-                className="w-full"
-              />
-            </div>
-          )}
+        {/* Main Controls */}
+        <div className="flex items-center justify-center gap-4 mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={skipBackward}
+            disabled={isLoading}
+          >
+            <SkipBack className="w-4 h-4" />
+          </Button>
 
-          {/* Main Controls */}
-          <div className="flex items-center justify-center space-x-4">
-            {onPrevious && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onPrevious}
-                    className="h-10 w-10"
-                    aria-label="Previous track"
-                  >
-                    <SkipBack className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Previous Track</TooltipContent>
-              </Tooltip>
+          <Button
+            variant="default"
+            size="lg"
+            onClick={togglePlay}
+            disabled={isLoading}
+            className="w-12 h-12 rounded-full"
+          >
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : isPlaying ? (
+              <Pause className="w-5 h-5" />
+            ) : (
+              <Play className="w-5 h-5" />
             )}
+          </Button>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={skipForward}
+            disabled={isLoading}
+          >
+            <SkipForward className="w-4 h-4" />
+          </Button>
+        </div>
+
+        {/* Volume Control */}
+        <div className="flex items-center gap-3 mb-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={toggleMute}
+          >
+            {isMuted ? (
+              <VolumeX className="w-4 h-4" />
+            ) : (
+              <Volume2 className="w-4 h-4" />
+            )}
+          </Button>
+          <Slider
+            value={[isMuted ? 0 : volume]}
+            onValueChange={handleVolumeChange}
+            max={1}
+            step={0.1}
+            className="flex-1"
+          />
+        </div>
+
+        {/* Playback Rate Control */}
+        <div className="flex items-center gap-2 mb-4">
+          <Gauge className="w-4 h-4" />
+          <span className="text-sm">Speed:</span>
+          {PLAYBACK_RATES.map((rate) => (
+            <Button
+              key={rate}
+              variant={playbackRate === rate ? "default" : "ghost"}
+              size="sm"
+              onClick={() => handlePlaybackRateChange(rate)}
+              className="text-xs px-2"
+            >
+              {rate}x
+            </Button>
+          ))}
+        </div>
+
+        {/* Sections Display */}
+        {showSections && sections.length > 0 && (
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <ListMusic className="w-4 h-4" />
+              <span className="text-sm font-medium">Sections</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {sections.map((section: SongSection, index: number) => (
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={togglePlay}
-                  disabled={!isReady || isLoading}
-                  className="h-12 w-12 rounded-full bg-white/10 hover:bg-white/20"
-                  aria-label={isPlaying ? "Pause" : "Play"}
+                  key={`${section.id}-${index}`}
+                  variant={currentSection === section.label ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => {
+                    const audio = audioRef.current;
+                    if (audio) {
+                      audio.currentTime = section.start;
+                    }
+                  }}
+                  className="justify-start text-xs"
                 >
-                  {isLoading ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : isPlaying ? (
-                    <Pause className="h-6 w-6" />
-                  ) : (
-                    <Play className="h-6 w-6" />
-                  )}
+                  {section.label}
+                  <span className="ml-auto text-xs opacity-60">
+                    {formatTime(section.start)}
+                  </span>
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>{isPlaying ? "Pause" : "Play"}</TooltipContent>
-            </Tooltip>
-
-            {onNext && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onNext}
-                    className="h-10 w-10"
-                    aria-label="Next track"
-                  >
-                    <SkipForward className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Next Track</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
-
-          {/* Secondary Controls */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={toggleMute}
-                    aria-label={isMuted ? "Unmute" : "Mute"}
-                  >
-                    {isMuted ? (
-                      <VolumeX className="h-4 w-4" />
-                    ) : (
-                      <Volume2 className="h-4 w-4" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{isMuted ? "Unmute" : "Mute"}</TooltipContent>
-              </Tooltip>
-              <Slider
-                value={[isMuted ? 0 : volume]}
-                max={1}
-                step={0.05}
-                onValueChange={handleVolumeChange}
-                className="w-24"
-              />
+              ))}
             </div>
+          </div>
+        )}
 
-            <div className="flex items-center space-x-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={skipBackward}
-                    className="text-xs"
-                    aria-label="Skip backward 15 seconds"
-                  >
-                    -15s
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Skip Backward 15s</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={changePlaybackRate}
-                    className="text-xs flex items-center"
-                    aria-label={`Playback speed (${playbackRate}x)`}
-                  >
-                    <Gauge className="h-3 w-3 mr-1" />
-                    {playbackRate}x
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Playback Speed ({playbackRate}x)</TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={skipForward}
-                    className="text-xs"
-                    aria-label="Skip forward 15 seconds"
-                  >
-                    +15s
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Skip backward 15 seconds</p>
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={skipForward}
-                        className="text-xs"
-                        aria-label="Skip forward 15 seconds"
-                      >
-                        +15s
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Skip Forward 15s</TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleDownload}
-                        disabled={isDownloading}
-                        className="text-xs flex items-center"
-                        aria-label={song.watermark ? "Purchase to download" : "Download audio"}
-                      >
-                        {isDownloading ? (
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        ) : (
-                          <Download className="h-3 w-3 mr-1" />
-                        )}
-                        {song.watermark ? "Buy" : "Download"}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {song.watermark ? "Purchase required for download" : "Download Audio File"}
-                    </TooltipContent>
-                  </Tooltip>
-                  </div>
-                  </div>
-
-                  {/* Section Navigation */}
-                  {showFullControls && song.sections?.length > 0 && (
-                  <div className="space-y-3 border-t border-white/10 pt-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-white/60">
-                      Current: {currentSection || 'Intro'}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowSectionList(!showSectionList)}
-                      className="text-xs flex items-center"
-                      aria-label={showSectionList ? "Hide sections" : "Show sections"}
-                    >
-                      <ListMusic className="h-3 w-3 mr-1" />
-                      {showSectionList ? 'Hide' : 'Show'} Sections
-                    </Button>
-                  </div>
-
-                  {/* Visual Timeline */}
-                  <div className="relative h-8 bg-white/5 rounded-lg overflow-hidden">
-                    {song.sections.map((section, index) => {
-                      const sectionWidth = ((section.endTime - section.startTime) / duration) * 100;
-                      const sectionLeft = (section.startTime / duration) * 100;
-                      const isCurrent = currentTime >= section.startTime && currentTime < section.endTime;
-
-                      return (
-                        <button
-                          key={index}
-                          onClick={() => jumpToSection(section.startTime)}
-                          className={`absolute h-full text-xs transition-all ${
-                            isCurrent 
-                              ? 'bg-purple-500/80 text-white' 
-                              : 'bg-white/20 text-white/70 hover:bg-white/30'
-                          }`}
-                          style={{
-                            left: `${sectionLeft}%`,
-                            width: `${sectionWidth}%`,
-                          }}
-                          aria-label={`Jump to ${section.type}`}
-                        >
-                          <span className="px-1 truncate">{section.type}</span>
-                        </button>
-                      );
-                    })}
-                    <div 
-                      className="absolute top-0 h-full bg-purple-500/30 pointer-events-none"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-
-                  {/* Detailed Section List */}
-                  {showSectionList && (
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {song.sections.map((section, index) => (
-                        <div 
-                          key={index}
-                          className={`flex items-center justify-between p-2 rounded-md ${
-                            currentSection === section.type 
-                              ? 'bg-purple-500/20 border border-purple-500/40' 
-                              : 'bg-white/5 hover:bg-white/10'
-                          }`}
-                        >
-                          <div>
-                            <div className="text-sm font-medium">{section.type}</div>
-                            <div className="text-xs text-white/60">
-                              {formatTime(section.startTime)} - {formatTime(section.endTime)}
-                            </div>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => jumpToSection(section.startTime)}
-                            aria-label={`Jump to ${section.type}`}
-                          >
-                            Jump
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  </div>
-                  )}
-
-                  {/* Upgrade Prompt */}
-                  {onUpgrade && (
-                  <div className="border-t border-white/10 pt-4 text-center">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={onUpgrade}
-                    className="w-full"
-                  >
-                    Upgrade for Full Features
-                  </Button>
-                  </div>
-                  )}
-                  </div>
-                  </CardContent>
-                  </Card>
-                  );
-                  }
+        {/* Current Section Indicator */}
+        {currentSection && (
+          <div className="mt-2 text-center">
+            <span className="text-xs bg-primary/10 px-2 py-1 rounded">
+              Now playing: {currentSection}
+            </span>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
