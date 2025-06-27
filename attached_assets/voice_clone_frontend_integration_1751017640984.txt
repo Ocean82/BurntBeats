@@ -1,0 +1,20 @@
+// React component example
+const VoiceSelector = () => {
+  const [voices, setVoices] = useState([]);
+
+  useEffect(() => {
+    fetch('/api/voice-cloning/voices')
+      .then(res => res.json())
+      .then(setVoices);
+  }, []);
+
+  return (
+    <select>
+      {voices.map(voice => (
+        <option key={voice.id} value={voice.audioPath}>
+          {voice.name} {voice.isPublic ? '🌍' : '🔒'}
+        </option>
+      ))}
+    </select>
+  );
+}

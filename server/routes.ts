@@ -34,6 +34,11 @@ import {
   createRateLimiter
 } from './middleware/music-error-handler';
 import { 
+  aiChatRateLimit, 
+  validateAIChatInput, 
+  aiChatErrorHandler 
+} from './middleware/ai-chat-middleware';
+import { 
   checkPlanQuota, 
   requireFeature, 
   requirePlan 
@@ -606,9 +611,10 @@ Taking over, making vows`
   app.post("/api/pricing/upgrade", PricingAPI.upgradePlan);
   app.get("/api/pricing/subscription/:userId", PricingAPI.getUserSubscription);
 
-  // AI Chat API Routes
-  app.post("/api/ai-chat", AIChatService.handleChat);
-  app.get("/api/ai-advice", AIChatService.getRandomAdvice);
+  // AI Chat API Routes with proper middleware
+  app.post("/api/ai-chat", aiChatRateLimit, validateAIChatInput, AIChatService.handleChat, aiChatErrorHandler);
+  app.get("/api/ai-advice", generalRateLimit, AIChatService.getRandomAdvice);
+  app.get("/api/ai-roast", generalRateLimit, AIChatService.getRandomRoast);
 
   // Size-based download payment (simplified for your Stripe setup)
   app.post("/api/create-payment-intent", async (req: Request, res: Response) => {

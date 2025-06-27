@@ -1,0 +1,120 @@
+// src/components/VoiceCloner.tsx
+import { useVoiceCloning } from '../hooks/useVoiceCloning';
+import { Button } from './ui/button';
+import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Switch } from './ui/switch';
+import { Label } from './ui/label';
+import { Wand2, Mic } from 'lucide-react';
+import { useAudioRecorder } from '../hooks/use-audio-recorder';
+
+export function VoiceCloner() {
+  const { 
+    cloneVoice, 
+    getAvailableVoices, 
+    isCloning, 
+    isLoadingVoices, 
+    voices 
+  } = useVoiceCloning();
+  const {
+    startRecording,
+    stopRecording,
+    isRecording,
+    audioBlob,
+    audioUrl
+  } = useAudioRecorder();
+  
+  const [selectedVoice, setSelectedVoice] = useState<string>('');
+  const [voiceName, setVoiceName] = useState('My Voice');
+  const [makePublic, setMakePublic] = useState(false);
+
+  const handleCloneVoice = () => {
+    const audio = audioBlob || selectedVoice;
+    if (!audio) return;
+
+    cloneVoice.mutate({ 
+      audio, 
+      name: voiceName, 
+      makePublic 
+    });
+  };
+
+  return (
+    <Card className="bg-card">
+      <CardHeader>
+        <CardTitle>Voice Cloning</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <Label>Select Existing Voice</Label>
+          <Select 
+            value={selectedVoice} 
+            onValueChange={(value) => {
+              setSelectedVoice(value);
+              if (audioBlob) {
+                URL.revokeObjectURL(audioUrl!);
+              }
+            }}
+            disabled={isLoadingVoices}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select a voice sample" />
+            </SelectTrigger>
+            <SelectContent>
+              {voices.map((voice) => (
+                <SelectItem key={voice.id} value={voice.audioUrl}>
+                  {voice.name} {voice.isPublic ? '🌍' : '🔒'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
+          <Label>Voice Name</Label>
+          <input
+            type="text"
+            value={voiceName}
+            onChange={(e) => setVoiceName(e.target.value)}
+            className="w-full p-2 border rounded"
+            placeholder="Name your voice"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Switch 
+            id="make-public" 
+            checked={makePublic}
+            onCheckedChange={setMakePublic}
+          />
+          <Label htmlFor="make-public">Make Public</Label>
+        </div>
+
+        <div>
+          <Label>Record New Sample</Label>
+          <div className="flex gap-2 mt-2">
+            <Button
+              onClick={isRecording ? stopRecording : startRecording}
+              variant={isRecording ? 'destructive' : 'default'}
+            >
+              <Mic className="w-4 h-4 mr-2" />
+              {isRecording ? 'Stop' : 'Record'}
+            </Button>
+            
+            {audioUrl && (
+              <audio controls src={audioUrl} className="w-full" />
+            )}
+          </div>
+        </div>
+
+        <Button
+          onClick={handleCloneVoice}
+          disabled={isCloning || (!selectedVoice && !audioBlob)}
+        >
+          <Wand2 className="w-4 h-4 mr-2" />
+          {isCloning ? 'Cloning...' : 'Clone Voice'}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}

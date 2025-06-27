@@ -1,0 +1,36 @@
+// src/services/file-storage-service.ts
+import fs from 'fs/promises';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
+
+export class FileStorageService {
+  constructor(private storagePath: string) {
+    fs.mkdir(this.storagePath, { recursive: true });
+  }
+
+  async storeFile(fileData: Buffer, extension = 'wav'): Promise<string> {
+    const fileName = `${uuidv4()}.${extension}`;
+    const filePath = path.join(this.storagePath, fileName);
+    
+    await fs.writeFile(filePath, fileData);
+    return fileName;
+  }
+
+  async getFile(fileName: string): Promise<Buffer> {
+    const filePath = path.join(this.storagePath, fileName);
+    return fs.readFile(filePath);
+  }
+
+  async deleteFile(fileName: string): Promise<void> {
+    const filePath = path.join(this.storagePath, fileName);
+    await fs.unlink(filePath).catch(() => {});
+  }
+
+  getFilePath(fileName: string): string {
+    return path.join(this.storagePath, fileName);
+  }
+
+  getPublicUrl(fileName: string): string {
+    return `/api/voices/${fileName}`;
+  }
+}

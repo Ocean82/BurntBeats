@@ -20,6 +20,26 @@ interface PostPurchaseFeedback {
   generatedAt: string;
 }
 
+interface LyricAnalysis {
+  overallScore: number;
+  strengths: string[];
+  improvements: string[];
+  mood: string;
+  genre: string;
+  structure: string;
+  feedback: string;
+}
+
+interface PostPurchaseFeedback {
+  songId: string;
+  songTitle: string;
+  lyrics: string;
+  purchaseTier: 'bonus' | 'base' | 'top';
+  userEmail: string;
+  analysis: LyricAnalysis;
+  generatedAt: string;
+}
+
 export class AIChatService {
   private static sassyPersonalities = {
     roast: [
@@ -131,7 +151,7 @@ export class AIChatService {
     ]
   };
 
-  private static getRandomResponse(category: keyof typeof AIChatService.sassyPersonalities): string {
+  public static getRandomResponse(category: keyof typeof AIChatService.sassyPersonalities): string {
     const responses = AIChatService.sassyPersonalities[category];
     return responses[Math.floor(Math.random() * responses.length)];
   }

@@ -1,0 +1,19 @@
+// src/routes/voice-cloning.ts
+import { Router } from 'express';
+const router = Router();
+
+router.post('/clone', async (req, res) => {
+  const { audio, name, makePublic } = req.body;
+  const clone = await VoiceCloningService.cloneVoice(
+    req.user.id,
+    audio,
+    name,
+    makePublic
+  );
+  res.json(clone);
+});
+
+router.get('/voices', async (req, res) => {
+  const voices = await VoiceCloningService.getAvailableVoices(req.user.id);
+  res.json(voices);
+});

@@ -1,0 +1,148 @@
+// src/services/voice-cloning-service.ts
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import path from 'path';
+import fs from 'fs/promises';
+import { VoiceSample } from '../types/voice-types';
+
+const execAsync = promisify(exec);
+
+export class VoiceCloningService {
+  private static instance: VoiceCloningService;
+
+  private constructor() {}
+
+  public static getInstance(): VoiceCloningService {
+    if (!VoiceCloningService.instance) {
+      VoiceCloningService.instance = new VoiceCloningService();
+    }
+    return VoiceCloningService.instance;
+  }
+
+  async cloneVoice(userId: string, audio: Blob | string, name: string, makePublic: boolean): Promise<VoiceSample> {
+    try {
+      // Save audio to temporary file if it's a Blob
+      let audioPath: string;
+      if (typeof audio === 'string') {
+        audioPath = audio;
+      } else {
+        const tempDir = path.join(__dirname, 'temp');
+        await fs.mkdir(tempDir, { recursive: true });
+        audioPath = path.join(tempDir, `voice_sample_${Date.now()}.wav`);
+        await fs.writeFile(audioPath, Buffer.from(await audio.arrayBuffer()));
+      }
+
+      // Process the voice sample
+      const result = await this.processVoiceSample(audioPath, {
+        userId,
+        name,
+        makePublic
+      });
+
+      // Clean up temporary file if we created it
+      if (typeof audio !== 'string') {
+        await fs.unlink(audioPath);
+      }
+
+      return {
+        id: result.voiceId,
+        userId,
+        name,
+        audioUrl: result.sampleUrl,
+        anthemUrl: result.anthemUrl,
+        isPublic: makePublic,
+        characteristics: result.characteristics,
+        createdAt: new Date()
+      };
+    } catch (error) {
+      console.error('Voice cloning failed:', error);
+      throw new Error('Failed to clone voice');
+    }
+  }
+
+  async getAvailableVoices(userId: string): Promise<VoiceSample[]> {
+    try {
+      // In a real implementation, this would query your database
+      const publicVoices = await this.loadPublicVoices();
+      const userVoices = await this.loadUserVoices(userId);
+      
+      return [...publicVoices, ...userVoices];
+    } catch (error) {
+      console.error('Failed to load voices:', error);
+      throw new Error('Failed to load available voices');
+    }
+  }
+
+  private async processVoiceSample(audioPath: string, options: any) {
+    // This would interface with your actual voice processing pipeline
+    const voiceId = `voice_${Date.now()}`;
+    
+    // Generate sample URLs (in production these would be actual file paths)
+    const sampleUrl = `/api/voices/${voiceId}/sample`;
+    const anthemUrl = `/api/voices/${voiceId}/anthem`;
+
+    return {
+      voiceId,
+      sampleUrl,
+      anthemUrl,
+      characteristics: await this.analyzeVoiceCharacteristics(audioPath),
+      processingTime: Date.now()
+    };
+  }
+
+  private async analyzeVoiceCharacteristics(audioPath: string) {
+    // This would use your actual analysis methods
+    return {
+      pitchRange: [180, 280],
+      timbre: 'warm',
+      clarity: 0.85,
+      stability: 0.9,
+      genreSuitability: {
+        pop: 0.92,
+        rock: 0.85,
+        jazz: 0.88,
+        classical: 0.78
+      }
+    };
+  }
+
+  private async loadPublicVoices(): Promise<VoiceSample[]> {
+    // Mock implementation - replace with database query
+    return [
+      {
+        id: 'voice_public_1',
+        userId: 'system',
+        name: 'Default Male Voice',
+        audioUrl: '/api/voices/public/male_sample',
+        anthemUrl: '/api/voices/public/male_anthem',
+        isPublic: true,
+        characteristics: {
+          pitchRange: [85, 180],
+          timbre: 'deep',
+          clarity: 0.9
+        },
+        createdAt: new Date('2023-01-01')
+      }
+    ];
+  }
+
+  private async loadUserVoices(userId: string): Promise<VoiceSample[]> {
+    // Mock implementation - replace with database query
+    return [
+      {
+        id: `voice_user_${userId}_1`,
+        userId,
+        name: 'My Cloned Voice',
+        audioUrl: `/api/voices/user/${userId}/sample_1`,
+        anthemUrl: `/api/voices/user/${userId}/anthem_1`,
+        isPublic: false,
+        characteristics: {
+          pitchRange: [180, 280],
+          timbre: 'warm',
+          clarity: 0.85
+        },
+        createdAt: new Date()
+      }
+    ];
+  }
+}

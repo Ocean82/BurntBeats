@@ -1,0 +1,8 @@
+CREATE TABLE voice_clones (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  audio_path VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  is_public BOOLEAN DEFAULT TRUE
+);
