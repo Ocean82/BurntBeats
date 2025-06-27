@@ -8,11 +8,11 @@
   },
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx server/index.ts",
-    "build": "node package-scripts.js build",
+    "build": "node quick-deployment-fix.cjs",
     "build:client": "node package-scripts.js build:client",
     "build:server": "node package-scripts.js build:server",
     "build:watch": "node package-scripts.js watch",
-    "start": "node package-scripts.js start",
+    "start": "node dist/index.cjs",
     "db:migrate": "tsx server/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "test": "jest",
