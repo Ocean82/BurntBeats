@@ -202,6 +202,41 @@ Taking over, making vows`
     }
   });
 
+  // Real-time analytics endpoint using Replit DB
+  app.get("/api/beats/realtime/:beatId", async (req: Request, res: Response) => {
+    try {
+      const { beatId } = req.params;
+      const { BeatAnalyticsService } = await import('./services/beat-analytics-service');
+      
+      const realtimePlays = await BeatAnalyticsService.getRealTimePlays(beatId);
+      const fullStats = await BeatAnalyticsService.getBeatStats(beatId);
+      
+      res.json({
+        beatId,
+        realtimePlays,
+        cached: !!fullStats,
+        stats: fullStats
+      });
+    } catch (error: any) {
+      console.error("Failed to get real-time analytics:", error);
+      res.status(500).json({ message: "Error getting real-time analytics: " + error.message });
+    }
+  });
+
+  // Trending beats from cache (super fast)
+  app.get("/api/beats/trending-cache", async (req: Request, res: Response) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 5;
+      const { BeatAnalyticsService } = await import('./services/beat-analytics-service');
+      
+      const trendingIds = await BeatAnalyticsService.getTrendingFromCache(limit);
+      res.json({ trending: trendingIds, source: 'replit-cache' });
+    } catch (error: any) {
+      console.error("Failed to get trending from cache:", error);
+      res.status(500).json({ message: "Error getting trending beats: " + error.message });
+    }
+  });
+
   app.get("/api/top-beats", async (req: Request, res: Response) => {
     try {
       const limit = parseInt(req.query.limit as string) || 10;
