@@ -63,32 +63,46 @@ export class MusicAPI {
         });
       }
 
-      // Generate song with retry logic
-      const generationResult = await this.audioGenerator.generateWithRetry(
-        songData,
-        {
-          userId: user?.id,
-          quality: 'standard',
-        }
-      );
+      // Generate song using MusicGenerator
+      const { MusicGenerator } = await import('../music-generator');
+      const generationResult = await MusicGenerator.generateSong({
+        title: songData.title,
+        lyrics: songData.lyrics,
+        genre: songData.genre,
+        tempo: songData.tempo,
+        key: songData.key,
+        duration: songData.duration,
+        mood: songData.mood,
+        vocalStyle: songData.vocalStyle,
+        singingStyle: songData.singingStyle,
+        tone: songData.tone,
+        userId: user?.id
+      });
 
-      if (!generationResult.success) {
+      if (!generationResult || generationResult.status === 'failed') {
         logger.error('Song generation failed', {
-          error: generationResult.error,
+          error: generationResult?.error || 'Unknown error',
           requestId,
         });
         return res.status(400).json({
           error: 'Song generation failed',
-          details: generationResult.error,
+          details: generationResult?.error || 'Unknown error',
           requestId,
         });
       }
 
       // Store song in database
       const storedSong = await MusicAPI.songRepo.create({
-        ...generationResult.song,
-        userId: user?.id,
+        title: generationResult.title,
+        lyrics: generationResult.lyrics,
+        genre: generationResult.genre,
+        tempo: generationResult.tempo,
+        key: generationResult.key,
+        duration: generationResult.duration,
+        generatedAudioPath: generationResult.generatedAudioPath,
+        userId: user?.id?.toString() || generationResult.userId,
         status: 'completed',
+        generationProgress: 100
       });
 
       // Calculate processing time
