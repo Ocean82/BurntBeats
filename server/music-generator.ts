@@ -21,66 +21,27 @@ export class MusicGenerator {
         throw new Error('Lyrics and title are required');
       }
 
-      // Stage 1: Generate melody with enhanced features
-      console.log('Stage 1: Generating melody...');
-      const melodyConfig: MelodyGenerationConfig = {
-        lyrics: songData.lyrics,
-        genre: songData.genre || 'pop',
-        mood: songData.mood || 'happy',
-        tempo: parseInt(songData.tempo?.toString() || '120'),
-        key: songData.key,
-        duration: songData.duration || this.parseDuration(songData.songLength || '0:30')
-      };
-
-      const melodyGenerator = new MelodyGenerator();
-      const melody = await melodyGenerator.generateMelodyFromLyrics(melodyConfig);
-      console.log(`✅ Melody generated: ${melody.noteCount} notes, ${melody.totalDuration.toFixed(1)}s`);
-
-      // Stage 2: Generate basic vocal track (simplified for now)
-      console.log('Stage 2: Processing vocals...');
-      const vocalData = {
-        audioUrl: melody.audioPath,
-        phonemes: this.extractPhonemesFromLyrics(songData.lyrics),
-        timing: this.createVocalTiming(melody),
-        quality: 'standard'
-      };
-
-      // Stage 3: Create final song structure
-      console.log('Stage 3: Finalizing song...');
-      const finalSong = {
-        id: Date.now(),
+      // Generate song using Node.js Music Generator
+      console.log('Generating song with Node.js engine...');
+      const { NodeMusicGenerator } = await import('./services/node-music-generator');
+      const finalSong = await NodeMusicGenerator.generateSong({
         title: songData.title,
         lyrics: songData.lyrics,
         genre: songData.genre || 'pop',
-        tempo: melodyConfig.tempo,
-        key: melody.audioFeatures.key,
-        duration: Math.round(melody.totalDuration),
-        generatedAudioPath: melody.audioPath,
-        audioUrl: melody.audioPath,
-        previewUrl: melody.audioPath,
-        downloadUrl: melody.audioPath,
-        melody: melody,
-        vocals: vocalData,
-        sections: this.createSongSections(songData.lyrics),
-        settings: {
-          mood: songData.mood,
-          vocalStyle: songData.vocalStyle,
-          singingStyle: songData.singingStyle,
-          tone: songData.tone
-        },
-        status: 'completed',
-        generationProgress: 100,
-        userId: songData.userId || 'guest',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+        tempo: parseInt(songData.tempo?.toString() || '120'),
+        key: songData.key,
+        duration: songData.duration || 30,
+        mood: songData.mood,
+        vocalStyle: songData.vocalStyle,
+        userId: songData.userId
+      });
 
       console.log('✅ Song generation completed:', finalSong.title);
       return finalSong;
 
     } catch (error) {
       console.error('Song generation failed:', error);
-      throw new Error(`Song generation failed: ${error.message}`);
+      throw new Error(`Song generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
@@ -185,7 +146,7 @@ export class MusicGenerator {
 
     } catch (error) {
       console.error('Python generation failed:', error);
-      throw new Error(`Music generation failed: ${error.message}`);
+      throw new Error(`Music generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
