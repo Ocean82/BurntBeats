@@ -29,8 +29,8 @@ export const useEnhancedVoicePipeline = () => {
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [realTimeMode, setRealTimeMode] = useState<boolean>(false);
 
-  const { toast } = useToast();
-  const { handleError, handleAsync } = useErrorHandler();
+  const { toast } = useToast(); const { handleError, handleAsync } = useErrorHandler();
+
 
   // Enhanced voice generation with full pipeline
   const generateEnhancedVoiceMutation = useMutation({
