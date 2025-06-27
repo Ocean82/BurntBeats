@@ -71,6 +71,19 @@ export const songVersions = pgTable("song_versions", {
   deletedAt: timestamp("deleted_at"),
 });
 
+export const voiceClones = pgTable("voice_clones", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").references(() => users.id),
+  name: text("name").notNull(),
+  originalVoiceId: integer("original_voice_id").references(() => voiceSamples.id),
+  clonedVoicePath: text("cloned_voice_path"),
+  status: text("status").default("pending"),
+  quality: text("quality").default("medium"),
+  isDeleted: boolean("is_deleted").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  deletedAt: timestamp("deleted_at"),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type UpsertUser = Partial<InsertUser> & { id: string };

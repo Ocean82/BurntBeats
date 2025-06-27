@@ -13,13 +13,25 @@ const router = Router();
 const logger = new Logger({ name: 'LicensingAPI' });
 
 // Middleware
-const validateLicenseRequest = RequestValidator.validate({
-  songId: { type: 'string', required: true },
-  songTitle: { type: 'string', required: true },
-  tier: { type: 'string', enum: ['basic', 'premium', 'exclusive'], required: true },
-  userEmail: { type: 'string', format: 'email', required: true },
-  artistName: { type: 'string', required: false }
-});
+const validateLicenseRequest = (req: Request, res: Response, next: NextFunction) => {
+  const { songId, songTitle, tier, userEmail } = req.body;
+  
+  if (!songId || !songTitle || !tier || !userEmail) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing required fields: songId, songTitle, tier, userEmail'
+    });
+  }
+  
+  if (!['basic', 'premium', 'exclusive'].includes(tier)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid tier. Must be: basic, premium, or exclusive'
+    });
+  }
+  
+  next();
+};
 
 /**
  * Generate AI feedback for a purchased song

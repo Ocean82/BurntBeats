@@ -409,9 +409,18 @@ Taking over, making vows`
   app.get("/api/login", (req, res) => res.redirect("/?auth=success"));
   app.get("/api/logout", (req, res) => res.redirect("/"));
 
-  // Define rate limiters using express-rate-limit directly
-  const generalRateLimit = (req: Request, res: Response, next: NextFunction) => next();
-  const musicGenerationRateLimit = (req: Request, res: Response, next: NextFunction) => next();
+  // Define rate limiters
+  const generalRateLimit = createRateLimiter({
+    windowMs: 60 * 1000, // 1 minute
+    max: 20,
+    message: "Too many requests, please try again later."
+  });
+
+  const musicGenerationRateLimit = createRateLimiter({
+    windowMs: 60 * 1000, // 1 minute
+    max: 5,
+    message: "Too many music generation requests, please try again later."
+  });
 
   // API v1 Routes with versioning
   const v1Router = express.Router();
@@ -518,16 +527,10 @@ Taking over, making vows`
         return res.status(404).json({ success: false, error: 'Song not found' });
       }
 
-      // Check if audio path exists and get type-safe reference
-      const audioFilePath = song.generatedAudioPath;
-      if (!audioFilePath) {
-        return res.status(404).json({ success: false, error: 'Audio file path not found' });
-      }
-
       // Clean the path - remove leading slash if present
-      const cleanPath = audioFilePath.startsWith('/')
-        ? audioFilePath.slice(1)
-        : audioFilePath;
+      const cleanPath = song.generatedAudioPath.startsWith('/')
+        ? song.generatedAudioPath.slice(1)
+        : song.generatedAudioPath;
 
       const audioPath = path.join(process.cwd(), cleanPath);
 
@@ -588,10 +591,10 @@ Taking over, making vows`
     }
   });
 
-  // Voice and Audio API Routes - using placeholder handlers until API methods are implemented
-  app.post("/api/voice/upload", generalRateLimit, validateVoiceInput, (req, res) => res.json({ success: true, message: "Voice upload endpoint" }));
-  app.get("/api/voice/samples", generalRateLimit, (req, res) => res.json({ samples: [] }));
-  app.post("/api/voice/tts", musicGenerationRateLimit, validateTTSInput, (req, res) => res.json({ success: true, message: "TTS endpoint" }));
+  // Voice and Audio API Routes
+  app.post("/api/voice/upload", generalRateLimit, validateVoiceInput, VoiceAPI.uploadMiddleware, VoiceAPI.uploadVoiceSample);
+  app.get("/api/voice/samples", generalRateLimit, VoiceAPI.getVoiceSamples);
+  app.post("/api/voice/tts", musicGenerationRateLimit, validateTTSInput, VoiceAPI.generateTTS);
   app.post("/api/voice/clone", musicGenerationRateLimit, validateVoiceInput, VoiceAPI.cloneVoice);
 
   // Pricing and Plans API Routes
@@ -617,7 +620,9 @@ Taking over, making vows`
         throw new Error('Stripe secret key not configured');
       }
 
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+        apiVersion: "2023-10-16",
+      });
 
       // Create payment intent with metadata for tracking
       const paymentIntent = await stripe.paymentIntents.create({
@@ -777,7 +782,9 @@ Taking over, making vows`
         throw new Error('Stripe secret key not configured');
       }
 
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+        apiVersion: "2023-10-16",
+      });
 
       const signature = req.headers['stripe-signature'] as string;
       let event;
@@ -834,23 +841,15 @@ Taking over, making vows`
   // Health check and error reporting endpoints
   const setupHealthAndErrorEndpoints = async () => {
     try {
-      // Health check endpoint
-      app.get("/health", (req: Request, res: Response) => {
-        res.json({ 
-          status: "ok", 
-          timestamp: new Date().toISOString(),
-          environment: process.env.NODE_ENV 
-        });
-      });
+      const { healthCheck } = await import("./api/health-api");
+      const { reportError, getErrorSummary } = await import("./api/error-report");
 
-      // Error reporting endpoints  
-      app.post("/api/error-report", (req: Request, res: Response) => {
-        res.json({ success: true, message: "Error reported" });
-      });
-      
-      app.get("/api/error-summary", (req: Request, res: Response) => {
-        res.json({ errors: [], summary: "No errors" });
-      });
+      // Health check endpoint
+      app.get("/health", healthCheck);
+
+      // Error reporting endpoints
+      app.post("/api/error-report", reportError);
+      app.get("/api/error-summary", getErrorSummary);
     } catch (error) {
       console.error("Error setting up health and error endpoints:", error);
     }
