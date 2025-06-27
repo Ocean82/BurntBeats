@@ -1,0 +1,74 @@
+// src/hooks/useVoiceCloning.ts
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useToast } from './use-toast';
+import { VoiceSample } from '../types/voice-types';
+
+export const useVoiceCloning = () => {
+  const { toast } = useToast();
+
+  const cloneVoice = useMutation({
+    mutationFn: async (data: { 
+      audio: Blob | string; 
+      name: string; 
+      makePublic: boolean 
+    }) => {
+      const response = await fetch('/api/voice-cloning/clone', {
+        method: 'POST',
+        body: data.audio instanceof Blob 
+          ? (() => {
+              const formData = new FormData();
+              formData.append('audio', data.audio);
+              formData.append('name', data.name);
+              formData.append('makePublic', String(data.makePublic));
+              return formData;
+            })()
+          : JSON.stringify({
+              audioUrl: data.audio,
+              name: data.name,
+              makePublic: data.makePublic
+            }),
+        headers: data.audio instanceof Blob 
+          ? undefined 
+          : { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to clone voice');
+      }
+
+      return response.json() as Promise<VoiceSample>;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: 'Voice Cloned Successfully',
+        description: `Your voice "${data.name}" is ready to use!`,
+      });
+    },
+    onError: () => {
+      toast({
+        title: 'Voice Cloning Failed',
+        description: 'There was an error cloning your voice',
+        variant: 'destructive'
+      });
+    }
+  });
+
+  const getAvailableVoices = useQuery<VoiceSample[]>({
+    queryKey: ['voices'],
+    queryFn: async () => {
+      const response = await fetch('/api/voice-cloning/voices');
+      if (!response.ok) {
+        throw new Error('Failed to fetch voices');
+      }
+      return response.json();
+    }
+  });
+
+  return {
+    cloneVoice,
+    getAvailableVoices,
+    isCloning: cloneVoice.isPending,
+    isLoadingVoices: getAvailableVoices.isLoading,
+    voices: getAvailableVoices.data || []
+  };
+};

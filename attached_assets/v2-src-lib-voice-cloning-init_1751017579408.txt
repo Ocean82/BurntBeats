@@ -1,0 +1,28 @@
+// src/lib/voice-cloning-init.ts
+import { Pool } from 'pg';
+import { VoiceCloneRepository } from '../repositories/voice-clone-repository';
+import { FileStorageService } from '../services/file-storage-service';
+import { VoiceProcessingService } from '../services/voice-processing-service';
+import { VoiceCloningService } from '../services/voice-cloning-service';
+
+export function initializeVoiceCloning() {
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL
+  });
+
+  const storageService = new FileStorageService(
+    process.env.VOICE_STORAGE_PATH || './storage/voices'
+  );
+
+  const processingService = new VoiceProcessingService(storageService);
+  const repository = new VoiceCloneRepository(pool);
+  
+  return new VoiceCloningService(
+    repository,
+    storageService,
+    processingService
+  );
+}
+
+// In your main app file:
+// const voiceCloningService = initializeVoiceCloning();

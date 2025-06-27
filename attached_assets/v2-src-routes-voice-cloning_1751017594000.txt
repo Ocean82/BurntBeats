@@ -1,0 +1,40 @@
+// src/routes/voice-cloning.ts
+import { Router } from 'express';
+import { VoiceCloningService } from '../services/voice-cloning-service';
+import { authenticate } from '../middleware/auth';
+import multer from 'multer';
+
+const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
+const voiceService = VoiceCloningService.getInstance();
+
+router.post('/clone', authenticate, upload.single('audio'), async (req, res) => {
+  try {
+    if (!req.file && !req.body.audioUrl) {
+      return res.status(400).json({ error: 'Audio file or URL required' });
+    }
+
+    const { name = 'My Voice', makePublic = false } = req.body;
+    const userId = req.user.id;
+
+    const audio = req.file?.buffer || req.body.audioUrl;
+    const clone = await voiceService.cloneVoice(userId, audio, name, makePublic === 'true');
+
+    res.json(clone);
+  } catch (error) {
+    console.error('Voice cloning error:', error);
+    res.status(500).json({ error: 'Failed to clone voice' });
+  }
+});
+
+router.get('/voices', authenticate, async (req, res) => {
+  try {
+    const voices = await voiceService.getAvailableVoices(req.user.id);
+    res.json(voices);
+  } catch (error) {
+    console.error('Failed to get voices:', error);
+    res.status(500).json({ error: 'Failed to get available voices' });
+  }
+});
+
+export default router;
