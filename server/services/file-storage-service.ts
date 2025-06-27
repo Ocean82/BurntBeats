@@ -3,15 +3,21 @@ import fs from 'fs/promises';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { Logger } from '../utils/logger';
+import { googleCloudStorage } from './google-cloud-storage';
 
 const logger = new Logger({ name: 'FileStorageService' });
 
 export class FileStorageService {
   private storagePath: string;
+  private useCloudStorage: boolean;
 
-  constructor(storagePath?: string) {
+  constructor(storagePath?: string, useCloudStorage = false) {
     this.storagePath = storagePath || path.join(process.cwd(), 'uploads', 'voices');
-    this.ensureStorageDirectory();
+    this.useCloudStorage = useCloudStorage || !!process.env.GOOGLE_CLOUD_KEY_FILE;
+    
+    if (!this.useCloudStorage) {
+      this.ensureStorageDirectory();
+    }
   }
 
   private async ensureStorageDirectory(): Promise<void> {
@@ -24,11 +30,16 @@ export class FileStorageService {
 
   async storeFile(fileData: Buffer, extension = 'wav'): Promise<string> {
     try {
-      const fileName = `${uuidv4()}.${extension}`;
-      const filePath = path.join(this.storagePath, fileName);
+      const fileName = `voices/${uuidv4()}.${extension}`;
       
-      await fs.writeFile(filePath, fileData);
-      logger.info('File stored', { fileName, size: fileData.length });
+      if (this.useCloudStorage) {
+        await googleCloudStorage.uploadFile(fileData, fileName, `audio/${extension}`);
+        logger.info('File stored in cloud storage', { fileName, size: fileData.length });
+      } else {
+        const filePath = path.join(this.storagePath, path.basename(fileName));
+        await fs.writeFile(filePath, fileData);
+        logger.info('File stored locally', { fileName, size: fileData.length });
+      }
       
       return fileName;
     } catch (error) {
@@ -39,8 +50,12 @@ export class FileStorageService {
 
   async getFile(fileName: string): Promise<Buffer> {
     try {
-      const filePath = path.join(this.storagePath, fileName);
-      return await fs.readFile(filePath);
+      if (this.useCloudStorage) {
+        return await googleCloudStorage.downloadFile(fileName);
+      } else {
+        const filePath = path.join(this.storagePath, path.basename(fileName));
+        return await fs.readFile(filePath);
+      }
     } catch (error) {
       logger.error('Failed to get file', { error: error.message, fileName });
       throw new Error('File not found');
@@ -76,6 +91,9 @@ export class FileStorageService {
   }
 
   getPublicUrl(fileName: string): string {
-    return `/api/voices/files/${fileName}`;
+    if (this.useCloudStorage) {
+      return googleCloudStorage.getPublicUrl(fileName);
+    }
+    return `/api/voices/files/${path.basename(fileName)}`;
   }
 }

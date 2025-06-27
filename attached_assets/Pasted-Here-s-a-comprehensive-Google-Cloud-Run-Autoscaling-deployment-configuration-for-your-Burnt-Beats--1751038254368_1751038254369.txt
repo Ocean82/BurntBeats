@@ -1,0 +1,189 @@
+Here's a comprehensive Google Cloud Run + Autoscaling deployment configuration for your Burnt Beats AI music generator, optimized for both cost-efficiency and performance:
+
+1. (Multi-Stage Build)
+dockerfile
+
+# Stage 1: Frontend Build
+FROM node:20-alpine as frontend
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend .
+RUN npm run build
+
+# Stage 2: Python Backend
+FROM python:3.9-slim as backend
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt && \
+    apt-get update && apt-get install -y ffmpeg libsndfile1 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Stage 3: Runtime
+FROM python:3.9-slim
+WORKDIR /app
+
+# Copy built artifacts
+COPY --from=frontend /app/frontend/dist ./frontend/dist
+COPY --from=backend /usr/local/lib/python3.9/site-packages /usr/local/lib/python3.9/site-packages
+COPY --from=backend /usr/local/bin /usr/local/bin
+COPY --from=backend /usr/bin/ffmpeg /usr/bin/ffmpeg
+COPY --from=backend /usr/lib/x86_64-linux-gnu/libsndfile.so.1 /usr/lib/x86_64-linux-gnu/
+
+# Application code
+COPY . .
+RUN mkdir -p storage/voices storage/music models
+
+# Gunicorn config
+ENV PORT=8080
+ENV PYTHONUNBUFFERED=1
+EXPOSE 8080
+
+# Start command
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--timeout", "300", "--workers", "2", "main:app"]
+2. (CI/CD Pipeline)
+yaml
+
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'gcr.io/$PROJECT_ID/burnt-beats:$COMMIT_SHA', '.']
+  timeout: 1800s
+
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'gcr.io/$PROJECT_ID/burnt-beats:$COMMIT_SHA']
+
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args:
+  - 'run'
+  - 'deploy'
+  - 'burnt-beats'
+  - '--image'
+  - 'gcr.io/$PROJECT_ID/burnt-beats:$COMMIT_SHA'
+  - '--region'
+  - 'us-central1'
+  - '--platform'
+  - 'managed'
+  - '--cpu'
+  - '2'
+  - '--memory'
+  - '4Gi'
+  - '--min-instances'
+  - '1'
+  - '--max-instances'
+  - '10'
+  - '--concurrency'
+  - '50'
+  - '--timeout'
+  - '300'
+  - '--allow-unauthenticated'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+timeout: 1800s
+3. (Optimized Server Config)
+python
+
+import multiprocessing
+
+bind = "0.0.0.0:8080"
+workers = min(multiprocessing.cpu_count() * 2 + 1, 4)
+timeout = 300
+keepalive = 10
+worker_class = "uvicorn.workers.UvicornWorker"
+
+# AI-specific optimizations
+def post_fork(server, worker):
+    # Initialize models after fork
+    from voice_service import load_models
+    load_models()
+4. Terraform Autoscaling Config ()
+terraform
+
+resource "google_cloud_run_service" "burnt_beats" {
+  name     = "burnt-beats"
+  location = "us-central1"
+
+  template {
+    spec {
+      containers {
+        image = "gcr.io/${var.project_id}/burnt-beats:latest"
+        resources {
+          limits = {
+            cpu    = "2000m"
+            memory = "4Gi"
+          }
+        }
+        env {
+          name  = "MODEL_CACHE_PATH"
+          value = "/tmp/models"
+        }
+      }
+    }
+
+    metadata {
+      annotations = {
+        "autoscaling.knative.dev/minScale" = "1"
+        "autoscaling.knative.dev/maxScale" = "20"
+        "run.googleapis.com/cpu-throttling" = "false"
+      }
+    }
+  }
+
+  traffic {
+    percent         = 100
+    latest_revision = true
+  }
+}
+
+resource "google_cloud_run_service_iam_member" "public_access" {
+  location = google_cloud_run_service.burnt_beats.location
+  project = google_cloud_run_service.burnt_beats.project
+  service = google_cloud_run_service.burnt_beats.name
+  role   = "roles/run.invoker"
+  member = "allUsers"
+}
+5. (Optimized Dependencies)
+Key Features:
+AI-Optimized Autoscaling:
+
+Cold start mitigation with min-instances
+GPU-like performance with CPU boosts
+Model caching between requests
+Cost Controls:
+
+Scale to zero when idle
+Per-request billing
+Efficient resource allocation
+Performance Enhancements:
+
+Pre-loaded models in memory
+Async I/O for voice processing
+FFmpeg static compilation
+Deployment Pipeline:
+
+Automated CI/CD with Cloud Build
+Blue-green deployments
+Rollback capabilities
+Deployment Steps:
+Build and Deploy:
+bash
+
+gcloud builds submit --config cloudbuild.yaml
+Enable Artifact Registry:
+bash
+
+gcloud services enable artifactregistry.googleapis.com
+Set Up Auto-Scaling:
+bash
+
+gcloud run services update burnt-beats \
+  --region us-central1 \
+  --cpu=2 --memory=4Gi \
+  --min-instances=1 --max-instances=10 \
+  --concurrency=50
+Configure Model Storage (Optional):
+bash
+
+gsutil cp -r models/* gs://your-bucket/models/

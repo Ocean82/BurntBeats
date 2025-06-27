@@ -10,6 +10,8 @@ import NotFound from "@/pages/not-found";
 import LandingPage from "@/components/landing-page";
 import PaymentForm from "@/components/payment-form";
 import { useAuth } from "@/hooks/useAuth";
+import { ReplitErrorBoundary } from "./hooks/use-error-handler";
+import { PerformanceMonitor } from "./components/performance-monitor";
 
 function Router() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -55,10 +57,13 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
+      <ReplitErrorBoundary>
+        <TooltipProvider>
+          <Toaster />
+          <Router />
+          <PerformanceMonitor />
+        </TooltipProvider>
+      </ReplitErrorBoundary>
     </QueryClientProvider>
   );
 }

@@ -1,6 +1,3 @@
-Analyzing the code, the intention is to add enhanced voice cloning routes (v2) to the existing voice cloning system, while keeping the legacy routes for compatibility.
-</tool_code>
-```replit_final_file
 import express, { type Request, Response, NextFunction } from "express";
 import multer from "multer";
 import path from "path";
@@ -812,3 +809,54 @@ Taking over, making vows`
         console.error('Webhook signature verification failed:', err.message);
         return res.status(400).send(`Webhook Error: ${err.message}`);
       }
+
+      // Handle different event types
+      switch (event.type) {
+        case 'payment_intent.succeeded':
+          const paymentIntent = event.data.object;
+          console.log(`PaymentIntent for ${paymentIntent.amount} was successful!`);
+          break;
+        case 'payment_method.attached':
+          const paymentMethod = event.data.object;
+          console.log('PaymentMethod was attached to Customer!');
+          break;
+        case 'customer.subscription.created':
+          const subscription = event.data.object;
+          console.log(`Subscription created: ${subscription.id}`);
+          break;
+        case 'customer.subscription.updated':
+          const subscriptionUpdated = event.data.object;
+          console.log(`Subscription updated: ${subscriptionUpdated.id}`);
+          break;
+        case 'customer.subscription.deleted':
+          const subscriptionDeleted = event.data.object;
+          console.log(`Subscription deleted: ${subscriptionDeleted.id}`);
+          break;
+        default:
+          // Unexpected event type
+          console.log(`Unhandled event type ${event.type}.`);
+      }
+
+      // Acknowledge receipt of the event
+      res.json({ received: true });
+    } catch (error: any) {
+      console.error("Stripe webhook error:", error);
+      res.status(400).send(`Webhook Error: ${error.message}`);
+    }
+  });
+
+  // Add error reporting routes
+  const { healthCheck } = await import("./api/health-api");
+  import { reportError, getErrorSummary } from "./api/error-report";
+
+  // Health check endpoint
+  app.get("/health", healthCheck);
+
+  // Error reporting endpoints
+  app.post("/api/error-report", reportError);
+  app.get("/api/error-summary", getErrorSummary);
+
+  return app.listen(3000, () => {
+    console.log("Server is running on port 3000");
+  });
+}
