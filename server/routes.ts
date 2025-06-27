@@ -1,3 +1,4 @@
+typescript
 import express, { type Request, Response, NextFunction } from "express";
 import multer from "multer";
 import path from "path";
@@ -207,10 +208,10 @@ Taking over, making vows`
     try {
       const { beatId } = req.params;
       const { BeatAnalyticsService } = await import('./services/beat-analytics-service');
-      
+
       const realtimePlays = await BeatAnalyticsService.getRealTimePlays(beatId);
       const fullStats = await BeatAnalyticsService.getBeatStats(beatId);
-      
+
       res.json({
         beatId,
         realtimePlays,
@@ -228,7 +229,7 @@ Taking over, making vows`
     try {
       const limit = parseInt(req.query.limit as string) || 5;
       const { BeatAnalyticsService } = await import('./services/beat-analytics-service');
-      
+
       const trendingIds = await BeatAnalyticsService.getTrendingFromCache(limit);
       res.json({ trending: trendingIds, source: 'replit-cache' });
     } catch (error: any) {
@@ -645,39 +646,86 @@ Taking over, making vows`
     }
   });
 
-  // Download endpoint after successful payment
-  app.get("/api/download/:downloadType", async (req: Request, res: Response) => {
+  // Verify purchase status for a song
+  app.get("/api/verify-purchase/:songId", async (req: Request, res: Response) => {
     try {
-      const { downloadType } = req.params;
+      const { songId } = req.params;
+      const sessionId = req.headers.authorization?.replace('Bearer ', '') || 
+                       req.headers['x-session-id'] as string;
 
-      // File paths for different quality downloads
+      // Check if this is a valid purchase
+      const purchaseData = await verifyPurchase(songId, sessionId);
+
+      if (purchaseData) {
+        res.json(purchaseData);
+      } else {
+        res.status(402).json({ 
+          verified: false, 
+          message: "Payment required",
+          purchaseUrl: `/api/create-payment-intent?songId=${songId}`
+        });
+      }
+    } catch (error) {
+      console.error('Purchase verification error:', error);
+      res.status(500).json({ message: "Verification error" });
+    }
+  });
+
+  // Secure download endpoint that requires payment verification
+  app.get("/api/download/secure/:songId", async (req: Request, res: Response) => {
+    try {
+      const { songId } = req.params;
+      const sessionId = req.headers.authorization?.replace('Bearer ', '');
+
+      if (!sessionId) {
+        return res.status(401).json({ message: "Authorization required" });
+      }
+
+      // Verify purchase before allowing download
+      const purchaseData = await verifyPurchase(songId, sessionId);
+      if (!purchaseData?.verified) {
+        return res.status(402).json({ message: "Payment required for download" });
+      }
+
+      // File paths for different quality downloads based on tier
       const downloadPaths = {
-        'mp3_standard': '/uploads/songs/sample-128.mp3',
-        'mp3_hq': '/uploads/songs/sample-320.mp3',
-        'wav_cd': '/uploads/songs/sample-cd.wav',
-        'wav_studio': '/uploads/songs/sample-studio.wav'
+        'bonus': '/uploads/songs/sample-128.mp3',
+        'base': '/uploads/songs/sample-320.mp3', 
+        'top': '/uploads/songs/sample-studio.wav'
       };
 
-      const filePath = downloadPaths[downloadType as keyof typeof downloadPaths];
+      const filePath = downloadPaths[purchaseData.tier as keyof typeof downloadPaths];
 
       if (!filePath) {
         return res.status(404).json({ message: "Download not found" });
       }
 
-      // Set headers for download
-      res.setHeader('Content-Disposition', `attachment; filename="burnt-beats-${downloadType}.${downloadType.includes('wav') ? 'wav' : 'mp3'}"`);
-      res.setHeader('Content-Type', downloadType.includes('wav') ? 'audio/wav' : 'audio/mpeg');
+      // Set headers for secure download
+      const fileExtension = filePath.includes('wav') ? 'wav' : 'mp3';
+      const filename = `${purchaseData.songTitle.replace(/[^a-z0-9]/gi, '_')}_${purchaseData.tier}.${fileExtension}`;
 
-      // Return download URL - you'll integrate with actual file storage
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', filePath.includes('wav') ? 'audio/wav' : 'audio/mpeg');
+      res.setHeader('Cache-Control', 'private, no-cache');
+
+      // In production, serve the actual file
+      // For now, return download metadata
       res.json({
         downloadUrl: filePath,
-        message: "Payment successful - download ready",
-        expiresIn: "24 hours"
+        message: "Download authorized",
+        tier: purchaseData.tier,
+        format: fileExtension,
+        expiresAt: purchaseData.downloadExpiry
       });
 
     } catch (error: any) {
       res.status(500).json({ message: "Download error: " + error.message });
     }
+  });
+
+  // Legacy download endpoint - redirect to secure version
+  app.get("/api/download/:downloadType", async (req: Request, res: Response) => {
+    res.status(301).redirect(`/api/download/secure/${req.params.downloadType}`);
   });
 
   // Stripe Payment Routes (existing)
@@ -763,6 +811,7 @@ Taking over, making vows`
         }
       }
 
+```typescript
       res.json({ received: true });
     } catch (error) {
       console.error("Webhook processing failed:", error);
@@ -849,7 +898,8 @@ Taking over, making vows`
       console.error("Preview error:", error);
       res.status(500).json({ error: "Preview failed: " + error.message });
     }
-  });```
+  });
+
   // API Documentation Route
   app.get("/api/docs", (req: Request, res: Response) => {
     const apiDocs = {
@@ -952,18 +1002,40 @@ Taking over, making vows`
     const routes = {
       message: "Welcome to Burnt Beats API",
       version: "1.0.0",
-      documentation: "/api/docs",
-      status: "/api/health",
-      categories: {
-        health: "/api/health",
-        auth: "/api/auth/*",
-        music: "/api/music/*",
-        voice: "/api/voice/*",
-        pricing: "/api/pricing/*",
-        audio: "/api/audio/*",
-        admin: "/api/admin/*"
-      },
-      timestamp: new Date().toISOString()
+      description: "AI Music Generation Platform API",
+      baseUrl: "/api",
+      endpoints: {
+        health: {
+          "GET /health": "Basic health check",
+          "GET /system-status": "Detailed system status",
+          "GET /api-status": "API endpoints status"
+        },
+        authentication: {
+          "POST /auth/login": "User login",
+          "POST /auth/register": "User registration",
+          "GET /auth/user": "Get current user",
+          "POST /auth/logout": "User logout"
+        },
+        music: {
+          "POST /music/generate": "Generate basic song",
+          "POST /music/ai-generate": "Generate AI-enhanced music",
+          "POST /music/demo": "Run Music21 demo",
+          "GET /music/:id": "Get single song",
+          "GET /music": "Get user songs"
+        },
+        voice: {
+          "POST /voice/upload": "Upload voice sample",
+          "GET /voice/samples": "Get voice samples",
+          "POST /voice/tts": "Text-to-speech generation",
+          "POST /voice/clone": "Voice cloning"
+        },
+        pricing: {
+          "GET /pricing/plans": "Get pricing plans",
+          "POST /pricing/check-limitations": "Check plan limitations",
+          "POST /pricing/upgrade": "Upgrade plan",
+          "GET /pricing/subscription/:userId": "Get user subscription"
+        }
+      }
     };
 
     res.json(routes);
@@ -1248,39 +1320,110 @@ Taking over, making vows`
     }
   });
 
-  // Download endpoint after successful payment
-  app.get("/api/download/:downloadType", async (req: Request, res: Response) => {
+  // Helper function to verify purchase status
+  async function verifyPurchase(songId: string, sessionId: string): Promise<{verified: boolean, songId: string, songTitle: string, tier: string, downloadExpiry: string} | null> {
     try {
-      const { downloadType } = req.params;
+      // In a real implementation, this would check a database
+      // to confirm the session ID and song ID match a valid purchase.
+      console.log(`Verifying purchase for song ${songId} with session ${sessionId}`);
 
-      // File paths for different quality downloads
-      const downloadPaths = {
-        'mp3_standard': '/uploads/songs/sample-128.mp3',
-        'mp3_hq': '/uploads/songs/sample-320.mp3',
-        'wav_cd': '/uploads/songs/sample-cd.wav',
-        'wav_studio': '/uploads/songs/sample-studio.wav'
+      // Mock purchase verification logic
+      const mockPurchase = {
+        verified: true,
+        songId: songId,
+        songTitle: 'Sample Song',
+        tier: 'base', // Could be 'bonus', 'base', or 'top'
+        downloadExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
       };
 
-      const filePath = downloadPaths[downloadType as keyof typeof downloadPaths];
+      return mockPurchase; // Replace with actual database lookup
+    } catch (error) {
+      console.error('Purchase verification failed:', error);
+      return null;
+    }
+  }
+
+  // Download endpoint after successful payment
+  // Verify purchase status for a song
+  app.get("/api/verify-purchase/:songId", async (req: Request, res: Response) => {
+    try {
+      const { songId } = req.params;
+      const sessionId = req.headers.authorization?.replace('Bearer ', '') || 
+                       req.headers['x-session-id'] as string;
+
+      // Check if this is a valid purchase
+      const purchaseData = await verifyPurchase(songId, sessionId);
+
+      if (purchaseData) {
+        res.json(purchaseData);
+      } else {
+        res.status(402).json({ 
+          verified: false, 
+          message: "Payment required",
+          purchaseUrl: `/api/create-payment-intent?songId=${songId}`
+        });
+      }
+    } catch (error) {
+      console.error('Purchase verification error:', error);
+      res.status(500).json({ message: "Verification error" });
+    }
+  });
+
+  // Secure download endpoint that requires payment verification
+  app.get("/api/download/secure/:songId", async (req: Request, res: Response) => {
+    try {
+      const { songId } = req.params;
+      const sessionId = req.headers.authorization?.replace('Bearer ', '');
+
+      if (!sessionId) {
+        return res.status(401).json({ message: "Authorization required" });
+      }
+
+      // Verify purchase before allowing download
+      const purchaseData = await verifyPurchase(songId, sessionId);
+      if (!purchaseData?.verified) {
+        return res.status(402).json({ message: "Payment required for download" });
+      }
+
+      // File paths for different quality downloads based on tier
+      const downloadPaths = {
+        'bonus': '/uploads/songs/sample-128.mp3',
+        'base': '/uploads/songs/sample-320.mp3', 
+        'top': '/uploads/songs/sample-studio.wav'
+      };
+
+      const filePath = downloadPaths[purchaseData.tier as keyof typeof downloadPaths];
 
       if (!filePath) {
         return res.status(404).json({ message: "Download not found" });
       }
 
-      // Set headers for download
-      res.setHeader('Content-Disposition', `attachment; filename="burnt-beats-${downloadType}.${downloadType.includes('wav') ? 'wav' : 'mp3'}"`);
-      res.setHeader('Content-Type', downloadType.includes('wav') ? 'audio/wav' : 'audio/mpeg');
+      // Set headers for secure download
+      const fileExtension = filePath.includes('wav') ? 'wav' : 'mp3';
+      const filename = `${purchaseData.songTitle.replace(/[^a-z0-9]/gi, '_')}_${purchaseData.tier}.${fileExtension}`;
 
-      // Return download URL - you'll integrate with actual file storage
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', filePath.includes('wav') ? 'audio/wav' : 'audio/mpeg');
+      res.setHeader('Cache-Control', 'private, no-cache');
+
+      // In production, serve the actual file
+      // For now, return download metadata
       res.json({
         downloadUrl: filePath,
-        message: "Payment successful - download ready",
-        expiresIn: "24 hours"
+        message: "Download authorized",
+        tier: purchaseData.tier,
+        format: fileExtension,
+        expiresAt: purchaseData.downloadExpiry
       });
 
     } catch (error: any) {
       res.status(500).json({ message: "Download error: " + error.message });
     }
+  });
+
+  // Legacy download endpoint - redirect to secure version
+  app.get("/api/download/:downloadType", async (req: Request, res: Response) => {
+    res.status(301).redirect(`/api/download/secure/${req.params.downloadType}`);
   });
 
   // Stripe Payment Routes (existing)
@@ -1515,7 +1658,8 @@ Taking over, making vows`
       });
     } catch (error: any) {
       console.error("Manual cleanup error:", error);
-      res.status(500).json({ 
+      res.status(500).```typescript
+json({ 
         error: "Cleanup failed", 
         message: error.message 
       });

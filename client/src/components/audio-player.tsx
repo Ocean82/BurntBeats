@@ -34,6 +34,8 @@ interface AudioPlayerProps {
   onNext?: () => void;
   onPrevious?: () => void;
   showSections?: boolean;
+  onPurchaseRequired?: (songId: number) => void;
+  purchaseStatus?: 'none' | 'pending' | 'completed';
 }
 
 const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
@@ -46,7 +48,9 @@ export default function AudioPlayer({
   loop = false,
   onTrackEnd,
   onNext,
-  onPrevious
+  onPrevious,
+  onPurchaseRequired,
+  purchaseStatus = 'none'
 }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -195,19 +199,28 @@ export default function AudioPlayer({
     }
   };
 
-  // Track play analytics with retry logic
+  // Track play analytics with payment status
   const trackPlayAnalytics = useCallback(async () => {
     try {
       const sessionId = sessionStorage.getItem('sessionId') || 
         crypto.randomUUID();
       sessionStorage.setItem('sessionId', sessionId);
 
+      // Check if this is a paid/purchased track
+      const isPurchased = await fetch(`/api/verify-purchase/${song.id}`, {
+        method: 'GET',
+        credentials: 'include'
+      }).then(res => res.ok).catch(() => false);
+
       const response = await fetch(`/api/play/${song.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ 
           sessionId,
-          userId: null // Add user ID if you have auth
+          userId: null, // Add user ID if you have auth
+          isPurchased,
+          playType: isPurchased ? 'purchased' : 'preview'
         })
       });
 
@@ -331,29 +344,71 @@ export default function AudioPlayer({
   useHotkeys('m', toggleMute, [toggleMute]);
   useHotkeys('r', changePlaybackRate, [changePlaybackRate]);
 
-  // Download handler
+  // Download handler with payment verification
   const handleDownload = useCallback(async () => {
-    if (!audioUrl) return;
+    if (!audioUrl || !song?.id) return;
 
     setIsDownloading(true);
     try {
-      const response = await fetch(audioUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      // First verify if user has purchased this song
+      const verifyResponse = await fetch(`/api/verify-purchase/${song.id}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!verifyResponse.ok) {
+        // If not purchased, trigger payment flow
+        if (onUpgrade) {
+          onUpgrade(); // This should open the payment modal
+          setError('Purchase required to download this song');
+          return;
+        } else {
+          setError('Download not available - payment required');
+          return;
+        }
+      }
+
+      const purchaseData = await verifyResponse.json();
+      if (!purchaseData.verified) {
+        setError('Purchase verification failed - please contact support');
+        return;
+      }
+
+      // If verified, proceed with download using the secure endpoint
+      const downloadResponse = await fetch(`/api/download/secure/${song.id}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${purchaseData.sessionId}`,
+        }
+      });
+
+      if (!downloadResponse.ok) {
+        throw new Error('Download failed - server error');
+      }
+
+      const blob = await downloadResponse.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = `${song.title.replace(/[^a-z0-9]/gi, '_')}.${audioUrl.split('.').pop()}`;
+      a.href = downloadUrl;
+      a.download = `${song.title.replace(/[^a-z0-9]/gi, '_')}_${purchaseData.tier}.${purchaseData.format || 'mp3'}`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(downloadUrl);
       document.body.removeChild(a);
+
+      // Track successful download
+      trackPlayAnalytics();
     } catch (err) {
       console.error('Download failed:', err);
-      setError('Failed to download audio');
+      setError('Failed to download audio - please try again');
     } finally {
       setIsDownloading(false);
     }
-  }, [audioUrl, song.title]);
+  }, [audioUrl, song, onUpgrade]);
 
   if (!audioUrl) {
     return (
@@ -578,17 +633,19 @@ export default function AudioPlayer({
                         onClick={handleDownload}
                         disabled={isDownloading}
                         className="text-xs flex items-center"
-                        aria-label="Download audio"
+                        aria-label={song.watermark ? "Purchase to download" : "Download audio"}
                       >
                         {isDownloading ? (
                           <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                         ) : (
                           <Download className="h-3 w-3 mr-1" />
                         )}
-                        Download
+                        {song.watermark ? "Buy" : "Download"}
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Download Audio File</TooltipContent>
+                    <TooltipContent>
+                      {song.watermark ? "Purchase required for download" : "Download Audio File"}
+                    </TooltipContent>
                   </Tooltip>
                   </div>
                   </div>
