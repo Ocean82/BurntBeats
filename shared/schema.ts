@@ -121,4 +121,12 @@ export interface GeneratedMelody {
   noteCount: number;
   audioPath?: string;
   midiPath?: string;
+  metadata?: {
+    generationId: string;
+    version: string;
+    hash: string;
+    generatedAt: string;
+    key: string;
+    tempo: number;
+  };
 }

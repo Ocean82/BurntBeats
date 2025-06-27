@@ -753,26 +753,33 @@ export class MelodyGenerator {
       // ========================
 
       private async generateFallbackAudio(
-      config: MelodyGenerationConfig,
-      outputPath: string
-      ): Promise<MelodyOutputResult> {
-      const key = config.key || this.getKeyFromMoodAndGenre(config.mood, config.genre);
-      const duration = config.duration || this.estimateDurationFromLyrics(config.lyrics);
-      const baseFreq = this.getFrequencyFromKey(key);
+    config: MelodyGenerationConfig,
+    outputPath: string
+  ): Promise<MelodyOutputResult> {
+    const key = config.key || this.getKeyFromMoodAndGenre(config.mood, config.genre);
+    const duration = config.duration || this.estimateDurationFromLyrics(config.lyrics);
+    const baseFreq = this.getFrequencyFromKey(key);
 
-      try {
-      // Create a more musical fallback than simple sine waves
+    try {
+      // Check if ffmpeg is available
+      await execAsync('which ffmpeg');
+
+      // Create a more musical fallback with chord progression
+      const chord1 = baseFreq;
+      const chord2 = baseFreq * 1.25; // Perfect fourth
+      const chord3 = baseFreq * 1.5;  // Perfect fifth
+
       const ffmpegCommand = [
         'ffmpeg',
         '-f', 'lavfi',
-        '-i', `sine=frequency=${baseFreq}:duration=${duration}`,
+        '-i', `sine=frequency=${chord1}:duration=${duration}`,
+        '-f', 'lavfi', 
+        '-i', `sine=frequency=${chord2}:duration=${duration}`,
         '-f', 'lavfi',
-        '-i', `sine=frequency=${baseFreq * 1.5}:duration=${duration}`,
-        '-f', 'lavfi',
-        '-i', `sine=frequency=${baseFreq * 2}:duration=${duration}`,
+        '-i', `sine=frequency=${chord3}:duration=${duration}`,
         '-filter_complex',
-        '[0:a]volume=0.3[base];[1:a]volume=0.5[melody];[2:a]volume=0.2[harmony];' +
-        '[base][melody][harmony]amix=inputs=3:duration=first[out]',
+        '[0:a]volume=0.4[base];[1:a]volume=0.3[harmony];[2:a]volume=0.3[melody];' +
+        '[base][harmony][melody]amix=inputs=3:duration=first:weights=0.4 0.3 0.3[out]',
         '-map', '[out]',
         '-ar', '44100',
         '-ac', '2',
@@ -795,22 +802,92 @@ export class MelodyGenerator {
           dynamicRange: this.calculateDynamicRange(config.mood)
         }
       };
-      } catch (error) {
-      console.error('Fallback generation failed, using silent file:', error);
-      return this.generateSilentAudio(outputPath, config, key, duration);
-      }
-      }
+    } catch (error) {
+      console.warn('FFmpeg not available, creating basic audio file:', error.message);
+      return this.generateBasicAudio(outputPath, config, key, duration);
+    }
+  }
 
-      private async generateSilentAudio(
-      outputPath: string,
-      config: MelodyGenerationConfig,
-      key: string,
-      duration: number
-      ): Promise<MelodyOutputResult> {
-      const silentBuffer = Buffer.alloc(44100 * 2 * duration); // 2 bytes per sample, stereo
-      await fs.writeFile(outputPath, silentBuffer);
+  private async generateBasicAudio(
+    outputPath: string,
+    config: MelodyGenerationConfig,
+    key: string,
+    duration: number
+  ): Promise<MelodyOutputResult> {
+    // Create a basic WAV file with simple tone
+    const sampleRate = 44100;
+    const numSamples = sampleRate * duration;
+    const baseFreq = this.getFrequencyFromKey(key);
 
-      return {
+    // Create WAV header
+    const headerBuffer = Buffer.alloc(44);
+    headerBuffer.write('RIFF', 0);
+    headerBuffer.writeUInt32LE(36 + numSamples * 2, 4);
+    headerBuffer.write('WAVE', 8);
+    headerBuffer.write('fmt ', 12);
+    headerBuffer.writeUInt32LE(16, 16);
+    headerBuffer.writeUInt16LE(1, 20);
+    headerBuffer.writeUInt16LE(1, 22);
+    headerBuffer.writeUInt32LE(sampleRate, 24);
+    headerBuffer.writeUInt32LE(sampleRate * 2, 28);
+    headerBuffer.writeUInt16LE(2, 32);
+    headerBuffer.writeUInt16LE(16, 34);
+    headerBuffer.write('data', 36);
+    headerBuffer.writeUInt32LE(numSamples * 2, 40);
+
+    // Generate audio samples
+    const audioBuffer = Buffer.alloc(numSamples * 2);
+    for (let i = 0; i < numSamples; i++) {
+      const sample = Math.sin(2 * Math.PI * baseFreq * i / sampleRate) * 0.3 * 32767;
+      audioBuffer.writeInt16LE(Math.round(sample), i * 2);
+    }
+
+    // Write file
+    await fs.writeFile(outputPath, Buffer.concat([headerBuffer, audioBuffer]));
+
+    return {
+      audioPath: `/uploads/generated/${path.basename(outputPath)}`,
+      metadata: {
+        key,
+        tempo: config.tempo,
+        duration,
+        noteCount: this.estimateNoteCount(config),
+        generatedAt: new Date().toISOString(),
+        bpmVariation: this.calculateBpmVariation(config.tempo, config.mood),
+        dynamicRange: this.calculateDynamicRange(config.mood)
+      }
+    };
+  }
+
+  private async generateSilentAudio(
+    outputPath: string,
+    config: MelodyGenerationConfig,
+    key: string,
+    duration: number
+  ): Promise<MelodyOutputResult> {
+    // Create empty WAV file
+    const sampleRate = 44100;
+    const numSamples = sampleRate * duration;
+
+    const headerBuffer = Buffer.alloc(44);
+    headerBuffer.write('RIFF', 0);
+    headerBuffer.writeUInt32LE(36 + numSamples * 2, 4);
+    headerBuffer.write('WAVE', 8);
+    headerBuffer.write('fmt ', 12);
+    headerBuffer.writeUInt32LE(16, 16);
+    headerBuffer.writeUInt16LE(1, 20);
+    headerBuffer.writeUInt16LE(1, 22);
+    headerBuffer.writeUInt32LE(sampleRate, 24);
+    headerBuffer.writeUInt32LE(sampleRate * 2, 28);
+    headerBuffer.writeUInt16LE(2, 32);
+    headerBuffer.writeUInt16LE(16, 34);
+    headerBuffer.write('data', 36);
+    headerBuffer.writeUInt32LE(numSamples * 2, 40);
+
+    const silentBuffer = Buffer.alloc(numSamples * 2);
+    await fs.writeFile(outputPath, Buffer.concat([headerBuffer, silentBuffer]));
+
+    return {
       audioPath: `/uploads/generated/${path.basename(outputPath)}`,
       metadata: {
         key,
@@ -821,8 +898,8 @@ export class MelodyGenerator {
         bpmVariation: 0,
         dynamicRange: 0
       }
-      };
-      }
+    };
+  }
 
       // ========================
       // LEGACY SUPPORT METHODS
@@ -868,132 +945,131 @@ export class MelodyGenerator {
       private generateChordProgression(genre: string): string[] {
       const progressions: Record<string, string[][]> = {
       pop: [['C', 'Am', 'F', 'G'], ['Am', 'F', 'C', 'G'], ['F', 'G', 'C', 'Am']],
-      rock: [['E', 'A', 'B', 'E'], ['A
-                                    rock: [['E', 'A', 'B', 'E'], ['A', 'D', 'E', 'A'], ['B', 'E', 'A', 'D']],
-                                    jazz: [['Cmaj7', 'Am7', 'Dm7', 'G7'], ['Am7', 'D7', 'Gmaj7', 'Cmaj7'], ['Fmaj7', 'Bm7b5', 'Em7', 'Am7']],
-                                    electronic: [['Am', 'F', 'C', 'G'], ['Dm', 'Bb', 'F', 'C'], ['Em', 'C', 'G', 'D']],
-                                    classical: [['C', 'F', 'G', 'C'], ['Am', 'Dm', 'G', 'C'], ['F', 'C', 'G', 'Am']],
-                                    hiphop: [['Am', 'F', 'G', 'Em'], ['Dm', 'Bb', 'F', 'C'], ['Cm', 'Ab', 'Bb', 'Fm']],
-                                    country: [['G', 'C', 'D', 'G'], ['C', 'G', 'Am', 'F'], ['D', 'G', 'C', 'D']],
-                                    rnb: [['Am', 'Dm', 'G', 'C'], ['F', 'G', 'Em', 'Am'], ['Dm', 'G', 'C', 'F']]
-                                    };
+      rock: [['E', 'A', 'B', 'E'], ['A', 'D', 'E', 'A'], ['B', 'E', 'A', 'D']],
+      jazz: [['Cmaj7', 'Am7', 'Dm7', 'G7'], ['Am7', 'D7', 'Gmaj7', 'Cmaj7'], ['Fmaj7', 'Bm7b5', 'Em7', 'Am7']],
+      electronic: [['Am', 'F', 'C', 'G'], ['Dm', 'Bb', 'F', 'C'], ['Em', 'C', 'G', 'D']],
+      classical: [['C', 'F', 'G', 'C'], ['Am', 'Dm', 'G', 'C'], ['F', 'C', 'G', 'Am']],
+      hiphop: [['Am', 'F', 'G', 'Em'], ['Dm', 'Bb', 'F', 'C'], ['Cm', 'Ab', 'Bb', 'Fm']],
+      country: [['G', 'C', 'D', 'G'], ['C', 'G', 'Am', 'F'], ['D', 'G', 'C', 'D']],
+      rnb: [['Am', 'Dm', 'G', 'C'], ['F', 'G', 'Em', 'Am'], ['Dm', 'G', 'C', 'F']]
+      };
 
-                                    const genreLower = genre.toLowerCase();
-                                    if (!progressions[genreLower]) {
-                                    console.warn(`Unknown genre '${genre}', defaulting to pop progression`);
-                                    return progressions.pop[0];
-                                    }
-                                    return progressions[genreLower][0];
-                                    }
+      const genreLower = genre.toLowerCase();
+      if (!progressions[genreLower]) {
+      console.warn(`Unknown genre '${genre}', defaulting to pop progression`);
+      return progressions.pop[0];
+      }
+      return progressions[genreLower][0];
+      }
 
-                                    private determineMelodicDirection(phrases: MelodyPhrase[]): string {
-                                    if (phrases.length === 0) return 'stable';
+      private determineMelodicDirection(phrases: MelodyPhrase[]): string {
+      if (phrases.length === 0) return 'stable';
 
-                                    const firstNote = phrases[0].notes[0]?.pitch || 60;
-                                    const lastNote = phrases[phrases.length - 1].notes.slice(-1)[0]?.pitch || 60;
-                                    const delta = lastNote - firstNote;
+      const firstNote = phrases[0].notes[0]?.pitch || 60;
+      const lastNote = phrases[phrases.length - 1].notes.slice(-1)[0]?.pitch || 60;
+      const delta = lastNote - firstNote;
 
-                                    if (delta > 5) return 'ascending';
-                                    if (delta < -5) return 'descending';
+      if (delta > 5) return 'ascending';
+      if (delta < -5) return 'descending';
 
-                                    // Check for wave-like motion
-                                    let directionChanges = 0;
-                                    let lastDirection = 0;
+      // Check for wave-like motion
+      let directionChanges = 0;
+      let lastDirection = 0;
 
-                                    phrases.forEach(phrase => {
-                                    for (let i = 1; i < phrase.notes.length; i++) {
-                                      const currentDirection = Math.sign(phrase.notes[i].pitch - phrase.notes[i-1].pitch);
-                                      if (currentDirection !== 0 && currentDirection !== lastDirection) {
-                                        directionChanges++;
-                                        lastDirection = currentDirection;
-                                      }
-                                    }
-                                    });
+      phrases.forEach(phrase => {
+      for (let i = 1; i < phrase.notes.length; i++) {
+        const currentDirection = Math.sign(phrase.notes[i].pitch - phrase.notes[i-1].pitch);
+        if (currentDirection !== 0 && currentDirection !== lastDirection) {
+          directionChanges++;
+          lastDirection = currentDirection;
+        }
+      }
+      });
 
-                                    return directionChanges > phrases.length ? 'wave' : 'stable';
-                                    }
+      return directionChanges > phrases.length ? 'wave' : 'stable';
+      }
 
-                                    private extractIntervalPattern(phrases: MelodyPhrase[]): number[] {
-                                    const intervals: number[] = [];
+      private extractIntervalPattern(phrases: MelodyPhrase[]): number[] {
+      const intervals: number[] = [];
 
-                                    phrases.forEach(phrase => {
-                                    for (let i = 1; i < phrase.notes.length; i++) {
-                                      intervals.push(phrase.notes[i].pitch - phrase.notes[i-1].pitch);
-                                    }
-                                    });
+      phrases.forEach(phrase => {
+      for (let i = 1; i < phrase.notes.length; i++) {
+        intervals.push(phrase.notes[i].pitch - phrase.notes[i-1].pitch);
+      }
+      });
 
-                                    // Return the most common 8 intervals
-                                    const frequencyMap = intervals.reduce((map, interval) => {
-                                    map.set(interval, (map.get(interval) || 0) + 1);
-                                    return map;
-                                    }, new Map<number, number>());
+      // Return the most common 8 intervals
+      const frequencyMap = intervals.reduce((map, interval) => {
+      map.set(interval, (map.get(interval) || 0) + 1);
+      return map;
+      }, new Map<number, number>());
 
-                                    return Array.from(frequencyMap.entries())
-                                    .sort((a, b) => b[1] - a[1])
-                                    .slice(0, 8)
-                                    .map(([interval]) => interval);
-                                    }
+      return Array.from(frequencyMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([interval]) => interval);
+      }
 
-                                    // ========================
-                                    // UTILITY METHODS
-                                    // ========================
+      // ========================
+      // UTILITY METHODS
+      // ========================
 
-                                    private getChordTones(chord: string): number[] {
-                                    const chordMap: Record<string, number[]> = {
-                                    // Major
-                                    'C': [0, 4, 7], 'G': [7, 11, 2], 'D': [2, 6, 9],
-                                    'A': [9, 1, 4], 'E': [4, 8, 11], 'B': [11, 3, 6],
-                                    'F': [5, 9, 0], 'Bb': [10, 2, 5], 'Eb': [3, 7, 10],
-                                    'Ab': [8, 0, 3], 'Db': [1, 5, 8], 'Gb': [6, 10, 1],
-                                    // Minor
-                                    'Am': [9, 0, 4], 'Em': [4, 7, 11], 'Bm': [11, 2, 6],
-                                    'F#m': [6, 9, 1], 'C#m': [1, 4, 8], 'G#m': [8, 11, 3],
-                                    'D#m': [3, 6, 10], 'A#m': [10, 1, 5], 'Dm': [2, 5, 9],
-                                    'Gm': [7, 10, 2], 'Cm': [0, 3, 7], 'Fm': [5, 8, 0],
-                                    // Seventh chords
-                                    'C7': [0, 4, 7, 10], 'G7': [7, 11, 2, 5], 'D7': [2, 6, 9, 0],
-                                    'A7': [9, 1, 4, 7], 'E7': [4, 8, 11, 2], 'B7': [11, 3, 6, 9],
-                                    'F7': [5, 9, 0, 3], 'Bb7': [10, 2, 5, 8], 'Eb7': [3, 7, 10, 1],
-                                    'Ab7': [8, 0, 3, 6], 'Db7': [1, 5, 8, 11], 'Gb7': [6, 10, 1, 4],
-                                    // Minor seventh
-                                    'Am7': [9, 0, 4, 7], 'Em7': [4, 7, 11, 2], 'Bm7': [11, 2, 6, 9],
-                                    'F#m7': [6, 9, 1, 4], 'C#m7': [1, 4, 8, 11], 'G#m7': [8, 11, 3, 6],
-                                    'D#m7': [3, 6, 10, 1], 'A#m7': [10, 1, 5, 8], 'Dm7': [2, 5, 9, 0],
-                                    'Gm7': [7, 10, 2, 5], 'Cm7': [0, 3, 7, 10], 'Fm7': [5, 8, 0, 3],
-                                    // Major seventh
-                                    'Cmaj7': [0, 4, 7, 11], 'Gmaj7': [7, 11, 2, 6], 'Dmaj7': [2, 6, 9, 1],
-                                    'Amaj7': [9, 1, 4, 8], 'Emaj7': [4, 8, 11, 3], 'Bmaj7': [11, 3, 6, 10],
-                                    'Fmaj7': [5, 9, 0, 4], 'Bbmaj7': [10, 2, 5, 9], 'Ebmaj7': [3, 7, 10, 2],
-                                    'Abmaj7': [8, 0, 3, 7], 'Dbmaj7': [1, 5, 8, 0], 'Gbmaj7': [6, 10, 1, 5]
-                                    };
+      private getChordTones(chord: string): number[] {
+      const chordMap: Record<string, number[]> = {
+      // Major
+      'C': [0, 4, 7], 'G': [7, 11, 2], 'D': [2, 6, 9],
+      'A': [9, 1, 4], 'E': [4, 8, 11], 'B': [11, 3, 6],
+      'F': [5, 9, 0], 'Bb': [10, 2, 5], 'Eb': [3, 7, 10],
+      'Ab': [8, 0, 3], 'Db': [1, 5, 8], 'Gb': [6, 10, 1],
+      // Minor
+      'Am': [9, 0, 4], 'Em': [4, 7, 11], 'Bm': [11, 2, 6],
+      'F#m': [6, 9, 1], 'C#m': [1, 4, 8], 'G#m': [8, 11, 3],
+      'D#m': [3, 6, 10], 'A#m': [10, 1, 5], 'Dm': [2, 5, 9],
+      'Gm': [7, 10, 2], 'Cm': [0, 3, 7], 'Fm': [5, 8, 0],
+      // Seventh chords
+      'C7': [0, 4, 7, 10], 'G7': [7, 11, 2, 5], 'D7': [2, 6, 9, 0],
+      'A7': [9, 1, 4, 7], 'E7': [4, 8, 11, 2], 'B7': [11, 3, 6, 9],
+      'F7': [5, 9, 0, 3], 'Bb7': [10, 2, 5, 8], 'Eb7': [3, 7, 10, 1],
+      'Ab7': [8, 0, 3, 6], 'Db7': [1, 5, 8, 11], 'Gb7': [6, 10, 1, 4],
+      // Minor seventh
+      'Am7': [9, 0, 4, 7], 'Em7': [4, 7, 11, 2], 'Bm7': [11, 2, 6, 9],
+      'F#m7': [6, 9, 1, 4], 'C#m7': [1, 4, 8, 11], 'G#m7': [8, 11, 3, 6],
+      'D#m7': [3, 6, 10, 1], 'A#m7': [10, 1, 5, 8], 'Dm7': [2, 5, 9, 0],
+      'Gm7': [7, 10, 2, 5], 'Cm7': [0, 3, 7, 10], 'Fm7': [5, 8, 0, 3],
+      // Major seventh
+      'Cmaj7': [0, 4, 7, 11], 'Gmaj7': [7, 11, 2, 6], 'Dmaj7': [2, 6, 9, 1],
+      'Amaj7': [9, 1, 4, 8], 'Emaj7': [4, 8, 11, 3], 'Bmaj7': [11, 3, 6, 10],
+      'Fmaj7': [5, 9, 0, 4], 'Bbmaj7': [10, 2, 5, 9], 'Ebmaj7': [3, 7, 10, 2],
+      'Abmaj7': [8, 0, 3, 7], 'Dbmaj7': [1, 5, 8, 0], 'Gbmaj7': [6, 10, 1, 5]
+      };
 
-                                    return chordMap[chord] || [0, 4, 7]; // Default to C major
-                                    }
+      return chordMap[chord] || [0, 4, 7]; // Default to C major
+      }
 
-                                    private midiToNoteName(midiNote: number): string {
-                                    const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-                                    const octave = Math.floor(midiNote / 12) - 1;
-                                    return `${noteNames[midiNote % 12]}${octave}`;
-                                    }
+      private midiToNoteName(midiNote: number): string {
+      const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+      const octave = Math.floor(midiNote / 12) - 1;
+      return `${noteNames[midiNote % 12]}${octave}`;
+      }
 
-                                    private generateContentHash(content: string): string {
-                                    return crypto.createHash('sha256')
-                                    .update(content)
-                                    .digest('hex')
-                                    .slice(0, 12);
-                                    }
+      private generateContentHash(content: string): string {
+      return crypto.createHash('sha256')
+      .update(content)
+      .digest('hex')
+      .slice(0, 12);
+      }
 
-                                    // ========================
-                                    // EXPORT SINGLETON INSTANCE
-                                    // ========================
+      // ========================
+      // EXPORT SINGLETON INSTANCE
+      // ========================
 
-                                    static getInstance(): MelodyGenerator {
-                                    if (!MelodyGenerator.instance) {
-                                    MelodyGenerator.instance = new MelodyGenerator();
-                                    }
-                                    return MelodyGenerator.instance;
-                                    }
-                                    }
+      static getInstance(): MelodyGenerator {
+      if (!MelodyGenerator.instance) {
+      MelodyGenerator.instance = new MelodyGenerator();
+      }
+      return MelodyGenerator.instance;
+      }
+      }
 
-                                    // Export default singleton instance
-                                    export const melodyGenerator = MelodyGenerator.getInstance();
+      // Export default singleton instance
+      export const melodyGenerator = MelodyGenerator.getInstance();
