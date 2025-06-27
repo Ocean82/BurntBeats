@@ -22,7 +22,7 @@ import type { Song, SongSection } from "@shared/schema"
 import { formatTime } from "@/lib/utils"
 import WatermarkIndicator from "./watermark-indicator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { useHotkeys } from "react-hotkeys-hook"
+
 
 interface AudioPlayerProps {
   song: Song;
@@ -333,16 +333,41 @@ export default function AudioPlayer({
     audio.currentTime = Math.max(audio.currentTime - 15, 0);
   }, []);
 
-  // Keyboard shortcuts
-  useHotkeys('space', (e) => {
-    e.preventDefault();
-    togglePlay();
-  }, [togglePlay]);
+  // Keyboard shortcuts using native event handlers
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Only handle if audio player is focused or no input is focused
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+        return;
+      }
 
-  useHotkeys('arrowright', skipForward, [skipForward]);
-  useHotkeys('arrowleft', skipBackward, [skipBackward]);
-  useHotkeys('m', toggleMute, [toggleMute]);
-  useHotkeys('r', changePlaybackRate, [changePlaybackRate]);
+      switch (e.code) {
+        case 'Space':
+          e.preventDefault();
+          togglePlay();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          skipForward();
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          skipBackward();
+          break;
+        case 'KeyM':
+          e.preventDefault();
+          toggleMute();
+          break;
+        case 'KeyR':
+          e.preventDefault();
+          changePlaybackRate();
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyPress);
+    return () => document.removeEventListener('keydown', handleKeyPress);
+  }, [togglePlay, skipForward, skipBackward, toggleMute, changePlaybackRate]);
 
   // Download handler with payment verification
   const handleDownload = useCallback(async () => {
