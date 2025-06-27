@@ -58,23 +58,29 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
   const loginMutation = useMutation({
     mutationFn: async (data: z.infer<typeof loginSchema>) => {
       const response = await apiRequest("POST", "/api/auth/login", data);
+      if (!response.ok) {
+        throw new Error('Login failed');
+      }
       return await response.json();
     },
-    onSuccess: (user) => {
+    onSuccess: (result) => {
       const sassyWelcomes = [
         "Well, well, well... look who's back!",
         "Welcome back! Ready to make some bangers?",
         "You're back! Let's cook up some musical magic.",
-        "This is the way. Welcome back to BangerGPT!",
+        "This is the way. Welcome back to Burnt Beats!",
         "I don't feel like it right now... just kidding, welcome back!"
       ];
       const randomWelcome = sassyWelcomes[Math.floor(Math.random() * sassyWelcomes.length)];
+
+      // Store user in localStorage for persistence
+      localStorage.setItem('burntbeats_user', JSON.stringify(result.user));
 
       toast({
         title: randomWelcome,
         description: "Time to create some fire tracks!",
       });
-      onAuthSuccess({ ...user, plan: "free", songsThisMonth: 0 });
+      onAuthSuccess(result.user);
     },
     onError: () => {
       const sassyErrors = [
@@ -97,10 +103,13 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
   const signupMutation = useMutation({
     mutationFn: async (data: z.infer<typeof signupSchema>) => {
       const { confirmPassword, ...signupData } = data;
-      const response = await apiRequest("POST", "/api/auth/signup", signupData);
+      const response = await apiRequest("POST", "/api/auth/register", signupData);
+      if (!response.ok) {
+        throw new Error('Registration failed');
+      }
       return await response.json();
     },
-    onSuccess: (user) => {
+    onSuccess: (result) => {
       const sassyWelcomes = [
         "Welcome to the club! Time to make some bangers!",
         "Fresh meat! Let's see what you can create.",
@@ -110,11 +119,14 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
       ];
       const randomWelcome = sassyWelcomes[Math.floor(Math.random() * sassyWelcomes.length)];
 
+      // Store user in localStorage for persistence
+      localStorage.setItem('burntbeats_user', JSON.stringify(result.user));
+
       toast({
         title: randomWelcome,
-        description: "You get 2 free full-length songs to start. Make them count!",
+        description: "You get unlimited free creation. Pay only for downloads!",
       });
-      onAuthSuccess({ ...user, plan: "free", songsThisMonth: 0 });
+      onAuthSuccess(result.user);
     },
     onError: () => {
       const sassyErrors = [

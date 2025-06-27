@@ -5,10 +5,12 @@ interface User {
   id: number;
   username: string;
   email?: string;
-  plan: string;
+  plan: "free" | "basic" | "pro" | "enterprise";
   songsGenerated?: number;
   songsThisMonth?: number;
   maxSongs?: number;
+  totalSongsCreated?: number;
+  totalDownloads?: number;
   features?: {
     voiceCloning: boolean;
     advancedEditing: boolean;
@@ -16,6 +18,8 @@ interface User {
     analytics: boolean;
     versionControl: boolean;
     socialFeatures: boolean;
+    musicTheoryTools: boolean;
+    allFeaturesUnlocked: boolean;
     prioritySupport: boolean;
     customization: boolean;
   };
@@ -30,6 +34,22 @@ export const useAuth = () => {
     const fetchUser = async () => {
       try {
         setIsLoading(true);
+        
+        // Check if user is already logged in via localStorage
+        const storedUser = localStorage.getItem('burntbeats_user');
+        if (storedUser) {
+          try {
+            const userData = JSON.parse(storedUser);
+            setUser(userData);
+            setIsAuthenticated(true);
+            setIsLoading(false);
+            return;
+          } catch (e) {
+            localStorage.removeItem('burntbeats_user');
+          }
+        }
+
+        // If no stored user, check if authenticated via API
         const response = await apiRequest('GET', '/api/user');
 
         if (response.ok) {
@@ -37,15 +57,18 @@ export const useAuth = () => {
           console.log('User data fetched:', userData);
           setUser(userData);
           setIsAuthenticated(true);
+          localStorage.setItem('burntbeats_user', JSON.stringify(userData));
         } else {
           console.log('User not authenticated, status:', response.status);
           setUser(null);
           setIsAuthenticated(false);
+          localStorage.removeItem('burntbeats_user');
         }
       } catch (error) {
         console.error('Failed to fetch user:', error);
         setUser(null);
         setIsAuthenticated(false);
+        localStorage.removeItem('burntbeats_user');
       } finally {
         setIsLoading(false);
       }

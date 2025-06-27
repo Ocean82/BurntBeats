@@ -7,15 +7,19 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import SongGenerator from "@/pages/song-generator";
 import PurchaseSuccess from "@/pages/purchase-success";
 import NotFound from "@/pages/not-found";
-import LandingPage from "@/components/landing-page";
+import AuthForm from "@/components/auth-form";
 import PaymentForm from "@/components/payment-form";
 import { useAuth } from "@/hooks/useAuth";
 import { ReplitErrorBoundary } from "./hooks/use-error-handler";
 import { PerformanceMonitor } from "./components/performance-monitor";
 
 function Router() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, setUser } = useAuth();
   const [showPayment, setShowPayment] = useState(false);
+
+  const handleAuthSuccess = (userData: any) => {
+    setUser(userData);
+  };
 
   if (isLoading) {
     return (
@@ -38,14 +42,20 @@ function Router() {
   }
 
   if (!isAuthenticated) {
-    return <LandingPage />;
+    return <AuthForm onAuthSuccess={handleAuthSuccess} />;
   }
 
   return (
     <Switch>
       <Route path="/">
         <SongGenerator 
-          user={user}
+          user={{
+            id: user?.id,
+            username: user?.username,
+            plan: (user?.plan as 'free' | 'basic' | 'pro' | 'enterprise') || 'free',
+            songsThisMonth: user?.songsThisMonth || 0
+          }}
+          onUpgrade={() => setShowPayment(true)}
           onLogout={() => window.location.href = "/api/logout"}
         />
       </Route>
