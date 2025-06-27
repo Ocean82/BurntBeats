@@ -39,11 +39,20 @@ export default function SassyAIChat({ user }: SassyAIChatProps) {
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
+      if (!message.trim()) {
+        throw new Error('Message cannot be empty');
+      }
+      
       const response = await apiRequest("POST", "/api/ai-chat", { 
-        message,
+        message: message.trim(),
         context: "music_creation",
         user: user?.username || "Anonymous"
       });
+      
+      if (!response.ok) {
+        throw new Error(`AI chat request failed: ${response.status}`);
+      }
+      
       return response.json();
     },
     onSuccess: (response) => {

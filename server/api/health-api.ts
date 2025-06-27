@@ -281,4 +281,55 @@ export class HealthAPI {
       return 'unavailable';
     }
   }
+
+  static async checkAIChatService(): Promise<{ status: string; responseTime?: number }> {
+    try {
+      const startTime = Date.now();
+      // Dynamically import AIChatService
+      const AIChatServiceModule = await import('../services/aiChatService');
+      const AIChatService = AIChatServiceModule.AIChatService;
+
+      // Test AI chat service with a simple request
+      const testResponse = await AIChatService.getRandomResponse('helpful'); // Use await here
+      const responseTime = Date.now() - startTime;
+
+      return { 
+        status: testResponse ? 'healthy' : 'unhealthy',
+        responseTime 
+      };
+    } catch (error) {
+      logger.error('AI Chat Service check failed', {
+        error: error.message,
+        stack: error.stack,
+      });
+      return { status: 'unhealthy' };
+    }
+  }
+
+  static async checkDatabaseConnection(): Promise<{ status: string }> {
+    try {
+      const dbHealth = await DatabaseHealthChecker.checkConnection();
+      return { status: dbHealth.status };
+    } catch (error) {
+      logger.error('Database connection check failed', {
+        error: error.message,
+        stack: error.stack,
+      });
+      return { status: 'unhealthy' };
+    }
+  }
+
+  static async checkStorageAccess(): Promise<{ status: string }> {
+    try {
+      const uploadsDir = path.join(process.cwd(), 'uploads');
+      await fs.promises.access(uploadsDir);
+      return { status: 'healthy' };
+    } catch (error) {
+      logger.error('Storage access check failed', {
+        error: error.message,
+        stack: error.stack,
+      });
+      return { status: 'unhealthy' };
+    }
+  }
 }
