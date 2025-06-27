@@ -1,31 +1,54 @@
 import { useState, useRef, useCallback } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useErrorHandler } from '@/hooks/use-error-handler';
-import { apiRequest } from '@/lib/queryClient';
+
+interface VoiceSample {
+  id: string;
+  userId: string;
+  name: string;
+  audioUrl: string;
+  anthemUrl?: string;
+  sampleUrl?: string;
+  isPublic: boolean;
+  characteristics?: any;
+  createdAt: Date;
+}
 
 interface UseVoiceCloningProps {
   userId: number;
-  onVoiceCloned?: (voiceData: any) => void;
+  onVoiceCloned?: (voiceData: VoiceSample) => void;
 }
 
 interface VoiceCloningOptions {
-  genre: string;
-  style: string;
-  voiceSampleId?: number;
-  audioBlob?: Blob;
+  audio: Blob | string;
+  name: string;
+  makePublic: boolean;
+  sampleText?: string;
 }
 
 export const useVoiceCloning = ({ userId, onVoiceCloned }: UseVoiceCloningProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
-  const [clonedVoice, setClonedVoice] = useState<string | null>(null);
   const [processingStage, setProcessingStage] = useState<string>('');
-  
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const { toast } = useToast();
   const { handleError, handleAsync } = useErrorHandler();
   const queryClient = useQueryClient();
+
+  // Fetch available voices
+  const { data: voices = [], isLoading: isLoadingVoices, refetch: refetchVoices } = useQuery<VoiceSample[]>({
+    queryKey: ['voices', userId],
+    queryFn: async () => {
+      const response = await fetch('/api/voice-cloning/voices', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch voices');
+      const data = await response.json();
+      return data.voices || [];
+    }
+  });
 
   // Start audio recording
   const startRecording = useCallback(async () => {
@@ -37,7 +60,7 @@ export const useVoiceCloning = ({ userId, onVoiceCloned }: UseVoiceCloningProps)
           sampleRate: 44100
         }
       });
-      
+
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'audio/webm;codecs=opus'
       });
@@ -57,7 +80,7 @@ export const useVoiceCloning = ({ userId, onVoiceCloned }: UseVoiceCloningProps)
         setIsRecording(false);
       };
 
-      mediaRecorder.start(1000); // Collect data every second
+      mediaRecorder.start(1000);
       setIsRecording(true);
     }, {
       errorTitle: "Recording Failed",
@@ -74,143 +97,87 @@ export const useVoiceCloning = ({ userId, onVoiceCloned }: UseVoiceCloningProps)
     }
   }, [isRecording]);
 
-  // Voice embedding extraction using advanced audio processing
-  const extractVoiceEmbedding = useCallback(async (audioData: Blob | File): Promise<any> => {
-    setProcessingStage('Extracting voice characteristics...');
-    
-    const formData = new FormData();
-    formData.append('audio', audioData);
-    formData.append('userId', userId.toString());
-
-    const response = await apiRequest('POST', '/api/voice-analysis/embedding', formData);
-    return await response.json();
-  }, [userId]);
-
-  // Voice similarity analysis for quality assessment
-  const analyzeSimilarity = useCallback(async (embedding: any, targetGenre: string): Promise<number> => {
-    setProcessingStage('Analyzing voice similarity...');
-    
-    const response = await apiRequest('POST', '/api/voice-analysis/similarity', {
-      embedding,
-      targetGenre,
-      userId
-    });
-    
-    const result = await response.json();
-    return result.similarity;
-  }, [userId]);
-
-  // Spectral transfer for voice style adaptation
-  const applySpectralTransfer = useCallback(async (embedding: any, targetStyle: string): Promise<any> => {
-    setProcessingStage('Applying spectral transfer...');
-    
-    const response = await apiRequest('POST', '/api/voice-processing/spectral-transfer', {
-      embedding,
-      targetStyle,
-      userId
-    });
-    
-    return await response.json();
-  }, [userId]);
-
-  // Timbre preservation during voice transformation
-  const preserveTimbre = useCallback(async (spectralData: any): Promise<any> => {
-    setProcessingStage('Preserving voice timbre...');
-    
-    const response = await apiRequest('POST', '/api/voice-processing/timbre-preservation', {
-      spectralData,
-      userId
-    });
-    
-    return await response.json();
-  }, [userId]);
-
-  // Pitch and formant manipulation for genre adaptation
-  const manipulatePitchAndFormant = useCallback(async (
-    voiceData: any, 
-    genre: string, 
-    style: string
-  ): Promise<any> => {
-    setProcessingStage('Adapting voice for genre and style...');
-    
-    const response = await apiRequest('POST', '/api/voice-processing/pitch-formant', {
-      voiceData,
-      genre,
-      style,
-      userId
-    });
-    
-    return await response.json();
-  }, [userId]);
-
-  // Main voice cloning mutation
+  // Voice cloning mutation
   const voiceCloningMutation = useMutation({
     mutationFn: async (options: VoiceCloningOptions) => {
-      const { genre, style, voiceSampleId, audioBlob } = options;
+      setProcessingStage('Preparing voice data...');
 
-      if (!voiceSampleId && !audioBlob) {
-        throw new Error("Please select a voice sample or record a new one");
-      }
+      const formData = new FormData();
 
-      let audioData: Blob | File;
-      
-      if (audioBlob) {
-        audioData = audioBlob;
+      if (options.audio instanceof Blob) {
+        formData.append('audio', options.audio, 'voice_sample.webm');
       } else {
-        // Fetch existing voice sample
-        const response = await apiRequest('GET', `/api/voice-samples/${voiceSampleId}`);
-        const blob = await response.blob();
-        audioData = new File([blob], 'voice-sample.webm', { type: 'audio/webm' });
+        formData.append('audioUrl', options.audio);
       }
 
-      // Step 1: Extract voice embedding
-      const embedding = await extractVoiceEmbedding(audioData);
-      
-      // Step 2: Analyze similarity for quality assessment
-      const similarity = await analyzeSimilarity(embedding, genre);
-      
-      if (similarity < 0.7) {
-        throw new Error("Voice quality insufficient for cloning. Please provide a clearer recording.");
+      formData.append('name', options.name);
+      formData.append('makePublic', options.makePublic.toString());
+
+      if (options.sampleText) {
+        formData.append('sampleText', options.sampleText);
       }
-      
-      // Step 3: Apply spectral transfer
-      const spectralTransfer = await applySpectralTransfer(embedding, style);
-      
-      // Step 4: Preserve timbre characteristics
-      const timbrePreserved = await preserveTimbre(spectralTransfer);
-      
-      // Step 5: Manipulate pitch and formant for genre adaptation
-      const finalVoice = await manipulatePitchAndFormant(timbrePreserved, genre, style);
-      
-      // Step 6: Generate final cloned voice
-      setProcessingStage('Generating final cloned voice...');
-      const response = await apiRequest('POST', '/api/voice-clone/generate', {
-        voiceData: finalVoice,
-        genre,
-        style,
-        userId
+
+      setProcessingStage('Uploading and processing...');
+
+      const response = await fetch('/api/voice-cloning/clone', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'
       });
-      
-      return await response.json();
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || 'Voice cloning failed');
+      }
+
+      setProcessingStage('Finalizing...');
+      const result = await response.json();
+      return result;
     },
     onSuccess: (result) => {
-      setClonedVoice(result.audioUrl);
       setProcessingStage('');
-      
+
       toast({
         title: "Voice Cloned Successfully",
         description: "Your custom voice is ready for song generation!",
       });
-      
+
       onVoiceCloned?.(result);
-      
-      // Invalidate voice samples cache
-      queryClient.invalidateQueries({ queryKey: ['/api/voice-samples', userId] });
+
+      // Invalidate and refetch voices
+      queryClient.invalidateQueries({ queryKey: ['voices'] });
+      refetchVoices();
     },
     onError: (error) => {
       setProcessingStage('');
       handleError(error as Error, "Voice Cloning Failed");
     },
+  });
+
+  // Delete voice mutation
+  const deleteVoiceMutation = useMutation({
+    mutationFn: async (voiceId: string) => {
+      const response = await fetch(`/api/voice-cloning/voices/${voiceId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete voice');
+      }
+    },
+    onSuccess: () => {
+      toast({
+        title: "Voice Deleted",
+        description: "Voice has been removed successfully",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['voices'] });
+      refetchVoices();
+    },
+    onError: (error) => {
+      handleError(error as Error, "Failed to delete voice");
+    }
   });
 
   // Clone voice with given options
@@ -226,27 +193,25 @@ export const useVoiceCloning = ({ userId, onVoiceCloned }: UseVoiceCloningProps)
     }
   }, [recordedBlob]);
 
-  // Clear cloned voice
-  const clearClonedVoice = useCallback(() => {
-    setClonedVoice(null);
-  }, []);
-
   return {
     // State
     isRecording,
     recordedBlob,
-    clonedVoice,
     processingStage,
     isCloning: voiceCloningMutation.isPending,
-    
+    isLoadingVoices,
+    voices,
+
     // Actions
     startRecording,
     stopRecording,
     cloneVoice,
     clearRecording,
-    clearClonedVoice,
-    
+    deleteVoice: deleteVoiceMutation.mutate,
+    refetchVoices,
+
     // Status
     cloningError: voiceCloningMutation.error,
+    isDeleting: deleteVoiceMutation.isPending
   };
 };

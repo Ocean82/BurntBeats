@@ -1,33 +1,20 @@
-
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import crypto from 'crypto';
-import { validate as uuidValidate } from 'uuid';
-import { env } from '../config/env';
-import { VoiceSampleRepository } from '../repositories/voiceSampleRepository';
-import { AudioProcessor } from '../services/audioProcessor';
-import { RequestValidator } from '../middleware/requestValidator';
-import { rateLimiter } from '../middleware/rateLimiter';
+import { VoiceCloningService } from '../services/voice-cloning-service';
+import { FileStorageService } from '../services/file-storage-service';
 import { Logger } from '../utils/logger';
+import { rateLimiter } from '../middleware/rateLimiter';
 
 const logger = new Logger({ name: 'VoiceAPI' });
 
-// Configure upload directory
-const uploadsDir = path.join(process.cwd(), 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// Configure multer with enhanced security
+// Configure multer for file uploads
 const upload = multer({
-  dest: uploadsDir,
+  storage: multer.memoryStorage(),
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB
+    fileSize: 50 * 1024 * 1024, // 50MB max file size
     files: 1,
-    fieldNameSize: 100,
-    fields: 5,
   },
   fileFilter: (req, file, cb) => {
     const allowedMimeTypes = [
@@ -47,281 +34,64 @@ const upload = multer({
 });
 
 export class VoiceAPI {
-  private static voiceSampleRepo = new VoiceSampleRepository();
-  private static audioProcessor = new AudioProcessor();
+  private static voiceCloningService = VoiceCloningService.getInstance();
+  private static fileStorage = new FileStorageService();
 
-  // Middleware
+  // Upload middleware
   static uploadMiddleware = [
     rateLimiter(5, '1 minute'),
-    upload.single('voiceSample'),
-    RequestValidator.validateVoiceUpload,
+    upload.single('audio'),
   ];
 
   /**
-   * Upload voice sample with enhanced security and validation
+   * Clone voice with enhanced features
    */
-  static async uploadVoiceSample(req: Request, res: Response) {
-    const requestId = req.id;
-    const startTime = process.hrtime();
+  static async cloneVoice(req: Request, res: Response) {
+    const requestId = req.id || 'unknown';
 
     try {
-      if (!req.file) {
-        logger.warn('No file uploaded', { requestId });
-        return res.status(400).json({ 
-          error: 'No file uploaded',
-          requestId,
-        });
-      }
-
-      // Validate user ID if provided
-      const userId = req.body.userId;
-      if (userId && !uuidValidate(userId)) {
+      if (!req.file && !req.body.audioUrl) {
         return res.status(400).json({
-          error: 'Invalid user ID format',
+          error: 'Audio file or URL required',
           requestId,
         });
       }
 
-      // Analyze audio file
-      const analysis = await VoiceAPI.audioProcessor.analyze(req.file.path);
+      const { name = 'My Voice', makePublic = false, sampleText } = req.body;
+      const userId = req.user?.id;
 
-      // Create voice sample record
-      const voiceSample = await VoiceAPI.voiceSampleRepo.create({
-        id: crypto.randomUUID(),
-        originalName: req.file.originalname,
-        fileName: req.file.filename,
-        filePath: `/uploads/${req.file.filename}`,
-        duration: analysis.duration,
-        sampleRate: analysis.sampleRate,
-        channels: analysis.channels,
-        userId: userId || null,
-        size: req.file.size,
-        mimeType: req.file.mimetype,
-      });
-
-      logger.info('Voice sample uploaded', { 
-        voiceSampleId: voiceSample.id,
-        duration: voiceSample.duration,
-        requestId,
-      });
-
-      const [seconds, nanoseconds] = process.hrtime(startTime);
-      const processingTime = `${seconds}.${nanoseconds.toString().padStart(9, '0')}s`;
-
-      res.status(201).json({
-        ...voiceSample,
-        processingTime,
-        requestId,
-      });
-
-    } catch (error) {
-      logger.error('Voice upload failed', { 
-        error: error.message, 
-        stack: error.stack,
-        requestId,
-      });
-
-      // Clean up uploaded file if error occurred
-      if (req.file?.path && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
-
-      res.status(500).json({
-        error: 'Failed to process voice sample',
-        requestId,
-        details: env.NODE_ENV === 'development' ? error.message : undefined,
-      });
-    }
-  }
-
-  /**
-   * Get user voice samples with pagination
-   */
-  static async getVoiceSamples(req: Request, res: Response) {
-    const requestId = req.id;
-
-    try {
-      const { userId } = req.query;
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 10;
-
-      // Validate user ID if provided
-      if (userId && !uuidValidate(userId as string)) {
-        return res.status(400).json({
-          error: 'Invalid user ID format',
+      if (!userId) {
+        return res.status(401).json({
+          error: 'Authentication required',
           requestId,
         });
       }
 
-      const { samples, total } = await VoiceAPI.voiceSampleRepo.findByUser(
-        userId as string | undefined,
-        page,
-        limit
-      );
+      logger.info('Voice cloning request', {
+        userId,
+        name,
+        makePublic,
+        hasFile: !!req.file,
+        hasUrl: !!req.body.audioUrl,
+        requestId,
+      });
 
-      logger.info('Fetched voice samples', {
-        count: samples.length,
+      const audio = req.file?.buffer || req.body.audioUrl;
+      const result = await VoiceAPI.voiceCloningService.cloneVoice(audio, {
+        userId,
+        name,
+        makePublic: makePublic === 'true' || makePublic === true,
+        sampleText,
+      });
+
+      logger.info('Voice cloning completed', {
+        voiceId: result.id,
         userId,
         requestId,
       });
 
-      res.json({
-        data: samples,
-        meta: {
-          total,
-          page,
-          limit,
-          hasMore: page * limit < total,
-          requestId,
-        },
-      });
-
-    } catch (error) {
-      logger.error('Failed to fetch voice samples', {
-        error: error.message,
-        requestId,
-      });
-
-      res.status(500).json({
-        error: 'Failed to fetch voice samples',
-        requestId,
-      });
-    }
-  }
-
-  /**
-   * Text-to-speech generation with enhanced validation
-   */
-  static async generateTTS(req: Request, res: Response) {
-    const requestId = req.id;
-    const startTime = process.hrtime();
-
-    try {
-      const { text, voice, settings } = req.body;
-
-      // Validate input
-      if (!text || typeof text !== 'string' || text.trim().length === 0) {
-        return res.status(400).json({
-          error: 'Text must be a non-empty string',
-          requestId,
-        });
-      }
-
-      if (text.length > 5000) {
-        return res.status(400).json({
-          error: 'Text must be less than 5000 characters',
-          requestId,
-        });
-      }
-
-      logger.info('Generating TTS', {
-        textLength: text.length,
-        voice,
-        requestId,
-      });
-
-      // Generate TTS (would integrate with real TTS service in production)
-      const result = await VoiceAPI.audioProcessor.generateTTS({
-        text,
-        voice: voice || 'default',
-        settings: settings || {},
-      });
-
-      const [seconds, nanoseconds] = process.hrtime(startTime);
-      const processingTime = `${seconds}.${nanoseconds.toString().padStart(9, '0')}s`;
-
-      logger.info('TTS generation completed', {
-        duration: result.duration,
-        processingTime,
-        requestId,
-      });
-
-      res.json({
+      res.status(201).json({
         ...result,
-        processingTime,
-        requestId,
-      });
-
-    } catch (error) {
-      logger.error('TTS generation failed', {
-        error: error.message,
-        requestId,
-      });
-
-      res.status(500).json({
-        error: 'Failed to generate TTS',
-        requestId,
-        details: env.NODE_ENV === 'development' ? error.message : undefined,
-      });
-    }
-  }
-
-  /**
-   * Voice cloning with enhanced security and validation
-   */
-  static async cloneVoice(req: Request, res: Response) {
-    const requestId = req.id;
-    const startTime = process.hrtime();
-
-    try {
-      const { voiceSampleId, text, settings } = req.body;
-
-      // Validate input
-      if (!voiceSampleId || !uuidValidate(voiceSampleId)) {
-        return res.status(400).json({
-          error: 'Valid voiceSampleId is required',
-          requestId,
-        });
-      }
-
-      if (!text || typeof text !== 'string' || text.trim().length === 0) {
-        return res.status(400).json({
-          error: 'Text must be a non-empty string',
-          requestId,
-        });
-      }
-
-      if (text.length > 1000) {
-        return res.status(400).json({
-          error: 'Text must be less than 1000 characters',
-          requestId,
-        });
-      }
-
-      logger.info('Cloning voice', {
-        voiceSampleId,
-        textLength: text.length,
-        requestId,
-      });
-
-      // Verify voice sample exists and belongs to user (if authenticated)
-      const voiceSample = await VoiceAPI.voiceSampleRepo.findById(voiceSampleId);
-      if (!voiceSample) {
-        return res.status(404).json({
-          error: 'Voice sample not found',
-          requestId,
-        });
-      }
-
-      // Generate cloned voice (would integrate with real voice cloning service in production)
-      const result = await VoiceAPI.audioProcessor.cloneVoice({
-        voiceSamplePath: path.join(uploadsDir, voiceSample.fileName),
-        text,
-        settings: settings || {},
-      });
-
-      const [seconds, nanoseconds] = process.hrtime(startTime);
-      const processingTime = `${seconds}.${nanoseconds.toString().padStart(9, '0')}s`;
-
-      logger.info('Voice cloning completed', {
-        duration: result.duration,
-        processingTime,
-        requestId,
-      });
-
-      res.json({
-        ...result,
-        processingTime,
         requestId,
       });
 
@@ -333,63 +103,166 @@ export class VoiceAPI {
 
       res.status(500).json({
         error: 'Failed to clone voice',
+        details: error.message,
         requestId,
-        details: env.NODE_ENV === 'development' ? error.message : undefined,
       });
     }
   }
 
   /**
-   * Delete voice sample
+   * Get available voices
    */
-  static async deleteVoiceSample(req: Request, res: Response) {
-    const requestId = req.id;
+  static async getVoices(req: Request, res: Response) {
+    const requestId = req.id || 'unknown';
+
+    try {
+      const userId = req.user?.id;
+      const voices = await VoiceAPI.voiceCloningService.getAvailableVoices(userId);
+
+      logger.info('Voices fetched', {
+        count: voices.length,
+        userId,
+        requestId,
+      });
+
+      res.json({
+        voices,
+        requestId,
+      });
+
+    } catch (error) {
+      logger.error('Failed to get voices', {
+        error: error.message,
+        requestId,
+      });
+
+      res.status(500).json({
+        error: 'Failed to get voices',
+        requestId,
+      });
+    }
+  }
+
+  /**
+   * Get user's voices
+   */
+  static async getUserVoices(req: Request, res: Response) {
+    const requestId = req.id || 'unknown';
+
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({
+          error: 'Authentication required',
+          requestId,
+        });
+      }
+
+      const voices = await VoiceAPI.voiceCloningService.getAvailableVoices(userId);
+      const userVoices = voices.filter(voice => voice.userId === userId);
+
+      res.json({
+        voices: userVoices,
+        requestId,
+      });
+
+    } catch (error) {
+      logger.error('Failed to get user voices', {
+        error: error.message,
+        requestId,
+      });
+
+      res.status(500).json({
+        error: 'Failed to get user voices',
+        requestId,
+      });
+    }
+  }
+
+  /**
+   * Delete voice
+   */
+  static async deleteVoice(req: Request, res: Response) {
+    const requestId = req.id || 'unknown';
 
     try {
       const { id } = req.params;
+      const userId = req.user?.id;
 
-      if (!id || !uuidValidate(id)) {
-        return res.status(400).json({
-          error: 'Valid voice sample ID is required',
+      if (!userId) {
+        return res.status(401).json({
+          error: 'Authentication required',
           requestId,
         });
       }
 
-      // Verify voice sample exists
-      const voiceSample = await VoiceAPI.voiceSampleRepo.findById(id);
-      if (!voiceSample) {
-        return res.status(404).json({
-          error: 'Voice sample not found',
-          requestId,
-        });
-      }
+      await VoiceAPI.voiceCloningService.deleteVoice(id, userId);
 
-      // Delete file
-      const filePath = path.join(uploadsDir, voiceSample.fileName);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-
-      // Delete record
-      await VoiceAPI.voiceSampleRepo.delete(id);
-
-      logger.info('Voice sample deleted', {
-        voiceSampleId: id,
+      logger.info('Voice deleted', {
+        voiceId: id,
+        userId,
         requestId,
       });
 
       res.status(204).end();
 
     } catch (error) {
-      logger.error('Failed to delete voice sample', {
+      logger.error('Failed to delete voice', {
         error: error.message,
         requestId,
       });
 
       res.status(500).json({
-        error: 'Failed to delete voice sample',
+        error: 'Failed to delete voice',
         requestId,
       });
+    }
+  }
+
+  /**
+   * Serve voice files
+   */
+  static async serveFile(req: Request, res: Response) {
+    try {
+      const { fileName } = req.params;
+      const filePath = VoiceAPI.fileStorage.getFilePath(fileName);
+
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'File not found' });
+      }
+
+      const stat = fs.statSync(filePath);
+      const fileSize = stat.size;
+      const range = req.headers.range;
+
+      if (range) {
+        // Support range requests for audio streaming
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+        const chunksize = (end - start) + 1;
+        const file = fs.createReadStream(filePath, { start, end });
+        const head = {
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunksize,
+          'Content-Type': 'audio/wav',
+        };
+        res.writeHead(206, head);
+        file.pipe(res);
+      } else {
+        const head = {
+          'Content-Length': fileSize,
+          'Content-Type': 'audio/wav',
+        };
+        res.writeHead(200, head);
+        fs.createReadStream(filePath).pipe(res);
+      }
+
+    } catch (error) {
+      logger.error('Failed to serve file', { error: error.message });
+      res.status(500).json({ error: 'Failed to serve file' });
     }
   }
 }
