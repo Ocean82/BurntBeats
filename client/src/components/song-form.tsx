@@ -12,6 +12,7 @@ import { useSongGeneration } from "@/hooks/use-song-generation";
 import GenerationProgress from "./generation-progress";
 import UpgradeModal from "./upgrade-modal";
 import SassyAIChat from "./sassy-ai-chat";
+import ExampleTrackPlayer from "./example-track-player";
 
 interface SongFormProps {
   onSongGenerated: (song: any) => void;
@@ -103,6 +104,18 @@ export default function SongForm({ onSongGenerated, user }: SongFormProps) {
 
   return (
     <div className="space-y-6">
+      {/* Example Track Player */}
+      <ExampleTrackPlayer 
+        onTryNow={() => {
+          // Scroll to the form or focus on lyrics input
+          const lyricsInput = document.getElementById('lyrics');
+          if (lyricsInput) {
+            lyricsInput.focus();
+            lyricsInput.scrollIntoView({ behavior: 'smooth' });
+          }
+        }}
+      />
+
       {/* Status */}
       <Card className="bg-dark-card border-gray-800">
         <CardContent className="pt-6">
