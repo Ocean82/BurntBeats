@@ -312,6 +312,27 @@ export default function SongGenerator({ user, onLogout }: SongGeneratorProps) {
   };
 
   return (
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      {/* Header with Logo */}
+      <header className="bg-gray-900/80 backdrop-blur-sm border-b border-gray-800">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center space-x-3">
+            <img 
+              src="/burnt-beats-logo.jpeg" 
+              alt="Burnt Beats" 
+              className="w-10 h-10 rounded-lg"
+            />
+            <div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent">
+                Burnt Beats
+              </h1>
+              <p className="text-sm text-gray-400">AI Music Generation Platform</p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="container mx-auto px-4 py-8">
     <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex">
       <Sidebar onMenuClick={handleMenuClick} activeMenu={activeMenu} />
       <div className="flex-1 overflow-auto">

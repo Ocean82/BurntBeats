@@ -41,7 +41,7 @@ export const useSongGeneration = ({
   const [generatingSong, setGeneratingSong] = useState<Song | null>(null);
   const [generationProgress, setGenerationProgress] = useState(0);
   const { toast } = useToast();
-  const { handleError } = useErrorHandler();
+  const { reportError } = useErrorHandler();
   const queryClient = useQueryClient();
 
   // Generate song mutation
@@ -138,7 +138,7 @@ export const useSongGeneration = ({
     onError: (error) => {
       setGeneratingSong(null);
       setGenerationProgress(0);
-      handleError(error as Error, "Generation Failed");
+      reportError(error as Error, "Generation Failed");
     },
   });
 
@@ -172,13 +172,13 @@ export const useSongGeneration = ({
           setGeneratingSong(null);
           setGenerationProgress(0);
 
-          handleError(new Error("Song generation failed. Please try again."));
+          reportError(new Error("Song generation failed. Please try again."));
         }
       } catch (error) {
         clearInterval(pollInterval);
         setGeneratingSong(null);
         setGenerationProgress(0);
-        handleError(error as Error, "Progress Check Failed");
+        reportError(error as Error, "Progress Check Failed");
       }
     }, 2000);
 
@@ -186,7 +186,7 @@ export const useSongGeneration = ({
     setTimeout(() => {
       clearInterval(pollInterval);
     }, 300000);
-  }, [onGenerationComplete, handleError, toast, queryClient, userId]);
+  }, [onGenerationComplete, reportError, toast, queryClient, userId]);
 
   const generateSong = useCallback((songData: Omit<InsertSong, 'userId'>) => {
     generateSongMutation.mutate({
