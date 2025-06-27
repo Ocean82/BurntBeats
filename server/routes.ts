@@ -90,13 +90,13 @@ if (!fs.existsSync(uploadsDir)) {
 export function registerRoutes(app: express.Application): http.Server {
 
   // Enhanced Bonus Features API Endpoints
-  
+
   // Post-purchase AI feedback endpoint
   app.post("/api/ai-feedback/:songId", async (req: Request, res: Response) => {
     try {
       const { songId } = req.params;
       const { tier, userEmail } = req.body;
-      
+
       // Create mock song for testing since storage might not have the song
       const mockSong = {
         id: parseInt(songId),
@@ -141,9 +141,9 @@ Taking over, making vows`
       const { songId } = req.params;
       const fs = await import('fs/promises');
       const path = await import('path');
-      
+
       const feedbackPath = path.join(process.cwd(), 'uploads/feedback', `${songId}_feedback.json`);
-      
+
       try {
         const feedbackData = await fs.readFile(feedbackPath, 'utf8');
         const feedback = JSON.parse(feedbackData);
@@ -161,9 +161,9 @@ Taking over, making vows`
     try {
       const { songId, songTitle, tier, userEmail, artistName } = req.body;
       const { generateLicense } = await import('./utils/license-generator');
-      
+
       const beatId = `BB-${songId}-${Date.now().toString(36).toUpperCase()}`;
-      
+
       const licensePath = generateLicense({
         songTitle,
         userId: songId,
@@ -186,14 +186,92 @@ Taking over, making vows`
     }
   });
 
-  // Beat popularity tracking endpoints
+  // Beat analytics endpoints
+  app.post("/api/play/:beatId", async (req: Request, res: Response) => {
+    try {
+      const { beatId } = req.params;
+      const { userId, sessionId } = req.body;
+
+      const { BeatAnalytics } = await import('./services/beat-analytics');
+      await BeatAnalytics.recordPlay(beatId, userId, sessionId);
+
+      res.json({ status: 'Play recorded!', beatId });
+    } catch (error: any) {
+      console.error("Failed to record play:", error);
+      res.status(500).json({ message: "Error recording play: " + error.message });
+    }
+  });
+
+  app.get("/api/top-beats", async (req: Request, res: Response) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      const { BeatAnalytics } = await import('./services/beat-analytics');
+      const topBeats = await BeatAnalytics.getTopBeats(limit);
+
+      res.json({
+        success: true,
+        count: topBeats.length,
+        topBeats
+      });
+    } catch (error: any) {
+      console.error("Failed to get top beats:", error);
+      res.status(500).json({ message: "Error retrieving top beats: " + error.message });
+    }
+  });
+
+  app.get("/api/trending-beats", async (req: Request, res: Response) => {
+    try {
+      const days = parseInt(req.query.days as string) || 7;
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      const { BeatAnalytics } = await import('./services/beat-analytics');
+      const trendingBeats = await BeatAnalytics.getTrendingBeats(days, limit);
+
+      res.json({
+        success: true,
+        days,
+        count: trendingBeats.length,
+        trendingBeats
+      });
+    } catch (error: any) {
+      console.error("Failed to get trending beats:", error);
+      res.status(500).json({ message: "Error retrieving trending beats: " + error.message });
+    }
+  });
+
+  app.get("/api/analytics/summary", async (req: Request, res: Response) => {
+    try {
+      const { BeatAnalytics } = await import('./services/beat-analytics');
+      const summary = await BeatAnalytics.getAnalyticsSummary();
+
+      res.json({
+        success: true,
+        summary
+      });
+    } catch (error: any) {
+      console.error("Failed to get analytics summary:", error);
+      res.status(500).json({ message: "Error retrieving analytics summary: " + error.message });
+    }
+  });
+
+  // Beat popularity tracking endpoints (legacy compatibility)
   app.get("/api/beats/popularity/:beatId", async (req: Request, res: Response) => {
     try {
       const { beatId } = req.params;
+
+      // Try new analytics service first
+      const { BeatAnalytics } = await import('./services/beat-analytics');
+      const newStats = await BeatAnalytics.getBeatStats(beatId);
+
+      if (newStats) {
+        return res.json(newStats);
+      }
+
+      // Fallback to legacy system
       const { getBeatPopularityStats } = await import('./utils/license-generator');
-      
       const stats = getBeatPopularityStats(beatId);
-      
+
       if (!stats) {
         return res.status(404).json({ message: "Beat statistics not found" });
       }
@@ -209,9 +287,9 @@ Taking over, making vows`
     try {
       const limit = parseInt(req.query.limit as string) || 10;
       const { getTopPerformingBeats } = await import('./utils/license-generator');
-      
+
       const topBeats = getTopPerformingBeats(limit);
-      
+
       res.json({
         success: true,
         topBeats,
@@ -229,24 +307,24 @@ Taking over, making vows`
       const { userEmail } = req.params;
       const fs = await import('fs/promises');
       const path = await import('path');
-      
+
       // Get all feedback files for user
       const feedbackDir = path.join(process.cwd(), 'uploads/feedback');
-      
+
       let userPurchases = [];
       let totalSpent = 0;
-      
+
       try {
         const feedbackFiles = await fs.readdir(feedbackDir);
-        
+
         for (const file of feedbackFiles) {
           if (file.endsWith('_feedback.json')) {
             const feedbackData = JSON.parse(await fs.readFile(path.join(feedbackDir, file), 'utf8'));
-            
+
             if (feedbackData.userEmail === userEmail) {
               const tierPricing = { bonus: 2.99, base: 4.99, top: 9.99 };
               totalSpent += tierPricing[feedbackData.purchaseTier as keyof typeof tierPricing];
-              
+
               userPurchases.push({
                 songId: feedbackData.songId,
                 songTitle: feedbackData.songTitle,
@@ -736,8 +814,7 @@ Taking over, making vows`
       console.error("Preview error:", error);
       res.status(500).json({ error: "Preview failed: " + error.message });
     }
-  });
-
+  });```
   // API Documentation Route
   app.get("/api/docs", (req: Request, res: Response) => {
     const apiDocs = {
@@ -1444,18 +1521,40 @@ Taking over, making vows`
     const routes = {
       message: "Welcome to Burnt Beats API",
       version: "1.0.0",
-      documentation: "/api/docs",
-      status: "/api/health",
-      categories: {
-        health: "/api/health",
-        auth: "/api/auth/*",
-        music: "/api/music/*",
-        voice: "/api/voice/*",
-        pricing: "/api/pricing/*",
-        audio: "/api/audio/*",
-        admin: "/api/admin/*"
-      },
-      timestamp: new Date().toISOString()
+      description: "AI Music Generation Platform API",
+      baseUrl: "/api",
+      endpoints: {
+        health: {
+          "GET /health": "Basic health check",
+          "GET /system-status": "Detailed system status",
+          "GET /api-status": "API endpoints status"
+        },
+        authentication: {
+          "POST /auth/login": "User login",
+          "POST /auth/register": "User registration",
+          "GET /auth/user": "Get current user",
+          "POST /auth/logout": "User logout"
+        },
+        music: {
+          "POST /music/generate": "Generate basic song",
+          "POST /music/ai-generate": "Generate AI-enhanced music",
+          "POST /music/demo": "Run Music21 demo",
+          "GET /music/:id": "Get single song",
+          "GET /music": "Get user songs"
+        },
+        voice: {
+          "POST /voice/upload": "Upload voice sample",
+          "GET /voice/samples": "Get voice samples",
+          "POST /voice/tts": "Text-to-speech generation",
+          "POST /voice/clone": "Voice cloning"
+        },
+        pricing: {
+          "GET /pricing/plans": "Get pricing plans",
+          "POST /pricing/check-limitations": "Check plan limitations",
+          "POST /pricing/upgrade": "Upgrade plan",
+          "GET /pricing/subscription/:userId": "Get user subscription"
+        }
+      }
     };
 
     res.json(routes);
@@ -1639,195 +1738,3 @@ function getOriginalFilePath(songId: string) {
   const uploadsDir = path.join(process.cwd(), "uploads");
   return path.join(uploadsDir, `generated_${songId}.mp3`);
 }
-
-  // Enhanced Bonus Features API Endpoints
-  
-  // Post-purchase AI feedback endpoint
-  app.post("/api/ai-feedback/:songId", async (req: Request, res: Response) => {
-    try {
-      const { songId } = req.params;
-      const { tier, userEmail } = req.body;
-      
-      // Create mock song for testing since storage might not have the song
-      const mockSong = {
-        id: parseInt(songId),
-        title: 'Test Beat',
-        lyrics: `Verse 1:
-Living life in the fast lane
-Money, power, respect my name
-Never looking back again
-Success flowing through my veins
-
-Chorus:
-We rise up, we never fall
-Standing tall through it all
-Dreams become reality
-This is our destiny
-
-Verse 2:
-Started from the bottom now
-Every struggle made us strong somehow
-Future bright, we own it now
-Taking over, making vows`
-      };
-
-      const feedback = await AIChatService.generatePostPurchaseFeedback(
-        songId,
-        mockSong.title,
-        mockSong.lyrics,
-        tier,
-        userEmail || 'test@burntbeats.app'
-      );
-
-      res.json(feedback);
-    } catch (error: any) {
-      console.error("AI feedback generation failed:", error);
-      res.status(500).json({ message: "Error generating AI feedback: " + error.message });
-    }
-  });
-
-  // Get AI feedback for a song
-  app.get("/api/ai-feedback/:songId", async (req: Request, res: Response) => {
-    try {
-      const { songId } = req.params;
-      const fs = await import('fs/promises');
-      const path = await import('path');
-      
-      const feedbackPath = path.join(process.cwd(), 'uploads/feedback', `${songId}_feedback.json`);
-      
-      try {
-        const feedbackData = await fs.readFile(feedbackPath, 'utf8');
-        const feedback = JSON.parse(feedbackData);
-        res.json(feedback);
-      } catch (error) {
-        res.status(404).json({ message: "AI feedback not found for this song" });
-      }
-    } catch (error: any) {
-      res.status(500).json({ message: "Error retrieving AI feedback: " + error.message });
-    }
-  });
-
-  // Generate license certificate with artist name & beat ID
-  app.post("/api/license/generate", async (req: Request, res: Response) => {
-    try {
-      const { songId, songTitle, tier, userEmail, artistName } = req.body;
-      const { generateLicense } = await import('./utils/license-generator');
-      
-      const beatId = `BB-${songId}-${Date.now().toString(36).toUpperCase()}`;
-      
-      const licensePath = generateLicense({
-        songTitle,
-        userId: songId,
-        tier,
-        userEmail,
-        artistName: artistName || userEmail?.split('@')[0] || 'Artist',
-        beatId
-      });
-
-      res.json({
-        success: true,
-        licensePath,
-        beatId,
-        licenseId: `BBX-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Date.now()}`,
-        message: "License certificate generated successfully"
-      });
-    } catch (error: any) {
-      console.error("License generation failed:", error);
-      res.status(500).json({ message: "Error generating license: " + error.message });
-    }
-  });
-
-  // Beat popularity tracking endpoints
-  app.get("/api/beats/popularity/:beatId", async (req: Request, res: Response) => {
-    try {
-      const { beatId } = req.params;
-      const { getBeatPopularityStats } = await import('./utils/license-generator');
-      
-      const stats = getBeatPopularityStats(beatId);
-      
-      if (!stats) {
-        return res.status(404).json({ message: "Beat statistics not found" });
-      }
-
-      res.json(stats);
-    } catch (error: any) {
-      res.status(500).json({ message: "Error retrieving beat stats: " + error.message });
-    }
-  });
-
-  // Get top performing beats
-  app.get("/api/beats/top-performing", async (req: Request, res: Response) => {
-    try {
-      const limit = parseInt(req.query.limit as string) || 10;
-      const { getTopPerformingBeats } = await import('./utils/license-generator');
-      
-      const topBeats = getTopPerformingBeats(limit);
-      
-      res.json({
-        success: true,
-        topBeats,
-        count: topBeats.length,
-        message: `Top ${topBeats.length} performing beats retrieved`
-      });
-    } catch (error: any) {
-      res.status(500).json({ message: "Error retrieving top beats: " + error.message });
-    }
-  });
-
-  // Purchase summary dashboard endpoint
-  app.get("/api/purchases/summary/:userEmail", async (req: Request, res: Response) => {
-    try {
-      const { userEmail } = req.params;
-      const fs = await import('fs/promises');
-      const path = await import('path');
-      
-      // Get all feedback files for user
-      const feedbackDir = path.join(process.cwd(), 'uploads/feedback');
-      
-      let userPurchases = [];
-      let totalSpent = 0;
-      
-      try {
-        const feedbackFiles = await fs.readdir(feedbackDir);
-        
-        for (const file of feedbackFiles) {
-          if (file.endsWith('_feedback.json')) {
-            const feedbackData = JSON.parse(await fs.readFile(path.join(feedbackDir, file), 'utf8'));
-            
-            if (feedbackData.userEmail === userEmail) {
-              const tierPricing = { bonus: 2.99, base: 4.99, top: 9.99 };
-              totalSpent += tierPricing[feedbackData.purchaseTier as keyof typeof tierPricing];
-              
-              userPurchases.push({
-                songId: feedbackData.songId,
-                songTitle: feedbackData.songTitle,
-                tier: feedbackData.purchaseTier,
-                purchaseDate: feedbackData.generatedAt,
-                aiScore: feedbackData.analysis.overallScore,
-                mood: feedbackData.analysis.mood,
-                genre: feedbackData.analysis.genre
-              });
-            }
-          }
-        }
-      } catch (error) {
-        // Directory might not exist yet
-        userPurchases = [];
-      }
-
-      res.json({
-        success: true,
-        userEmail,
-        totalPurchases: userPurchases.length,
-        totalSpent: totalSpent.toFixed(2),
-        purchases: userPurchases.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime()),
-        averageAiScore: userPurchases.length > 0 
-          ? (userPurchases.reduce((sum, p) => sum + p.aiScore, 0) / userPurchases.length).toFixed(1)
-          : 0
-      });
-    } catch (error: any) {
-      res.status(500).json({ message: "Error retrieving purchase summary: " + error.message });
-    }
-  });
-
-export default app;
