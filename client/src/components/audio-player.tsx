@@ -609,8 +609,12 @@ export default function AudioPlayer({
                     +15s
                   </Button>
                 </TooltipTrigger>
-                <
-                  <Tooltip>
+                <TooltipContent>
+                  <p>Skip backward 15 seconds</p>
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
