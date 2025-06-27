@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
@@ -18,9 +18,11 @@ import {
   SkipBack,
   SkipForward
 } from "lucide-react"
-import type { Song } from "@shared/schema"
+import type { Song, SongSection } from "@shared/schema"
 import { formatTime } from "@/lib/utils"
 import WatermarkIndicator from "./watermark-indicator"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useHotkeys } from "react-hotkeys-hook"
 
 interface AudioPlayerProps {
   song: Song;
@@ -33,6 +35,8 @@ interface AudioPlayerProps {
   onPrevious?: () => void;
   showSections?: boolean;
 }
+
+const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
 export default function AudioPlayer({ 
   song, 
@@ -47,7 +51,7 @@ export default function AudioPlayer({
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [duration, setDuration] = useState(song.duration || 0);
   const [volume, setVolume] = useState(0.7);
   const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,11 +60,12 @@ export default function AudioPlayer({
   const [hasUserInteracted, setHasUserInteracted] = useState(false);
   const [currentSection, setCurrentSection] = useState('');
   const [showSectionList, setShowSectionList] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1);
+  const [playbackRate, setPlaybackRate] = useState<typeof PLAYBACK_RATES[number]>(1);
   const [isDragging, setIsDragging] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  // Get valid audio URL
-  const getAudioUrl = useCallback(() => {
+  // Memoize audio URL to prevent unnecessary recalculations
+  const audioUrl = useMemo(() => {
     if (!song?.audioUrl && !song?.generatedAudioPath) return null;
 
     const url = song.audioUrl || song.generatedAudioPath;
@@ -80,76 +85,70 @@ export default function AudioPlayer({
     }
   }, [song]);
 
-  const audioUrl = getAudioUrl();
-
-  // Initialize audio element
+  // Initialize audio element and event listeners
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !audioUrl) return;
 
-    const handleEvents = () => {
-      const handleLoadStart = () => {
-        setIsLoading(true);
-        setError(null);
-      };
-
-      const handleLoadedMetadata = () => {
-        setDuration(audio.duration || 0);
-        setIsReady(true);
-        setIsLoading(false);
-
-        // Attempt autoplay if enabled and user has interacted
-        if (autoPlay && hasUserInteracted) {
-          audio.play().catch(err => {
-            console.log('Autoplay blocked:', err);
-          });
-        }
-      };
-
-      const handleTimeUpdate = () => {
-        if (!isDragging && !isNaN(audio.duration)) {
-          setCurrentTime(audio.currentTime);
-          updateCurrentSection(audio.currentTime);
-        }
-      };
-
-      const handleEnded = () => {
-        setIsPlaying(false);
-        if (loop) {
-          audio.currentTime = 0;
-          audio.play().catch(console.error);
-        } else {
-          onTrackEnd?.();
-        }
-      };
-
-      const handleError = () => {
-        const errorMessages = {
-          1: 'Playback aborted',
-          2: 'Network error',
-          3: 'Decoding error',
-          4: 'Unsupported format'
-        };
-        setError(errorMessages[audio.error?.code || 0] || 'Playback error');
-        setIsLoading(false);
-      };
-
-      audio.addEventListener('loadstart', handleLoadStart);
-      audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.addEventListener('timeupdate', handleTimeUpdate);
-      audio.addEventListener('ended', handleEnded);
-      audio.addEventListener('error', handleError);
-
-      return () => {
-        audio.removeEventListener('loadstart', handleLoadStart);
-        audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-        audio.removeEventListener('timeupdate', handleTimeUpdate);
-        audio.removeEventListener('ended', handleEnded);
-        audio.removeEventListener('error', handleError);
-      };
+    const handleLoadStart = () => {
+      setIsLoading(true);
+      setError(null);
     };
 
-    handleEvents();
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration || 0);
+      setIsReady(true);
+      setIsLoading(false);
+
+      // Attempt autoplay if enabled and user has interacted
+      if (autoPlay && hasUserInteracted) {
+        audio.play().catch(err => {
+          console.log('Autoplay blocked:', err);
+        });
+      }
+    };
+
+    const handleTimeUpdate = () => {
+      if (!isDragging && !isNaN(audio.duration)) {
+        setCurrentTime(audio.currentTime);
+        updateCurrentSection(audio.currentTime);
+      }
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      if (loop) {
+        audio.currentTime = 0;
+        audio.play().catch(console.error);
+      } else {
+        onTrackEnd?.();
+      }
+    };
+
+    const handleError = () => {
+      const errorMessages = {
+        1: 'Playback aborted',
+        2: 'Network error',
+        3: 'Decoding error',
+        4: 'Unsupported format'
+      };
+      setError(errorMessages[audio.error?.code || 0] || 'Playback error');
+      setIsLoading(false);
+    };
+
+    audio.addEventListener('loadstart', handleLoadStart);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
+
+    return () => {
+      audio.removeEventListener('loadstart', handleLoadStart);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
+    };
   }, [audioUrl, autoPlay, loop, onTrackEnd, hasUserInteracted, isDragging]);
 
   // Update current section
@@ -162,7 +161,7 @@ export default function AudioPlayer({
     setCurrentSection(section?.type || '');
   }, [song.sections]);
 
-  // Play/pause toggle
+  // Play/pause toggle with better error handling
   const togglePlay = useCallback(async () => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -178,35 +177,50 @@ export default function AudioPlayer({
       }
     } catch (err) {
       setError('Failed to play audio. Try interacting with the page first.');
+      console.error('Playback error:', err);
     }
   }, [isPlaying]);
 
   const handlePlay = async () => {
     if (audioRef.current) {
-      audioRef.current.play();
-      setIsPlaying(true);
-
-      // Track play analytics
       try {
-        const sessionId = sessionStorage.getItem('sessionId') || 
-          Math.random().toString(36).substring(2, 15);
-        sessionStorage.setItem('sessionId', sessionId);
-
-        await fetch(`/api/play/${song.id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            sessionId,
-            userId: null // Add user ID if you have auth
-          })
-        });
-      } catch (error) {
-        console.warn('Failed to track play:', error);
+        await audioRef.current.play();
+        setIsPlaying(true);
+        trackPlayAnalytics();
+      } catch (err) {
+        if (err instanceof Error && err.name === 'NotAllowedError') {
+          setError('Playback blocked. Please interact with the page first.');
+        }
       }
     }
   };
 
-  // Handle seeking
+  // Track play analytics with retry logic
+  const trackPlayAnalytics = useCallback(async () => {
+    try {
+      const sessionId = sessionStorage.getItem('sessionId') || 
+        crypto.randomUUID();
+      sessionStorage.setItem('sessionId', sessionId);
+
+      const response = await fetch(`/api/play/${song.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          sessionId,
+          userId: null // Add user ID if you have auth
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to track play');
+      }
+    } catch (error) {
+      console.warn('Failed to track play:', error);
+      // Implement retry logic here if needed
+    }
+  }, [song.id]);
+
+  // Handle seeking with debouncing
   const handleSeekStart = useCallback(() => {
     setIsDragging(true);
   }, []);
@@ -223,7 +237,7 @@ export default function AudioPlayer({
     setCurrentTime(Math.min(Math.max(value, 0), duration));
   }, [duration]);
 
-  // Volume control
+  // Volume control with persistence
   const handleVolumeChange = useCallback(([value]: number[]) => {
     const newVolume = Math.min(Math.max(value, 0), 1);
     setVolume(newVolume);
@@ -232,6 +246,21 @@ export default function AudioPlayer({
     const audio = audioRef.current;
     if (audio) {
       audio.volume = newVolume;
+    }
+
+    // Persist volume preference
+    localStorage.setItem('audioPlayerVolume', newVolume.toString());
+  }, []);
+
+  // Initialize volume from localStorage
+  useEffect(() => {
+    const savedVolume = localStorage.getItem('audioPlayerVolume');
+    if (savedVolume) {
+      const volumeValue = parseFloat(savedVolume);
+      if (!isNaN(volumeValue)) {
+        setVolume(volumeValue);
+        setIsMuted(volumeValue === 0);
+      }
     }
   }, []);
 
@@ -248,13 +277,14 @@ export default function AudioPlayer({
     }
   }, [isMuted, volume]);
 
-  // Playback speed
+  // Playback speed cycling
   const changePlaybackRate = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const rates = [0.5, 0.75, 1, 1.25, 1.5, 2];
-    const newRate = rates[(rates.indexOf(playbackRate) + 1) % rates.length];
+    const currentIndex = PLAYBACK_RATES.indexOf(playbackRate);
+    const newIndex = (currentIndex + 1) % PLAYBACK_RATES.length;
+    const newRate = PLAYBACK_RATES[newIndex];
 
     audio.playbackRate = newRate;
     setPlaybackRate(newRate);
@@ -289,6 +319,41 @@ export default function AudioPlayer({
 
     audio.currentTime = Math.max(audio.currentTime - 15, 0);
   }, []);
+
+  // Keyboard shortcuts
+  useHotkeys('space', (e) => {
+    e.preventDefault();
+    togglePlay();
+  }, [togglePlay]);
+
+  useHotkeys('arrowright', skipForward, [skipForward]);
+  useHotkeys('arrowleft', skipBackward, [skipBackward]);
+  useHotkeys('m', toggleMute, [toggleMute]);
+  useHotkeys('r', changePlaybackRate, [changePlaybackRate]);
+
+  // Download handler
+  const handleDownload = useCallback(async () => {
+    if (!audioUrl) return;
+
+    setIsDownloading(true);
+    try {
+      const response = await fetch(audioUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${song.title.replace(/[^a-z0-9]/gi, '_')}.${audioUrl.split('.').pop()}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Download failed:', err);
+      setError('Failed to download audio');
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [audioUrl, song.title]);
 
   if (!audioUrl) {
     return (
@@ -327,6 +392,16 @@ export default function AudioPlayer({
             {song.watermark && <WatermarkIndicator />}
           </div>
 
+          {/* Error Display */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-md p-3 text-sm text-red-300">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="h-4 w-4" />
+                <span>{error}</span>
+              </div>
+            </div>
+          )}
+
           {/* Progress Display */}
           {showFullControls && (
             <div className="space-y-2">
@@ -350,62 +425,82 @@ export default function AudioPlayer({
           {/* Main Controls */}
           <div className="flex items-center justify-center space-x-4">
             {onPrevious && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onPrevious}
-                className="h-10 w-10"
-                aria-label="Previous track"
-              >
-                <SkipBack className="h-4 w-4" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onPrevious}
+                    className="h-10 w-10"
+                    aria-label="Previous track"
+                  >
+                    <SkipBack className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Previous Track</TooltipContent>
+              </Tooltip>
             )}
 
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={togglePlay}
-              disabled={!isReady || isLoading}
-              className="h-12 w-12 rounded-full bg-white/10 hover:bg-white/20"
-              aria-label={isPlaying ? "Pause" : "Play"}
-            >
-              {isLoading ? (
-                <Loader2 className="h-6 w-6 animate-spin" />
-              ) : isPlaying ? (
-                <Pause className="h-6 w-6" />
-              ) : (
-                <Play className="h-6 w-6" />
-              )}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={togglePlay}
+                  disabled={!isReady || isLoading}
+                  className="h-12 w-12 rounded-full bg-white/10 hover:bg-white/20"
+                  aria-label={isPlaying ? "Pause" : "Play"}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : isPlaying ? (
+                    <Pause className="h-6 w-6" />
+                  ) : (
+                    <Play className="h-6 w-6" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{isPlaying ? "Pause" : "Play"}</TooltipContent>
+            </Tooltip>
 
             {onNext && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onNext}
-                className="h-10 w-10"
-                aria-label="Next track"
-              >
-                <SkipForward className="h-4 w-4" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onNext}
+                    className="h-10 w-10"
+                    aria-label="Next track"
+                  >
+                    <SkipForward className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Next Track</TooltipContent>
+              </Tooltip>
             )}
           </div>
 
           {/* Secondary Controls */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleMute}
-                aria-label={isMuted ? "Unmute" : "Mute"}
-              >
-                {isMuted ? (
-                  <VolumeX className="h-4 w-4" />
-                ) : (
-                  <Volume2 className="h-4 w-4" />
-                )}
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={toggleMute}
+                    aria-label={isMuted ? "Unmute" : "Mute"}
+                  >
+                    {isMuted ? (
+                      <VolumeX className="h-4 w-4" />
+                    ) : (
+                      <Volume2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{isMuted ? "Unmute" : "Mute"}</TooltipContent>
+              </Tooltip>
               <Slider
                 value={[isMuted ? 0 : volume]}
                 max={1}
@@ -416,124 +511,187 @@ export default function AudioPlayer({
             </div>
 
             <div className="flex items-center space-x-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={skipBackward}
-                className="text-xs"
-                aria-label="Skip backward 15 seconds"
-              >
-                -15s
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={skipBackward}
+                    className="text-xs"
+                    aria-label="Skip backward 15 seconds"
+                  >
+                    -15s
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Skip Backward 15s</TooltipContent>
+              </Tooltip>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={changePlaybackRate}
-                className="text-xs flex items-center"
-                aria-label={`Playback speed (${playbackRate}x)`}
-              >
-                <Gauge className="h-3 w-3 mr-1" />
-                {playbackRate}x
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={changePlaybackRate}
+                    className="text-xs flex items-center"
+                    aria-label={`Playback speed (${playbackRate}x)`}
+                  >
+                    <Gauge className="h-3 w-3 mr-1" />
+                    {playbackRate}x
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Playback Speed ({playbackRate}x)</TooltipContent>
+              </Tooltip>
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={skipForward}
-                className="text-xs"
-                aria-label="Skip forward 15 seconds"
-              >
-                +15s
-              </Button>
-            </div>
-          </div>
-
-          {/* Section Navigation */}
-          {showFullControls && song.sections?.length > 0 && (
-            <div className="space-y-3 border-t border-white/10 pt-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-white/60">
-                  Current: {currentSection || 'Intro'}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSectionList(!showSectionList)}
-                  className="text-xs flex items-center"
-                  aria-label={showSectionList ? "Hide sections" : "Show sections"}
-                >
-                  <ListMusic className="h-3 w-3 mr-1" />
-                  {showSectionList ? 'Hide' : 'Show'} Sections
-                </Button>
-              </div>
-
-              {/* Visual Timeline */}
-              <div className="relative h-8 bg-white/5 rounded-lg overflow-hidden">
-                {song.sections.map((section, index) => {
-                  const sectionWidth = ((section.endTime - section.startTime) / duration) * 100;
-                  const sectionLeft = (section.startTime / duration) * 100;
-                  const isCurrent = currentTime >= section.startTime && currentTime < section.endTime;
-
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => jumpToSection(section.startTime)}
-                      className={`absolute h-full text-xs transition-all ${
-                        isCurrent 
-                          ? 'bg-purple-500/80 text-white' 
-                          : 'bg-white/20 text-white/70 hover:bg-white/30'
-                      }`}
-                      style={{
-                        left: `${sectionLeft}%`,
-                        width: `${sectionWidth}%`,
-                      }}
-                      aria-label={`Jump to ${section.type}`}
-                    >
-                      <span className="px-1 truncate">{section.type}</span>
-                    </button>
-                  );
-                })}
-                <div 
-                  className="absolute top-0 h-full bg-purple-500/30 pointer-events-none"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-
-              {/* Detailed Section List */}
-              {showSectionList && (
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {song.sections.map((section, index) => (
-                    <div 
-                      key={index}
-                      className={`flex items-center justify-between p-2 rounded-md ${
-                        currentSection === section.type 
-                          ? 'bg-purple-500/20 border border-purple-500/40' 
-                          : 'bg-white/5 hover:bg-white/10'
-                      }`}
-                    >
-                      <div>
-                        <div className="text-sm font-medium">{section.type}</div>
-                        <div className="text-xs text-white/60">
-                          {formatTime(section.startTime)} - {formatTime(section.endTime)}
-                        </div>
-                      </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={skipForward}
+                    className="text-xs"
+                    aria-label="Skip forward 15 seconds"
+                  >
+                    +15s
+                  </Button>
+                </TooltipTrigger>
+                <
+                  <Tooltip>
+                    <TooltipTrigger asChild>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => jumpToSection(section.startTime)}
-                        aria-label={`Jump to ${section.type}`}
+                        onClick={skipForward}
+                        className="text-xs"
+                        aria-label="Skip forward 15 seconds"
                       >
-                        Jump
+                        +15s
                       </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Skip Forward 15s</TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleDownload}
+                        disabled={isDownloading}
+                        className="text-xs flex items-center"
+                        aria-label="Download audio"
+                      >
+                        {isDownloading ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : (
+                          <Download className="h-3 w-3 mr-1" />
+                        )}
+                        Download
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Download Audio File</TooltipContent>
+                  </Tooltip>
+                  </div>
+                  </div>
+
+                  {/* Section Navigation */}
+                  {showFullControls && song.sections?.length > 0 && (
+                  <div className="space-y-3 border-t border-white/10 pt-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-white/60">
+                      Current: {currentSection || 'Intro'}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowSectionList(!showSectionList)}
+                      className="text-xs flex items-center"
+                      aria-label={showSectionList ? "Hide sections" : "Show sections"}
+                    >
+                      <ListMusic className="h-3 w-3 mr-1" />
+                      {showSectionList ? 'Hide' : 'Show'} Sections
+                    </Button>
+                  </div>
+
+                  {/* Visual Timeline */}
+                  <div className="relative h-8 bg-white/5 rounded-lg overflow-hidden">
+                    {song.sections.map((section, index) => {
+                      const sectionWidth = ((section.endTime - section.startTime) / duration) * 100;
+                      const sectionLeft = (section.startTime / duration) * 100;
+                      const isCurrent = currentTime >= section.startTime && currentTime < section.endTime;
+
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => jumpToSection(section.startTime)}
+                          className={`absolute h-full text-xs transition-all ${
+                            isCurrent 
+                              ? 'bg-purple-500/80 text-white' 
+                              : 'bg-white/20 text-white/70 hover:bg-white/30'
+                          }`}
+                          style={{
+                            left: `${sectionLeft}%`,
+                            width: `${sectionWidth}%`,
+                          }}
+                          aria-label={`Jump to ${section.type}`}
+                        >
+                          <span className="px-1 truncate">{section.type}</span>
+                        </button>
+                      );
+                    })}
+                    <div 
+                      className="absolute top-0 h-full bg-purple-500/30 pointer-events-none"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+
+                  {/* Detailed Section List */}
+                  {showSectionList && (
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {song.sections.map((section, index) => (
+                        <div 
+                          key={index}
+                          className={`flex items-center justify-between p-2 rounded-md ${
+                            currentSection === section.type 
+                              ? 'bg-purple-500/20 border border-purple-500/40' 
+                              : 'bg-white/5 hover:bg-white/10'
+                          }`}
+                        >
+                          <div>
+                            <div className="text-sm font-medium">{section.type}</div>
+                            <div className="text-xs text-white/60">
+                              {formatTime(section.startTime)} - {formatTime(section.endTime)}
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => jumpToSection(section.startTime)}
+                            aria-label={`Jump to ${section.type}`}
+                          >
+                            Jump
+                          </Button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+                  )}
+                  </div>
+                  )}
+
+                  {/* Upgrade Prompt */}
+                  {onUpgrade && (
+                  <div className="border-t border-white/10 pt-4 text-center">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={onUpgrade}
+                    className="w-full"
+                  >
+                    Upgrade for Full Features
+                  </Button>
+                  </div>
+                  )}
+                  </div>
+                  </CardContent>
+                  </Card>
+                  );
+                  }
