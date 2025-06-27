@@ -4,6 +4,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { Logger } from '../utils/logger';
 import { googleCloudStorage } from './google-cloud-storage';
+import { env } from '../config/env';
 
 const logger = new Logger({ name: 'FileStorageService' });
 
@@ -12,39 +13,105 @@ export class FileStorageService {
   private useCloudStorage: boolean;
 
   constructor(storagePath?: string, useCloudStorage = false) {
-    this.storagePath = storagePath || path.join(process.cwd(), 'uploads', 'voices');
-    this.useCloudStorage = useCloudStorage || !!process.env.GOOGLE_CLOUD_KEY_FILE;
+    this.storagePath = storagePath || path.join(env.STORAGE_BASE_PATH, 'voices');
+    this.useCloudStorage = useCloudStorage || !!env.GOOGLE_CLOUD_KEY_FILE;
     
     if (!this.useCloudStorage) {
       this.ensureStorageDirectory();
     }
+    
+    // Initialize model cache directory
+    this.ensureModelCacheDirectory();
   }
 
   private async ensureStorageDirectory(): Promise<void> {
     try {
       await fs.mkdir(this.storagePath, { recursive: true });
+      // Ensure additional storage directories
+      await fs.mkdir(path.join(env.STORAGE_BASE_PATH, 'music'), { recursive: true });
+      await fs.mkdir(path.join(env.STORAGE_BASE_PATH, 'temp'), { recursive: true });
     } catch (error) {
       logger.error('Failed to create storage directory', { error: error.message });
     }
   }
 
-  async storeFile(fileData: Buffer, extension = 'wav'): Promise<string> {
+  private async ensureModelCacheDirectory(): Promise<void> {
     try {
-      const fileName = `voices/${uuidv4()}.${extension}`;
+      await fs.mkdir(env.MODEL_CACHE_PATH, { recursive: true });
+      logger.info('Model cache directory initialized', { path: env.MODEL_CACHE_PATH });
+    } catch (error) {
+      logger.error('Failed to create model cache directory', { error: error.message });
+    }
+  }
+
+  async cleanupTempFiles(): Promise<void> {
+    try {
+      const tempDir = path.join(env.STORAGE_BASE_PATH, 'temp');
+      const files = await fs.readdir(tempDir);
+      let cleanedCount = 0;
+
+      for (const file of files) {
+        const filePath = path.join(tempDir, file);
+        const stats = await fs.stat(filePath);
+        const age = Date.now() - stats.mtime.getTime();
+
+        // Remove files older than configured interval
+        if (age > env.TEMP_CLEANUP_INTERVAL) {
+          await fs.unlink(filePath);
+          cleanedCount++;
+        }
+      }
+
+      if (cleanedCount > 0) {
+        logger.info('Temporary files cleaned up', { count: cleanedCount });
+      }
+    } catch (error) {
+      logger.warn('Failed to cleanup temp files', { error: error.message });
+    }
+  }
+
+  async storeFile(fileData: Buffer, extension = 'wav', category = 'voices'): Promise<string> {
+    try {
+      // Validate file size
+      if (fileData.length > env.MAX_FILE_SIZE) {
+        throw new Error(`File size exceeds maximum allowed size of ${env.MAX_FILE_SIZE} bytes`);
+      }
+
+      const fileName = `${category}/${uuidv4()}.${extension}`;
       
       if (this.useCloudStorage) {
         await googleCloudStorage.uploadFile(fileData, fileName, `audio/${extension}`);
-        logger.info('File stored in cloud storage', { fileName, size: fileData.length });
+        logger.info('File stored in cloud storage', { fileName, size: fileData.length, category });
       } else {
-        const filePath = path.join(this.storagePath, path.basename(fileName));
+        const categoryDir = path.join(env.STORAGE_BASE_PATH, category);
+        await fs.mkdir(categoryDir, { recursive: true });
+        const filePath = path.join(categoryDir, `${uuidv4()}.${extension}`);
         await fs.writeFile(filePath, fileData);
-        logger.info('File stored locally', { fileName, size: fileData.length });
+        logger.info('File stored locally', { fileName, size: fileData.length, category });
       }
       
       return fileName;
     } catch (error) {
       logger.error('Failed to store file', { error: error.message });
       throw new Error('Failed to store file');
+    }
+  }
+
+  async storeTempFile(fileData: Buffer, extension = 'tmp'): Promise<string> {
+    try {
+      const tempDir = path.join(env.STORAGE_BASE_PATH, 'temp');
+      await fs.mkdir(tempDir, { recursive: true });
+      
+      const fileName = `${uuidv4()}.${extension}`;
+      const filePath = path.join(tempDir, fileName);
+      
+      await fs.writeFile(filePath, fileData);
+      logger.info('Temporary file stored', { fileName, size: fileData.length });
+      
+      return filePath;
+    } catch (error) {
+      logger.error('Failed to store temporary file', { error: error.message });
+      throw new Error('Failed to store temporary file');
     }
   }
 

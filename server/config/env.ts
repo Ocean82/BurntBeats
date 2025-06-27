@@ -58,6 +58,12 @@ export const env = {
   GOOGLE_CLOUD_KEY_FILE: process.env.GOOGLE_CLOUD_KEY_FILE || '',
   GOOGLE_CLOUD_BUCKET: process.env.GOOGLE_CLOUD_BUCKET || 'burnt-beats-storage',
 
+  // Model and File Storage Configuration
+  MODEL_CACHE_PATH: process.env.MODEL_CACHE_PATH || '/tmp/models',
+  STORAGE_BASE_PATH: process.env.STORAGE_BASE_PATH || './storage',
+  MAX_FILE_SIZE: process.env.MAX_FILE_SIZE ? parseInt(process.env.MAX_FILE_SIZE, 10) : 50 * 1024 * 1024, // 50MB
+  TEMP_CLEANUP_INTERVAL: process.env.TEMP_CLEANUP_INTERVAL ? parseInt(process.env.TEMP_CLEANUP_INTERVAL, 10) : 3600000, // 1 hour
+
   // Health API Configuration
   HEALTH_API_KEY: process.env.HEALTH_API_KEY || 'health-check-key-dev',
 };
