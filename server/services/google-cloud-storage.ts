@@ -3,8 +3,6 @@ import { Storage } from '@google-cloud/storage';
 import path from 'path';
 import { Logger } from '../utils/logger';
 
-const logger = new Logger({ name: 'GoogleCloudStorage' });
-
 export class GoogleCloudStorageService {
   private storage: Storage;
   private bucketName: string;
@@ -28,9 +26,9 @@ export class GoogleCloudStorageService {
         this.storage = new Storage();
       }
       
-      logger.info('Google Cloud Storage initialized', { bucket: this.bucketName });
+      Logger.info('Google Cloud Storage initialized', { bucket: this.bucketName });
     } catch (error) {
-      logger.error('Failed to initialize Google Cloud Storage', { error: error.message });
+      Logger.error('Failed to initialize Google Cloud Storage', error);
       throw new Error('Google Cloud Storage initialization failed');
     }
   }
@@ -49,13 +47,13 @@ export class GoogleCloudStorageService {
 
       return new Promise((resolve, reject) => {
         stream.on('error', (error) => {
-          logger.error('Upload failed', { error: error.message, fileName });
+          Logger.error('Upload failed', error);
           reject(error);
         });
 
         stream.on('finish', () => {
           const publicUrl = `https://storage.googleapis.com/${this.bucketName}/${fileName}`;
-          logger.info('File uploaded successfully', { fileName, publicUrl });
+          Logger.info('File uploaded successfully', { fileName, publicUrl });
           resolve(publicUrl);
         });
 

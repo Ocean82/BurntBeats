@@ -28,12 +28,12 @@ export class MusicAPI {
   // Middleware
   static generateSongMiddleware = [
     rateLimiter(3, '1 minute'),
-    RequestValidator.validate(validateSongRequest),
+    validateSongRequest,
   ];
 
   static generateAIMusicMiddleware = [
     rateLimiter(2, '1 minute'),
-    RequestValidator.validate(validateMusic21Request),
+    validateMusic21Request,
   ];
 
   /**

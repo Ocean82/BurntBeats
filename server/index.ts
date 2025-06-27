@@ -337,16 +337,16 @@ app.use((err: Error, req: any, res: any, next: any) => {
 
 // Initialize voice cloning service and voice bank
 import { VoiceCloningService } from './services/voice-cloning-service';
-import { logger } from './utils/logger';
+import { Logger } from './utils/logger';
 
 // Initialize voice bank on startup
 (async () => {
   try {
     const voiceService = VoiceCloningService.getInstance();
     await voiceService.initializeVoiceBank();
-    logger.info('Voice bank initialized successfully');
+    Logger.info('Voice bank initialized successfully');
   } catch (error) {
-    logger.error('Failed to initialize voice bank', { error: error.message });
+    Logger.error('Failed to initialize voice bank', error);
   }
 })();
 

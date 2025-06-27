@@ -1,10 +1,7 @@
-import dotenv from 'dotenv';
+// Environment configuration without dotenv dependency
 import path from 'path';
 
-// Load environment variables
-dotenv.config({
-  path: path.resolve(process.cwd(), `.env.${process.env.NODE_ENV || 'development'}`),
-});
+// Environment variables are automatically loaded by the runtime
 
 // Validate required environment variables
 const requiredEnvVars = [

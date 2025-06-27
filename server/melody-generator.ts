@@ -1052,24 +1052,7 @@ export class MelodyGenerator {
       return `${noteNames[midiNote % 12]}${octave}`;
       }
 
-      private generateContentHash(content: string): string {
-      return crypto.createHash('sha256')
-      .update(content)
-      .digest('hex')
-      .slice(0, 12);
-      }
+}
 
-      // ========================
-      // EXPORT SINGLETON INSTANCE
-      // ========================
-
-      static getInstance(): MelodyGenerator {
-      if (!MelodyGenerator.instance) {
-      MelodyGenerator.instance = new MelodyGenerator();
-      }
-      return MelodyGenerator.instance;
-      }
-      }
-
-      // Export default singleton instance
-      export const melodyGenerator = MelodyGenerator.getInstance();
+// Export default singleton instance
+export const melodyGenerator = MelodyGenerator.getInstance();

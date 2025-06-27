@@ -6,8 +6,6 @@ import { Logger } from '../utils/logger';
 import { googleCloudStorage } from './google-cloud-storage';
 import { env } from '../config/env';
 
-const logger = new Logger({ name: 'FileStorageService' });
-
 export class FileStorageService {
   private storagePath: string;
   private useCloudStorage: boolean;
@@ -31,16 +29,16 @@ export class FileStorageService {
       await fs.mkdir(path.join(env.STORAGE_BASE_PATH, 'music'), { recursive: true });
       await fs.mkdir(path.join(env.STORAGE_BASE_PATH, 'temp'), { recursive: true });
     } catch (error) {
-      logger.error('Failed to create storage directory', { error: error.message });
+      Logger.error('Failed to create storage directory', error);
     }
   }
 
   private async ensureModelCacheDirectory(): Promise<void> {
     try {
       await fs.mkdir(env.MODEL_CACHE_PATH, { recursive: true });
-      logger.info('Model cache directory initialized', { path: env.MODEL_CACHE_PATH });
+      Logger.info('Model cache directory initialized', { path: env.MODEL_CACHE_PATH });
     } catch (error) {
-      logger.error('Failed to create model cache directory', { error: error.message });
+      Logger.error('Failed to create model cache directory', error);
     }
   }
 
