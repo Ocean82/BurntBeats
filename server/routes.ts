@@ -435,21 +435,21 @@ Taking over, making vows`
   const v1Router = express.Router();
 
   // Music Generation API Routes (v1)
-  v1Router.post("/songs/generate", musicGenerationRateLimit, optionalAuth, checkPlanQuota('free'), validateMusicGenerationInput, MusicAPI.generateSong);
-  v1Router.post("/songs/ai-generate", musicGenerationRateLimit, optionalAuth, requireFeature('neuralSynthesis'), validateMusicGenerationInput, MusicAPI.generateAIMusic);
-  v1Router.post("/music21/demo", generalRateLimit, optionalAuth, MusicAPI.generateMusic21Demo);
+  v1Router.post("/songs/generate", musicGenerationRateLimit, authenticate, checkPlanQuota('free'), validateMusicGenerationInput, MusicAPI.generateSong);
+  v1Router.post("/songs/ai-generate", musicGenerationRateLimit, authenticate, requireFeature('neuralSynthesis'), validateMusicGenerationInput, MusicAPI.generateAIMusic);
+  v1Router.post("/music21/demo", generalRateLimit, MusicAPI.generateMusic21Demo);
   v1Router.get("/songs/:id", generalRateLimit, MusicAPI.getSong);
-  v1Router.get("/songs", generalRateLimit, optionalAuth, MusicAPI.getUserSongs);
+  v1Router.get("/songs", generalRateLimit, authenticate, MusicAPI.getUserSongs);
 
   // Mount v1 routes
   app.use("/api/v1", v1Router);
 
   // Legacy routes for backward compatibility
-  app.post("/api/music/generate", musicGenerationRateLimit, optionalAuth, validateMusicGenerationInput, MusicAPI.generateSong);
-  app.post("/api/music/ai-generate", musicGenerationRateLimit, optionalAuth, validateMusicGenerationInput, MusicAPI.generateAIMusic);
-  app.post("/api/music/demo", generalRateLimit, optionalAuth, MusicAPI.generateMusic21Demo);
+  app.post("/api/music/generate", musicGenerationRateLimit, authenticate, validateMusicGenerationInput, MusicAPI.generateSong);
+  app.post("/api/music/ai-generate", musicGenerationRateLimit, authenticate, validateMusicGenerationInput, MusicAPI.generateAIMusic);
+  app.post("/api/music/demo", generalRateLimit, MusicAPI.generateMusic21Demo);
   app.get("/api/music/:id", generalRateLimit, MusicAPI.getSong);
-  app.get("/api/music", generalRateLimit, optionalAuth, MusicAPI.getUserSongs);
+  app.get("/api/music", generalRateLimit, authenticate, MusicAPI.getUserSongs);
 
   // Protected API endpoints with proper authorization
   
