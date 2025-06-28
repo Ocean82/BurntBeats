@@ -1,9 +1,14 @@
 
 export default {
   preset: 'ts-jest/presets/default-esm',
-  testEnvironment: 'node',
-  roots: ['<rootDir>/tests'],
-  testMatch: ['**/tests/unit/**/*.test.ts', '**/tests/integration/**/*.test.ts'],
+  testEnvironment: 'jsdom',
+  roots: ['<rootDir>/tests', '<rootDir>/test'],
+  testMatch: [
+    '**/tests/unit/**/*.test.ts', 
+    '**/tests/integration/**/*.test.ts',
+    '**/test/components/**/*.test.jsx',
+    '**/test/**/*.test.js'
+  ],
   
   // Enhanced coverage including frontend files
   collectCoverageFrom: [
@@ -15,7 +20,7 @@ export default {
     '!client/**/*.d.ts'
   ],
   
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts', '<rootDir>/test/setupTests.js'],
   
   // Alias sync with tsconfig.json paths config
   moduleNameMapper: {

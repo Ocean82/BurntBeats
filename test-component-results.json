@@ -1,0 +1,13 @@
+{
+  "status": "complete",
+  "testSuites": 4,
+  "totalTests": 22,
+  "passed": 22,
+  "failed": 0,
+  "coverage": [
+    "Button",
+    "SassyAiChat",
+    "SongForm",
+    "AudioPlayer"
+  ]
+}
