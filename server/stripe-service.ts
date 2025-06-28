@@ -207,7 +207,7 @@ export class StripeService {
         console.log(`✅ Purchase processing completed successfully`);
         
       } catch (error) {
-        console.error(`❌ License processing error:`, error);se generation failed:`, error);
+        console.error(`❌ License processing error:`, error);
       }
     }
   }

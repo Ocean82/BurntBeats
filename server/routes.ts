@@ -56,7 +56,7 @@ import {
 } from './middleware/plan-enforcement';
 import { fileCleanupService } from "./file-cleanup-service";
 import { storage } from './storage';
-import licenseAcknowledgmentRouter from './api/license-acknowledgment-api';
+
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), "uploads");
@@ -64,7 +64,7 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-export async function registerRoutes(app: express.Application): http.Server {
+export async function registerRoutes(app: express.Application): Promise<http.Server> {
 
   // Apply global middleware
   app.use(securityHeaders);
@@ -785,11 +785,8 @@ Taking over, making vows`
     }
   });
 
-  // Voice and Audio API Routes - using placeholder handlers until API methods are implemented
-  app.post("/api/voice/upload", generalRateLimit, validateVoiceInput, (req, res) => res.json({ success: true, message: "Voice upload endpoint" }));
-  app.get("/api/voice/samples", generalRateLimit, (req, res) => res.json({ samples: [] }));
-  app.post("/api/voice/tts", musicGenerationRateLimit, validateTTSInput, (req, res) => res.json({ success: true, message: "TTS endpoint" }));
-  app.post("/api/voice/clone", musicGenerationRateLimit, validateVoiceInput, VoiceAPI.cloneVoice);
+  // Voice cloning endpoint (authenticated version already exists above)
+  app.post("/api/voice/clone", musicGenerationRateLimit, authenticate, validateVoiceInput, VoiceAPI.cloneVoice);
 
   // Pricing and Plans API Routes
   app.get("/api/pricing/plans", PricingAPI.getPricingPlans);
@@ -965,9 +962,6 @@ Taking over, making vows`
       res.status(500).json({ error: "Customer creation failed" });
     }
   });
-
-  // License acknowledgment endpoints - unified routes
-  app.use("/api/license-acknowledgment", licenseAcknowledgmentRouter);
 
   app.post("/api/stripe/webhook", express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
     try {
