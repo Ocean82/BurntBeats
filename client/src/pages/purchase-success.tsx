@@ -43,7 +43,7 @@ export default function PurchaseSuccess() {
     try {
       // Call the download endpoint
       const response = await fetch(`/api/download/${purchaseDetails.sessionId}/${purchaseDetails.tier}`);
-      
+
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -173,7 +173,7 @@ export default function PurchaseSuccess() {
               <Download className="mr-2 h-4 w-4" />
               Download {tierDetails.name}
             </Button>
-            
+
             <Button
               variant="outline"
               onClick={() => setLocation('/')}

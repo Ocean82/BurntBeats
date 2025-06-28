@@ -1,9 +1,27 @@
-import { pgTable, text, integer, timestamp, boolean, jsonb, decimal, serial } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, boolean, jsonb, decimal, serial, varchar, index } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 
+// Session storage table.
+// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// User storage table.
+// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
 export const users = pgTable("users", {
-  id: text("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  email: text("email").notNull().unique(),
+  id: varchar("id").primaryKey().notNull(),
+  email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  username: text("username").unique(),
   password: text("password"),
   plan: text("plan").default("free"),
   songsGenerated: integer("songs_generated").default(0),
@@ -19,7 +37,7 @@ export const users = pgTable("users", {
 
 export const voiceSamples = pgTable("voice_samples", {
   id: serial("id").primaryKey(),
-  userId: text("user_id").references(() => users.id),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   filePath: text("file_path").notNull(),
   duration: decimal("duration"),
@@ -34,7 +52,7 @@ export const voiceSamples = pgTable("voice_samples", {
 
 export const songs = pgTable("songs", {
   id: serial("id").primaryKey(),
-  userId: text("user_id").references(() => users.id),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   lyrics: text("lyrics"),
   genre: text("genre"),
@@ -43,7 +61,7 @@ export const songs = pgTable("songs", {
   songLength: integer("song_length"),
   duration: decimal("duration"), // Duration in seconds
   audioUrl: text("audio_url"), // Public URL for audio file
-  voiceSampleId: integer("voice_sample_id").references(() => voiceSamples.id),
+  voiceSampleId: integer("voice_sample_id").references(() => voiceSamples.id, { onDelete: "set null" }),
   generatedAudioPath: text("generated_audio_path"),
   status: text("status").default("pending"),
   generationProgress: integer("generation_progress").default(0),
@@ -54,8 +72,8 @@ export const songs = pgTable("songs", {
   playCount: integer("play_count").default(0),
   likes: integer("likes").default(0),
   rating: decimal("rating"),
-  parentSongId: integer("parent_song_id"), // For remixes/forks - references songs.id
-  forkedFromId: integer("forked_from_id"), // Original source - references songs.id
+  parentSongId: integer("parent_song_id").references(() => songs.id, { onDelete: "set null" }), // For remixes/forks
+  forkedFromId: integer("forked_from_id").references(() => songs.id, { onDelete: "set null" }), // Original source
   isRemix: boolean("is_remix").default(false),
   isDeleted: boolean("is_deleted").default(false),
   createdAt: timestamp("created_at").defaultNow(),
@@ -65,7 +83,7 @@ export const songs = pgTable("songs", {
 
 export const songVersions = pgTable("song_versions", {
   id: serial("id").primaryKey(),
-  songId: integer("song_id").references(() => songs.id),
+  songId: integer("song_id").notNull().references(() => songs.id, { onDelete: "cascade" }),
   version: integer("version").notNull(),
   changes: jsonb("changes"),
   audioPath: text("audio_path"),
@@ -76,9 +94,9 @@ export const songVersions = pgTable("song_versions", {
 
 export const voiceClones = pgTable("voice_clones", {
   id: serial("id").primaryKey(),
-  userId: text("user_id").references(() => users.id),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  originalVoiceId: integer("original_voice_id").references(() => voiceSamples.id),
+  originalVoiceId: integer("original_voice_id").references(() => voiceSamples.id, { onDelete: "set null" }),
   clonedVoicePath: text("cloned_voice_path"),
   status: text("status").default("pending"),
   quality: text("quality").default("medium"),
@@ -86,6 +104,60 @@ export const voiceClones = pgTable("voice_clones", {
   createdAt: timestamp("created_at").defaultNow(),
   deletedAt: timestamp("deleted_at"),
 });
+
+// Define relations for proper ownership tracking
+export const userRelations = relations(users, ({ many }) => ({
+  songs: many(songs),
+  voiceSamples: many(voiceSamples),
+  voiceClones: many(voiceClones),
+}));
+
+export const songRelations = relations(songs, ({ one, many }) => ({
+  user: one(users, {
+    fields: [songs.userId],
+    references: [users.id],
+  }),
+  voiceSample: one(voiceSamples, {
+    fields: [songs.voiceSampleId],
+    references: [voiceSamples.id],
+  }),
+  parentSong: one(songs, {
+    fields: [songs.parentSongId],
+    references: [songs.id],
+  }),
+  forkedFrom: one(songs, {
+    fields: [songs.forkedFromId],
+    references: [songs.id],
+  }),
+  versions: many(songVersions),
+}));
+
+export const voiceSampleRelations = relations(voiceSamples, ({ one, many }) => ({
+  user: one(users, {
+    fields: [voiceSamples.userId],
+    references: [users.id],
+  }),
+  songs: many(songs),
+  voiceClones: many(voiceClones),
+}));
+
+export const voiceCloneRelations = relations(voiceClones, ({ one }) => ({
+  user: one(users, {
+    fields: [voiceClones.userId],
+    references: [users.id],
+  }),
+  originalVoice: one(voiceSamples, {
+    fields: [voiceClones.originalVoiceId],
+    references: [voiceSamples.id],
+  }),
+}));
+
+export const songVersionRelations = relations(songVersions, ({ one }) => ({
+  song: one(songs, {
+    fields: [songVersions.songId],
+    references: [songs.id],
+  }),
+}));
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;

@@ -1,6 +1,7 @@
 import {
   users,
   voiceSamples,
+  voiceClones,
   songs,
   songVersions,
   type User,
@@ -20,11 +21,16 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User | undefined>;
 
+  // Voice sample operations
   createVoiceSample(voiceSample: InsertVoiceSample): Promise<VoiceSample>;
   getVoiceSamplesByUser(userId: string): Promise<VoiceSample[]>;
   getVoiceSample(id: number): Promise<VoiceSample | undefined>;
   deleteVoiceSample(id: number): Promise<boolean>;
 
+  // Voice clone operations
+  getVoiceClone(id: number): Promise<any | undefined>;
+
+  // Song operations
   createSong(song: InsertSong): Promise<Song>;
   getSongsByUser(userId: string): Promise<Song[]>;
   getSong(id: number): Promise<Song | undefined>;
@@ -181,6 +187,12 @@ export class DatabaseStorage implements IStorage {
 
   async getSongVersions(songId: number): Promise<any[]> {
     return await db.select().from(songVersions).where(eq(songVersions.songId, songId));
+  }
+
+  // Voice clone operations
+  async getVoiceClone(id: number): Promise<any | undefined> {
+    const [voiceClone] = await db.select().from(voiceClones).where(eq(voiceClones.id, id));
+    return voiceClone;
   }
 }
 

@@ -4,6 +4,17 @@ import path from "path";
 import fs from "fs";
 import http from "http";
 
+// Import authorization middleware
+import { 
+  authenticate, 
+  authorizeOwnership, 
+  authorizePlan, 
+  rateLimitByPlan,
+  securityHeaders,
+  requestLogger,
+  type AuthenticatedRequest 
+} from "./middleware/auth";
+
 // Import mini APIs
 import { AuthAPI } from "./api/auth-api";
 import { MusicAPI } from "./api/music-api";
@@ -11,7 +22,6 @@ import { VoiceAPI } from "./api/voice-api";
 import { PricingAPI } from "./api/pricing-api";
 import { AIChatService } from "./ai-chat-service";
 import { HealthAPI } from "./api/health-api";
-// Audio service imports removed temporarily
 import { VocalGenerator } from "./vocal-generator";
 import { VoiceCloningService } from "./voice-cloning-service";
 import { TextToSpeechService } from "./text-to-speech-service";
@@ -22,7 +32,8 @@ import { WatermarkService } from "./watermark-service";
 const voiceCloningService = new VoiceCloningService();
 const textToSpeechService = new TextToSpeechService();
 const enhancedVoicePipeline = new EnhancedVoicePipeline();
-import { isAuthenticated } from "./replitAuth";
+
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { validateEnvironmentVariables } from "./env-check";
 import {
   musicErrorHandler,
@@ -43,9 +54,7 @@ import {
   requirePlan 
 } from './middleware/plan-enforcement';
 import { fileCleanupService } from "./file-cleanup-service";
-
-// Import auth middleware from index
-import { requireAuth, optionalAuth } from "./index";
+import { storage } from "./storage";
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), "uploads");
@@ -53,8 +62,17 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-export function registerRoutes(app: express.Application): http.Server {
+export async function registerRoutes(app: express.Application): http.Server {
+  
+  // Apply global middleware
+  app.use(securityHeaders);
+  app.use(requestLogger);
+  
+  // Auth middleware
+  await setupAuth(app);
 
+  // Public endpoints (no authentication required)
+  
   // Business profile endpoint for Stripe verification
   app.get("/api/business-profile", (req: Request, res: Response) => {
     res.json({
@@ -433,13 +451,112 @@ Taking over, making vows`
   app.get("/api/music/:id", generalRateLimit, MusicAPI.getSong);
   app.get("/api/music", generalRateLimit, optionalAuth, MusicAPI.getUserSongs);
 
-  // Legacy music routes for compatibility
-  app.post("/api/songs/generate", requireAuth, checkPlanQuota(), validateMusicGenerationInput, MusicAPI.generateSong);
-  app.post("/api/generate", requireAuth, checkPlanQuota(), validateMusicGenerationInput, MusicAPI.generateSong); // Main generate endpoint
-  app.post("/api/generate-ai-music", requireAuth, checkPlanQuota(), validateMusicGenerationInput, MusicAPI.generateAIMusic);
-  app.post("/api/demo-music21", optionalAuth, MusicAPI.generateMusic21Demo);
-  app.get("/api/songs/single/:id", optionalAuth, MusicAPI.getSong);
-  app.get("/api/songs", requireAuth, MusicAPI.getUserSongs);
+  // Protected API endpoints with proper authorization
+  
+  // Song management endpoints
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res: Response) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Songs endpoints with ownership verification
+  app.get("/api/songs", authenticate, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const songs = await storage.getSongsByUser(req.user!.id);
+      res.json(songs);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch songs" });
+    }
+  });
+
+  app.get("/api/songs/:id", authenticate, authorizeOwnership('song'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const song = await storage.getSong(parseInt(req.params.id));
+      res.json(song);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch song" });
+    }
+  });
+
+  app.put("/api/songs/:id", authenticate, authorizeOwnership('song'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const updates = req.body;
+      const song = await storage.updateSong(parseInt(req.params.id), updates);
+      res.json(song);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update song" });
+    }
+  });
+
+  app.delete("/api/songs/:id", authenticate, authorizeOwnership('song'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      await storage.deleteSong(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete song" });
+    }
+  });
+
+  // Voice samples endpoints with ownership verification
+  app.get("/api/voice-samples", authenticate, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const voiceSamples = await storage.getVoiceSamplesByUser(req.user!.id);
+      res.json(voiceSamples);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch voice samples" });
+    }
+  });
+
+  app.get("/api/voice-samples/:id", authenticate, authorizeOwnership('voiceSample'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const voiceSample = await storage.getVoiceSample(parseInt(req.params.id));
+      res.json(voiceSample);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch voice sample" });
+    }
+  });
+
+  app.delete("/api/voice-samples/:id", authenticate, authorizeOwnership('voiceSample'), async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      await storage.deleteVoiceSample(parseInt(req.params.id));
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete voice sample" });
+    }
+  });
+
+  // Song generation with rate limiting and plan validation
+  app.post("/api/songs/generate", 
+    authenticate, 
+    rateLimitByPlan({ free: 5, basic: 20, pro: 50, enterprise: 100 }),
+    validateMusicGenerationInput,
+    async (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const songData = {
+          ...req.body,
+          userId: req.user!.id,
+          status: 'pending',
+          generationProgress: 0
+        };
+        const song = await storage.createSong(songData);
+        res.json(song);
+      } catch (error) {
+        res.status(500).json({ error: "Failed to create song" });
+      }
+    }
+  );
+
+  // Legacy compatibility routes
+  app.post("/api/generate", authenticate, checkPlanQuota(), validateMusicGenerationInput, MusicAPI.generateSong);
+  app.post("/api/generate-ai-music", authenticate, authorizePlan('pro'), validateMusicGenerationInput, MusicAPI.generateAIMusic);
+  app.post("/api/demo-music21", MusicAPI.generateMusic21Demo);
+  app.get("/api/songs/single/:id", authenticate, MusicAPI.getSong);
 
   // Audio streaming endpoint with proper headers
   app.get("/api/audio/:songId", async (req: Request, res: Response) => {
