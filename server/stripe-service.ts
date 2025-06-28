@@ -150,8 +150,47 @@ export class StripeService {
       console.log(`🕒 Timestamp: ${new Date().toISOString()}`);
       console.log(`🔗 Session ID: ${session.id}`);
       
-      // Generate license and file
       try {
+        // Link purchase to license acknowledgment
+        const { db } = await import('./db');
+        const { licenseAcknowledgments } = await import('./models/LicenseAcknowledgment');
+        const { eq, and } = await import('drizzle-orm');
+
+        // Update existing acknowledgment with purchase ID or create new one
+        const existing = await db
+          .select()
+          .from(licenseAcknowledgments)
+          .where(
+            and(
+              eq(licenseAcknowledgments.userId, songId),
+              eq(licenseAcknowledgments.trackId, songId)
+            )
+          )
+          .limit(1);
+
+        if (existing.length > 0) {
+          // Update existing acknowledgment with purchase ID
+          await db
+            .update(licenseAcknowledgments)
+            .set({ purchaseId: session.id })
+            .where(eq(licenseAcknowledgments.id, existing[0].id));
+          
+          console.log(`📄 License acknowledgment linked to purchase: ${session.id}`);
+        } else {
+          // Create new acknowledgment for completed purchase
+          await db
+            .insert(licenseAcknowledgments)
+            .values({
+              userId: songId,
+              trackId: songId,
+              acceptedAt: new Date(),
+              purchaseId: session.id
+            });
+          
+          console.log(`📄 New license acknowledgment created for purchase: ${session.id}`);
+        }
+
+        // Generate license and file
         const { pricingService } = await import('./pricing-service');
         const license = await pricingService.generateCommercialLicense({
           songTitle,
@@ -168,7 +207,7 @@ export class StripeService {
         console.log(`✅ Purchase processing completed successfully`);
         
       } catch (error) {
-        console.error(`❌ License generation failed:`, error);
+        console.error(`❌ License processing error:`, error);se generation failed:`, error);
       }
     }
   }

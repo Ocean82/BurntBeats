@@ -1,4 +1,3 @@
-
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import { migrate } from 'drizzle-orm/neon-serverless/migrator';
 import { Pool, neonConfig } from '@neondatabase/serverless';
