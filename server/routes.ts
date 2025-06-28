@@ -27,6 +27,7 @@ import { VoiceCloningService } from "./voice-cloning-service";
 import { TextToSpeechService } from "./text-to-speech-service";
 import { EnhancedVoicePipeline } from "./enhanced-voice-pipeline";
 import { WatermarkService } from "./watermark-service";
+import { voiceBankIntegration } from "./services/voice-bank-integration";
 
 // Initialize voice services
 const voiceCloningService = new VoiceCloningService();
@@ -500,6 +501,85 @@ Taking over, making vows`
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete song" });
+    }
+  });
+
+  // Voice Bank API endpoints
+  app.get("/api/voice-bank/stats", authenticate, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const stats = voiceBankIntegration.getVoiceBankStats();
+      res.json({ success: true, data: stats });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to get voice bank stats" });
+    }
+  });
+
+  app.get("/api/voice-bank/profiles", authenticate, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const profiles = voiceBankIntegration.getAllVoiceProfiles();
+      const sanitizedProfiles = profiles.map(profile => ({
+        id: profile.id,
+        name: profile.name,
+        fileSize: profile.fileSize,
+        duration: profile.duration,
+        format: profile.format,
+        isDefault: profile.isDefault,
+        createdAt: profile.createdAt,
+        metadata: profile.metadata
+      }));
+      res.json({ success: true, data: sanitizedProfiles });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to get voice profiles" });
+    }
+  });
+
+  app.get("/api/voice-bank/default", authenticate, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const defaultVoice = voiceBankIntegration.getDefaultVoice();
+      if (!defaultVoice) {
+        return res.status(404).json({ success: false, message: "No default voice available" });
+      }
+      
+      const sanitizedProfile = {
+        id: defaultVoice.id,
+        name: defaultVoice.name,
+        fileSize: defaultVoice.fileSize,
+        duration: defaultVoice.duration,
+        format: defaultVoice.format,
+        isDefault: defaultVoice.isDefault,
+        createdAt: defaultVoice.createdAt,
+        metadata: defaultVoice.metadata
+      };
+      
+      res.json({ success: true, data: sanitizedProfile });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to get default voice" });
+    }
+  });
+
+  app.post("/api/voice-bank/generate", authenticate, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { voiceId = 'default-voice', text, melody, duration } = req.body;
+      
+      if (!text) {
+        return res.status(400).json({ success: false, message: "Text is required for vocal generation" });
+      }
+
+      const audioBuffer = await voiceBankIntegration.generateVocalSample(voiceId, text);
+      
+      if (!audioBuffer) {
+        return res.status(404).json({ success: false, message: "Failed to generate vocal sample" });
+      }
+
+      res.set({
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': audioBuffer.length.toString(),
+        'Content-Disposition': `attachment; filename="vocal-sample-${voiceId}.mp3"`
+      });
+
+      res.send(audioBuffer);
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to generate vocal sample" });
     }
   });
 
