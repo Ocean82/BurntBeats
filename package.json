@@ -13,7 +13,7 @@
     "build:server": "node package-scripts.js build:server",
     "build:watch": "node package-scripts.js watch",
     "start": "node dist/index.cjs",
-    "db:migrate": "tsx server/migrate.ts",
+    "db:migrate": "npx tsx server/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "test": "jest",
     "test:unit": "jest tests/unit",

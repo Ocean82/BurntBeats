@@ -51,54 +51,100 @@ export class StripeWebhookEnhanced {
       if (!userId || !trackId) {
         console.warn('⚠️ Missing userId or trackId in session metadata');
         return;
-      }
+      export async function handleStripeWebhook(req: Request, res: Response) {
+  try {
+    const sig = req.headers['stripe-signature'] as string;
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    
+    let event: Stripe.Event;
 
-      // Check if license acknowledgment exists
-      const existingAck = await db
-        .select()
-        .from(licenseAcknowledgments)
+    if (webhookSecret) {
+      try {
+        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+      } catch (err: any) {
+        console.error('❌ Webhook signature verification failed:', err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+      }
+    } else {
+      event = JSON.parse(req.body.toString());
+    }
+
+    // Handle the event
+    switch (event.type) {
+      case 'checkout.session.completed':
+        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+        break;
+      case 'payment_intent.succeeded':
+        console.log('✅ Payment succeeded:', event.data.object.id);
+        break;
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error('❌ Webhook error:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+}
+
+async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+  try {
+    const { userId, trackId } = session.metadata || {};
+    
+    if (!userId || !trackId) {
+      console.warn('⚠️ Missing metadata in checkout session');
+      return;
+    }
+
+    // Check if license acknowledgment exists
+    const existingAck = await db
+      .select()
+      .from(licenseAcknowledgments)
+      .where(
+        and(
+          eq(licenseAcknowledgments.userId, userId),
+          eq(licenseAcknowledgments.trackId, trackId)
+        )
+      )
+      .limit(1);
+
+    if (existingAck.length > 0) {
+      // Update existing acknowledgment with purchase ID
+      await db
+        .update(licenseAcknowledgments)
+        .set({ 
+          purchaseId: session.id,
+          updatedAt: new Date()
+        })
         .where(
           and(
             eq(licenseAcknowledgments.userId, userId),
             eq(licenseAcknowledgments.trackId, trackId)
           )
-        )
-        .limit(1);
+        );
 
-      if (existingAck.length > 0) {
-        // Update existing acknowledgment with purchase ID
-        await db
-          .update(licenseAcknowledgments)
-          .set({ 
-            purchaseId: session.id,
-            updatedAt: new Date()
-          })
-          .where(
-            and(
-              eq(licenseAcknowledgments.userId, userId),
-              eq(licenseAcknowledgments.trackId, trackId)
-            )
-          );
+      console.log('✅ Linked purchase to existing license acknowledgment');
+    } else {
+      // Create new acknowledgment with purchase info
+      await db
+        .insert(licenseAcknowledgments)
+        .values({
+          userId,
+          trackId,
+          acceptedAt: new Date(),
+          purchaseId: session.id
+        });
 
-        console.log('✅ Linked purchase to existing license acknowledgment');
-      } else {
-        // Create new acknowledgment with purchase info
-        await db
-          .insert(licenseAcknowledgments)
-          .values({
-            userId,
-            trackId,
-            acceptedAt: new Date(),
-            purchaseId: session.id
-          });
+      console.log('✅ Created new license acknowledgment with purchase');
+    }
 
-        console.log('✅ Created new license acknowledgment with purchase');
-      }
-
-      // TODO: Unlock track for download, send receipt email, etc.
-      
-    } catch (error) {
-      console.error('❌ Error handling checkout completed:', error);
+    // TODO: Unlock track for download, send receipt email, etc.
+    
+  } catch (error) {
+    console.error('❌ Error handling checkout completed:', error);
+  }
+}', error);
     }
   }
 

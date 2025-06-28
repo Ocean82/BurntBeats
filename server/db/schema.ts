@@ -1,4 +1,3 @@
-
 import { pgTable, serial, text, timestamp, integer, boolean, jsonb, uuid } from 'drizzle-orm/pg-core';
 import { createId } from '@paralleldrive/cuid2';
 
@@ -61,14 +60,14 @@ export const songVersions = pgTable('song_versions', {
 });
 
 // License Acknowledgments Table
-export const licenseAcknowledgments = pgTable('license_acknowledgments', {
-  id: text('id').primaryKey().$defaultFn(() => createId()),
-  userId: text('user_id').notNull(),
-  trackId: text('track_id').notNull(),
-  acceptedAt: timestamp('accepted_at').notNull(),
-  purchaseId: text('purchase_id'), // Optional Stripe session ID
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow()
+export const licenseAcknowledgments = pgTable("license_acknowledgments", {
+  id: text("id").primaryKey().$defaultFn(() => createId()),
+  userId: text("user_id").notNull(),
+  trackId: text("track_id").notNull(),
+  acceptedAt: timestamp("accepted_at").notNull(),
+  purchaseId: text("purchase_id"), // Optional Stripe session ID
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
 });
 
 export type User = typeof users.$inferSelect;

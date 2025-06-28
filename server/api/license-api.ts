@@ -60,6 +60,57 @@ export class LicenseAPI {
 
       console.log(`📄 License acknowledged: User ${userId} for track ${trackId}`);
 
+      res.status(201).json({
+        success: true,
+        message: 'License acknowledgment recorded',
+        entry
+      });
+
+    } catch (error) {
+      console.error('License acknowledgment error:', error);
+      res.status(500).json({
+        error: 'Internal server error',
+        message: 'Failed to record license acknowledgment'
+      });
+    }
+  }
+
+  static async getLicenseStatus(req: Request, res: Response) {
+    try {
+      const { userId, trackId } = req.params;
+
+      const acknowledgment = await db
+        .select()
+        .from(licenseAcknowledgments)
+        .where(
+          and(
+            eq(licenseAcknowledgments.userId, userId),
+            eq(licenseAcknowledgments.trackId, trackId)
+          )
+        )
+        .limit(1);
+
+      res.json({
+        acknowledged: acknowledgment.length > 0,
+        entry: acknowledgment[0] || null
+      });
+
+    } catch (error) {
+      console.error('License status check error:', error);
+      res.status(500).json({
+        error: 'Internal server error',
+        message: 'Failed to check license status'
+      });
+    }
+  }
+}
+
+// Routes
+router.post('/acknowledge', LicenseAPI.acknowledgeLicense);
+router.get('/status/:userId/:trackId', LicenseAPI.getLicenseStatus);
+
+export default router;`);
+
       res.status(200).json({ 
         message: 'License acknowledged successfully',
         entry 

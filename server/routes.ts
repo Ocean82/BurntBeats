@@ -56,7 +56,6 @@ import {
 } from './middleware/plan-enforcement';
 import { fileCleanupService } from "./file-cleanup-service";
 import { storage } from './storage';
-import { LicenseAcknowledgmentAPI } from './api/license-acknowledgment-api';
 import licenseAcknowledgmentRouter from './api/license-acknowledgment-api';
 
 // Ensure uploads directory exists
