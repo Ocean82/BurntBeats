@@ -158,6 +158,14 @@ export class VoiceBankIntegration {
   public isDefaultVoiceAvailable(): boolean {
     return this.defaultVoiceId !== null && this.voiceProfiles.has(this.defaultVoiceId);
   }
+
+  public getVoiceProfiles(): VoiceProfile[] {
+    return Array.from(this.voiceProfiles.values());
+  }
+
+  public canGenerateVocals(): boolean {
+    return this.isDefaultVoiceAvailable();
+  }
 }
 
 // Export singleton instance

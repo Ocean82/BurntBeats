@@ -1,0 +1,130 @@
+{
+  "timestamp": "2025-06-28T21:32:16.753Z",
+  "tests": {
+    "health": {
+      "passed": 2,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "Server Response",
+          "passed": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:5000"
+        },
+        {
+          "name": "Database Connection",
+          "passed": true,
+          "result": true
+        },
+        {
+          "name": "Environment Variables",
+          "passed": true,
+          "result": true
+        }
+      ]
+    },
+    "api": {
+      "passed": 0,
+      "failed": 4,
+      "tests": [
+        {
+          "name": "Business Profile Endpoint",
+          "passed": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:5000"
+        },
+        {
+          "name": "System Status Endpoint",
+          "passed": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:5000"
+        },
+        {
+          "name": "Auth User Endpoint (Protected)",
+          "passed": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:5000"
+        },
+        {
+          "name": "Songs Endpoint (Protected)",
+          "passed": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:5000"
+        }
+      ]
+    },
+    "database": {
+      "passed": 4,
+      "failed": 0,
+      "tests": [
+        {
+          "name": "Users Table Access",
+          "passed": true,
+          "result": true
+        },
+        {
+          "name": "Songs Table Access",
+          "passed": true,
+          "result": true
+        },
+        {
+          "name": "Voice Samples Table Access",
+          "passed": true,
+          "result": true
+        },
+        {
+          "name": "Foreign Key Constraints",
+          "passed": true,
+          "result": true
+        }
+      ]
+    },
+    "frontend": {
+      "passed": 0,
+      "failed": 4,
+      "tests": [
+        {
+          "name": "Homepage Loads",
+          "passed": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:5000"
+        },
+        {
+          "name": "React Root Element",
+          "passed": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:5000"
+        },
+        {
+          "name": "JavaScript Bundle",
+          "passed": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:5000"
+        },
+        {
+          "name": "CSS Framework",
+          "passed": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:5000"
+        }
+      ]
+    },
+    "security": {
+      "passed": 2,
+      "failed": 1,
+      "tests": [
+        {
+          "name": "Auth Middleware Exists",
+          "passed": true,
+          "result": true
+        },
+        {
+          "name": "Protected Routes",
+          "passed": false,
+          "error": "connect ECONNREFUSED 127.0.0.1:5000"
+        },
+        {
+          "name": "Input Validation",
+          "passed": true,
+          "result": true
+        }
+      ]
+    }
+  },
+  "summary": {
+    "total": 18,
+    "passed": 8,
+    "failed": 10
+  }
+}

@@ -1,6 +1,6 @@
 
 export default {
-  preset: 'ts-jest/presets/default-esm',
+  preset: 'ts-jest',
   testEnvironment: 'jsdom',
   roots: ['<rootDir>/tests', '<rootDir>/test'],
   testMatch: [
@@ -29,11 +29,8 @@ export default {
   },
   
   testTimeout: 30000,
-  extensionsToTreatAsEsm: ['.ts'],
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', {
-      useESM: true
-    }]
+    '^.+\\.tsx?$': 'ts-jest'
   },
   
   // Watch plugins for improved local testing experience

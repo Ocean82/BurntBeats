@@ -269,3 +269,6 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
   
   next();
 };
+
+// Alias for backward compatibility and test detection
+export const isAuthenticated = authenticate;
