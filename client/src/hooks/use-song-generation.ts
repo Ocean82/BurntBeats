@@ -1,213 +1,177 @@
-import { useState, useCallback, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useToast } from '@/hooks/use-toast';
-import { useErrorHandler } from '@/hooks/use-error-handler';
-import { apiRequest } from '@/lib/queryClient';
-import type { Song, InsertSong } from '@shared/schema';
+import { useState, useCallback } from 'react';
+import { useToast } from './use-toast';
+import { useErrorHandler } from './use-error-handler';
 
-interface UseSongGenerationProps {
-  onGenerationComplete?: (song: Song) => void;
-  onGenerationStart?: (song: Song) => void;
-  userId: number;
+interface SongGenerationRequest {
+  lyrics: string;
+  style: string;
+  voiceId?: string;
+  quality: 'studio' | 'high' | 'medium' | 'fast';
+  tempo?: number;
+  key?: string;
+  duration?: number;
 }
 
-// Add default props support
-const DEFAULT_PROPS: UseSongGenerationProps = {
-  userId: 1,
-  onGenerationComplete: () => {},
-  onGenerationStart: () => {}
+interface SongGenerationResponse {
+  id: string;
+  audioUrl: string;
+  title: string;
+  status: 'generating' | 'completed' | 'failed';
+  progress: number;
+  stage: string;
+  metadata?: {
+    duration: number;
+    fileSize: number;
+    quality: string;
+  };
+}
+
+interface GenerationProgress {
+  progress: number;
+  stage: string;
+  estimatedTimeRemaining?: number;
+}
+
+const apiRequest = async (method: string, url: string, data?: any) => {
+  const response = await fetch(url, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: data ? JSON.stringify(data) : undefined,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Network error' }));
+    throw new Error(error.message || `HTTP ${response.status}`);
+  }
+
+  return response;
 };
 
-export const useSongGeneration = ({ 
-  onGenerationComplete, 
-  onGenerationStart,
-  userId 
-}: UseSongGenerationProps) => {
-  // Global error handler for unhandled promise rejections
-  useEffect(() => {
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error('Unhandled promise rejection:', event.reason);
-      setGeneratingSong(null);
-      setGenerationProgress(0);
-      event.preventDefault();
-    };
-
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
-
-    return () => {
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-    };
-  }, []);
-  const [generatingSong, setGeneratingSong] = useState<Song | null>(null);
+export const useSongGeneration = () => {
   const [generationProgress, setGenerationProgress] = useState(0);
-  const { toast } = useToast();
-  const { reportError } = useErrorHandler();
+  const [generationStage, setGenerationStage] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { handleError } = useErrorHandler();
 
   // Generate song mutation
   const generateSongMutation = useMutation({
-    mutationFn: async (songData: InsertSong) => {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: songData.title,
-          lyrics: songData.lyrics,
-          genre: songData.genre,
-          tempo: parseInt(songData.tempo?.toString() || '120'),
-          key: songData.key,
-          duration: parseInt(songData.duration?.toString() || '30'),
-          userId: songData.userId,
-          mood: songData.mood || 'happy',
-          vocalStyle: songData.vocalStyle || 'smooth',
-          singingStyle: songData.singingStyle || 'melodic',
-          tone: songData.tone || 'warm'
-        }),
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to generate song');
-      }
-      return response.json();
-    },
-    onMutate: (songData) => {
-      const tempSong = {
-        ...songData,
-        id: Date.now(),
-        status: "pending" as const,
-        generationProgress: 0,
-        generatedAudioPath: null,
-        sections: null,
-        settings: null,
-        planRestricted: false,
-        playCount: 0,
-        likes: 0,
-        rating: '4',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      } as Song;
-
-      setGeneratingSong(tempSong);
+    mutationFn: async (request: SongGenerationRequest): Promise<SongGenerationResponse> => {
+      setIsGenerating(true);
       setGenerationProgress(0);
-      onGenerationStart?.(tempSong);
-    },
-    onSuccess: (song) => {
-      // Validate and enhance the song object with proper audio URLs
-      const enhancedSong = {
-        ...song,
-        audioUrl: song.audioUrl || `/api/audio/${song.id}`,
-        previewUrl: song.previewUrl || song.generatedAudioPath || `/api/audio/${song.id}`,
-        downloadUrl: song.downloadUrl || song.generatedAudioPath || `/uploads/${song.title?.toLowerCase().replace(/\s+/g, '_')}.mp3`
-      };
+      setGenerationStage('Initializing...');
 
-      // Check if song is already completed (immediate generation)
-      if (enhancedSong.status === "completed") {
-        setGeneratingSong(null);
-        setGenerationProgress(100);
-        
-        console.log("🎵 Song generation completed:", {
-          title: enhancedSong.title,
-          audioUrl: enhancedSong.audioUrl,
-          hasAudio: !!enhancedSong.generatedAudioPath,
-          sections: enhancedSong.sections?.length || 0
-        });
-        
-        onGenerationComplete?.(enhancedSong);
-        
-        toast({
-          title: "Song Generated Successfully",
-          description: "Your song with authentic musical composition is ready to play!",
-        });
-      } else {
-        // Song is still processing, start polling
-        setGeneratingSong(enhancedSong);
-        startProgressPolling(enhancedSong.id);
-        
-        toast({
-          title: "Song Generation Started",
-          description: "Your song is being generated with real musical compositions",
-        });
+      const response = await apiRequest('POST', '/api/music/generate', request);
+      const result = await response.json();
+
+      // Start polling for progress
+      if (result.id) {
+        pollGenerationProgress(result.id);
       }
 
-      // Invalidate songs cache
-      queryClient.invalidateQueries({ queryKey: ["/api/songs", userId] });
+      return result;
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Song generation started",
+        description: "Your song is being generated. This may take a few minutes.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['songs'] });
     },
     onError: (error) => {
-      setGeneratingSong(null);
+      setIsGenerating(false);
       setGenerationProgress(0);
-      reportError(error as Error, "Generation Failed");
+      setGenerationStage('');
+      handleError(error as Error, 'Song generation failed');
     },
   });
 
-  // Progress polling
-  const startProgressPolling = useCallback((songId: number) => {
+  // Poll generation progress
+  const pollGenerationProgress = useCallback(async (songId: string) => {
     const pollInterval = setInterval(async () => {
       try {
-        const response = await apiRequest("GET", `/api/songs/single/${songId}`);
-        const updatedSong = await response.json() as Song;
+        const response = await apiRequest('GET', `/api/music/generate/${songId}/progress`);
+        const progress: GenerationProgress = await response.json();
 
-        setGeneratingSong(updatedSong);
-        setGenerationProgress(updatedSong.generationProgress || 0);
+        setGenerationProgress(progress.progress);
+        setGenerationStage(progress.stage);
 
-        if (updatedSong.status === "completed") {
+        if (progress.progress >= 100) {
           clearInterval(pollInterval);
-          setGeneratingSong(null);
-          setGenerationProgress(0);
+          setIsGenerating(false);
 
-          onGenerationComplete?.(updatedSong);
+          // Refresh song data
+          queryClient.invalidateQueries({ queryKey: ['songs'] });
+          queryClient.invalidateQueries({ queryKey: ['song', songId] });
 
           toast({
-            title: "Song Generated Successfully",
-            description: "Your song with authentic musical composition is ready to play!",
+            title: "Song generated successfully!",
+            description: "Your song is ready to listen to.",
           });
-
-          // Invalidate cache
-          queryClient.invalidateQueries({ queryKey: ["/api/songs", userId] });
-
-        } else if (updatedSong.status === "failed") {
-          clearInterval(pollInterval);
-          setGeneratingSong(null);
-          setGenerationProgress(0);
-
-          reportError(new Error("Song generation failed. Please try again."));
         }
       } catch (error) {
         clearInterval(pollInterval);
-        setGeneratingSong(null);
-        setGenerationProgress(0);
-        reportError(error as Error, "Progress Check Failed");
+        setIsGenerating(false);
+        handleError(error as Error, 'Failed to get generation progress');
       }
     }, 2000);
 
-    // Cleanup after 5 minutes
-    setTimeout(() => {
-      clearInterval(pollInterval);
-    }, 300000);
-  }, [onGenerationComplete, reportError, toast, queryClient, userId]);
+    return () => clearInterval(pollInterval);
+  }, [queryClient, toast, handleError]);
 
-  const generateSong = useCallback((songData: Omit<InsertSong, 'userId'>) => {
-    generateSongMutation.mutate({
-      ...songData,
-      userId: String(userId)
+  // Get song by ID
+  const useSong = (songId: string) => {
+    return useQuery({
+      queryKey: ['song', songId],
+      queryFn: async (): Promise<SongGenerationResponse> => {
+        const response = await apiRequest('GET', `/api/music/songs/${songId}`);
+        return response.json();
+      },
+      enabled: !!songId,
     });
-  }, [generateSongMutation, userId]);
+  };
 
-  const cancelGeneration = useCallback(() => {
-    setGeneratingSong(null);
-    setGenerationProgress(0);
-    generateSongMutation.reset();
-  }, [generateSongMutation]);
+  // Get user's songs
+  const useSongs = () => {
+    return useQuery({
+      queryKey: ['songs'],
+      queryFn: async (): Promise<SongGenerationResponse[]> => {
+        const response = await apiRequest('GET', '/api/music/songs');
+        return response.json();
+      },
+    });
+  };
 
-  return { 
-    generatingSong,
+  // Delete song mutation
+  const deleteSongMutation = useMutation({
+    mutationFn: async (songId: string) => {
+      const response = await apiRequest('DELETE', `/api/music/songs/${songId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['songs'] });
+      toast({
+        title: "Song deleted",
+        description: "The song has been removed from your library.",
+      });
+    },
+    onError: (error) => {
+      handleError(error as Error, 'Failed to delete song');
+    },
+  });
+
+  return {
+    generateSong: generateSongMutation.mutate,
+    isGenerating,
     generationProgress,
-    generationStage: 'Ready',
-    isGenerating: generateSongMutation.isPending || !!generatingSong,
-    generateSong,
-    cancelGeneration,
-    generationError: generateSongMutation.error
+    generationStage,
+    useSong,
+    useSongs,
+    deleteSong: deleteSongMutation.mutate,
+    isDeleting: deleteSongMutation.isPending,
   };
 };

@@ -1,108 +1,114 @@
+import React from 'react';
+import { useToast } from './use-toast';
 
-import React, { useState, useEffect, useCallback } from 'react';
-
-interface ErrorInfo {
+interface ErrorDetails {
   message: string;
-  stack?: string;
-  timestamp: Date;
-  component?: string;
-  retryCount: number;
+  code?: string;
+  statusCode?: number;
+  details?: any;
 }
 
-interface UseErrorHandlerReturn {
-  hasError: boolean;
-  error: ErrorInfo | null;
-  clearError: () => void;
-  retry: () => void;
-  reportError: (error: Error, component?: string) => void;
-}
+export const useErrorHandler = () => {
+  const { toast } = useToast();
 
-export function useErrorHandler(): UseErrorHandlerReturn {
-  const [hasError, setHasError] = useState(false);
-  const [error, setError] = useState<ErrorInfo | null>(null);
+  const handleError = React.useCallback((error: Error | ErrorDetails, context?: string) => {
+    console.error('Error occurred:', error, 'Context:', context);
 
-  const reportError = useCallback((err: Error, component?: string) => {
-    const errorInfo: ErrorInfo = {
-      message: err.message,
-      stack: err.stack,
-      timestamp: new Date(),
-      component,
-      retryCount: 0
-    };
+    let title = 'An error occurred';
+    let description = 'Something went wrong. Please try again.';
 
-    setError(errorInfo);
-    setHasError(true);
+    if (typeof error === 'object' && error !== null) {
+      if ('message' in error) {
+        description = error.message;
+      }
 
-    // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Error caught by useErrorHandler:', err);
+      if ('statusCode' in error) {
+        switch (error.statusCode) {
+          case 401:
+            title = 'Authentication required';
+            description = 'Please log in to continue.';
+            break;
+          case 403:
+            title = 'Access denied';
+            description = 'You don\'t have permission to perform this action.';
+            break;
+          case 404:
+            title = 'Not found';
+            description = 'The requested resource was not found.';
+            break;
+          case 429:
+            title = 'Rate limit exceeded';
+            description = 'Too many requests. Please wait a moment and try again.';
+            break;
+          case 500:
+            title = 'Server error';
+            description = 'Internal server error. Please try again later.';
+            break;
+        }
+      }
     }
 
-    // Report to external service in production
-    if (process.env.NODE_ENV === 'production') {
-      // Send to logging service
-      fetch('/api/error-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          error: errorInfo,
-          userAgent: navigator.userAgent,
-          url: window.location.href
-        })
-      }).catch(() => {
-        // Silently fail if error reporting fails
+    if (context) {
+      title = context;
+    }
+
+    toast({
+      title,
+      description,
+      variant: 'destructive',
+    });
+  }, [toast]);
+
+  const handleApiError = React.useCallback(async (response: Response) => {
+    try {
+      const errorData = await response.json();
+      handleError({
+        message: errorData.message || 'API request failed',
+        statusCode: response.status,
+        details: errorData,
+      });
+    } catch {
+      handleError({
+        message: `HTTP ${response.status}: ${response.statusText}`,
+        statusCode: response.status,
       });
     }
-  }, []);
-
-  const clearError = useCallback(() => {
-    setHasError(false);
-    setError(null);
-  }, []);
-
-  const retry = useCallback(() => {
-    if (error) {
-      setError(prev => prev ? { ...prev, retryCount: prev.retryCount + 1 } : null);
-    }
-    setHasError(false);
-    
-    // Reload the page if retry count is high
-    if (error && error.retryCount >= 3) {
-      window.location.reload();
-    }
-  }, [error]);
-
-  // Global error listener for unhandled errors
-  useEffect(() => {
-    const handleGlobalError = (event: ErrorEvent) => {
-      reportError(new Error(event.message), 'Global');
-    };
-
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      reportError(new Error(String(event.reason)), 'Promise');
-    };
-
-    window.addEventListener('error', handleGlobalError);
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
-
-    return () => {
-      window.removeEventListener('error', handleGlobalError);
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-    };
-  }, [reportError]);
+  }, [handleError]);
 
   return {
-    hasError,
-    error,
-    clearError,
-    retry,
-    reportError
+    handleError,
+    handleApiError,
   };
-}
+};
 
 // React Error Boundary Component
 export function ReplitErrorBoundary({ children }: { children: React.ReactNode }) {
-  const { hasError, error, clearError, retry } = useErrorHandler();
+  const { handleError } = useErrorHandler(); // Modified this line
+  const [hasError, setHasError] = React.useState(false);
+  const [error, setError] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    const errorHandler = (e: any) => {
+      setHasError(true);
+      setError(e.error);
+      handleError(e.error, "Global Error");
+    };
+
+    window.addEventListener('error', errorHandler);
+    return () => {
+      window.removeEventListener('error', errorHandler);
+    };
+  }, [handleError]);
+
+  const clearError = () => {
+    setHasError(false);
+    setError(null);
+  };
+
+  const retry = () => {
+    clearError();
+    window.location.reload();
+  };
 
   if (hasError && error) {
     return (
@@ -147,12 +153,6 @@ export function ReplitErrorBoundary({ children }: { children: React.ReactNode })
               Refresh Page
             </button>
           </div>
-
-          {error.retryCount > 0 && (
-            <p className="mt-2 text-xs text-gray-500 text-center">
-              Retry attempt: {error.retryCount}
-            </p>
-          )}
         </div>
       </div>
     );
