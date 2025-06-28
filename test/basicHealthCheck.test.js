@@ -36,4 +36,16 @@ describe('App Health Check', () => {
     const navExists = await page.$eval('nav', el => el !== null).catch(() => false);
     expect(navExists).toBeTruthy();
   });
+
+  test('JavaScript bundle loaded', async () => {
+    const scripts = await page.$$eval('script', scripts => 
+      scripts.map(script => script.src)
+    );
+    expect(scripts.some(src => src.includes('main') || src.includes('index') || src.includes('app'))).toBeTruthy();
+  });
+
+  test('Root element exists', async () => {
+    const root = await page.$('#root');
+    expect(root).not.toBeNull();
+  });
 });
