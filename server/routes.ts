@@ -55,7 +55,8 @@ import {
   requirePlan 
 } from './middleware/plan-enforcement';
 import { fileCleanupService } from "./file-cleanup-service";
-import { storage } from "./storage";
+import { storage } from './storage';
+import { LicenseAcknowledgmentAPI } from './api/license-acknowledgment-api';
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), "uploads");
@@ -1091,6 +1092,9 @@ Taking over, making vows`
 
   // Melody Preview API routes
   app.use('/api/melody-preview', melodyPreviewRouter);
+
+  // License Acknowledgment API routes
+  app.use('/api/license-acknowledgment', LicenseAcknowledgmentAPI.router);
 
   // Return a basic HTTP server instead of just the app
   return http.createServer(app);
