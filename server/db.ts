@@ -7,11 +7,5 @@ if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is not set');
 }
 
-try {
-  const sql = neon(process.env.DATABASE_URL);
-  export const db = drizzle(sql, { schema });
-  console.log('✅ Database connection initialized successfully');
-} catch (error) {
-  console.error('❌ Database connection failed:', error);
-  throw error;
-}
+const sql = neon(process.env.DATABASE_URL);
+export const db = drizzle(sql, { schema });
