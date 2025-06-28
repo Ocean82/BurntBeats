@@ -57,7 +57,7 @@ import {
 import { fileCleanupService } from "./file-cleanup-service";
 import { storage } from './storage';
 import { LicenseAcknowledgmentAPI } from './api/license-acknowledgment-api';
-import { router as licenseAcknowledgmentRouter } from './api/license-acknowledgment-api';
+import licenseAcknowledgmentRouter from './api/license-acknowledgment-api';
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), "uploads");
@@ -1084,18 +1084,22 @@ Taking over, making vows`
     }
   });
 
-  import voiceBankRouter from './api/voice-bank';
-  import voiceProcessingRouter from './api/voice-processing';
-  import melodyPreviewRouter from './api/melody-preview-api';
+  try {
+    const voiceBankRouter = await import('./api/voice-bank');
+    const voiceProcessingRouter = await import('./api/voice-processing');
+    const melodyPreviewRouter = await import('./api/melody-preview-api');
 
-  // Voice Bank API routes
-  app.use('/api/voice-bank', voiceBankRouter);
+    // Voice Bank API routes
+    app.use('/api/voice-bank', voiceBankRouter.default);
 
-  // Voice Processing API routes
-  app.use('/api/voice-processing', voiceProcessingRouter);
+    // Voice Processing API routes
+    app.use('/api/voice-processing', voiceProcessingRouter.default);
 
-  // Melody Preview API routes
-  app.use('/api/melody-preview', melodyPreviewRouter);
+    // Melody Preview API routes
+    app.use('/api/melody-preview', melodyPreviewRouter.default);
+  } catch (error) {
+    console.warn('⚠️  Some voice/melody APIs not available:', error);
+  }
 
   // Return a basic HTTP server instead of just the app
   return http.createServer(app);

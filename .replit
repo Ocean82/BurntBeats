@@ -32,10 +32,6 @@ args = "npm install"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run db:migrate"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
 args = "npm run dev"
 
 [[workflows.workflow]]
@@ -55,6 +51,15 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node deploy-production-fix.cjs"
+
+[[workflows.workflow]]
+name = "Database Migration"
+author = 41134091
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run db:migrate"
 
 [deployment]
 run = ["sh", "-c", "npm start"]

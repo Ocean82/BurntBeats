@@ -177,4 +177,4 @@ router.get('/user/:userId', LicenseAcknowledgmentAPI.getUserAcknowledgments);
 router.put('/link-purchase', LicenseAcknowledgmentAPI.linkPurchase);
 
 export { LicenseAcknowledgmentAPI };
-export { router as default };
+export default router;

@@ -11,3 +11,6 @@ CREATE TABLE IF NOT EXISTS "license_acknowledgments" (
 
 CREATE INDEX IF NOT EXISTS "idx_license_user_track" ON "license_acknowledgments" ("user_id", "track_id");
 CREATE INDEX IF NOT EXISTS "idx_license_purchase" ON "license_acknowledgments" ("purchase_id");
+
+-- Add unique constraint to prevent duplicate acknowledgments
+ALTER TABLE "license_acknowledgments" ADD CONSTRAINT "unique_user_track" UNIQUE ("user_id", "track_id");
