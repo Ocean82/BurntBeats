@@ -1081,12 +1081,16 @@ Taking over, making vows`
 
   import voiceBankRouter from './api/voice-bank';
   import voiceProcessingRouter from './api/voice-processing';
+  import melodyPreviewRouter from './api/melody-preview-api';
 
   // Voice Bank API routes
   app.use('/api/voice-bank', voiceBankRouter);
 
   // Voice Processing API routes
   app.use('/api/voice-processing', voiceProcessingRouter);
+
+  // Melody Preview API routes
+  app.use('/api/melody-preview', melodyPreviewRouter);
 
   // Return a basic HTTP server instead of just the app
   return http.createServer(app);
