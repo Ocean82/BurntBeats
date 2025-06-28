@@ -71,7 +71,14 @@ router.post('/generate', authenticate, async (req: AuthenticatedRequest, res) =>
     }
 
     // Generate vocal sample using voice bank
-    const result = await voiceBankIntegration.generateVocalSample(text, voiceId);
+    const result = await voiceBankIntegration.generateVocalSample(voiceId || 'default-voice-01', text);
+    
+    if (!result) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Failed to generate vocal sample - voice profile not found or generation failed" 
+      });
+    }
     
     res.json({ 
       success: true, 

@@ -115,7 +115,7 @@ export class VoiceBankIntegration {
     return voiceProfile;
   }
 
-  public async generateVocalSample(voiceId: string, text: string): Promise<Buffer | null> {
+  public async generateVocalSample(voiceId: string, text: string): Promise<{ audioPath: string; duration: number; voiceUsed: string } | null> {
     const voiceProfile = this.voiceProfiles.get(voiceId);
     if (!voiceProfile) {
       Logger.error('Voice profile not found', { voiceId });
@@ -123,17 +123,32 @@ export class VoiceBankIntegration {
     }
 
     try {
-      // Return the voice file as sample output
+      // Generate output file path for the vocal sample
+      const outputFileName = `vocal_${voiceId}_${Date.now()}.mp3`;
+      const outputPath = path.join(this.voiceBankPath, 'generated', outputFileName);
+      
+      // Ensure generated directory exists
+      const generatedDir = path.dirname(outputPath);
+      if (!fs.existsSync(generatedDir)) {
+        fs.mkdirSync(generatedDir, { recursive: true });
+      }
+      
+      // Read the voice file and copy it as the generated sample
       // In production, this would process the text with the voice characteristics
       const audioBuffer = fs.readFileSync(voiceProfile.filePath);
+      fs.writeFileSync(outputPath, audioBuffer);
       
       Logger.info('Vocal sample generated', { 
         voiceId, 
         textLength: text.length,
-        outputSize: audioBuffer.length 
+        outputPath: outputPath
       });
 
-      return audioBuffer;
+      return {
+        audioPath: outputPath,
+        duration: voiceProfile.duration || 120,
+        voiceUsed: voiceProfile.name
+      };
     } catch (error) {
       Logger.error('Failed to generate vocal sample', { voiceId, error });
       return null;

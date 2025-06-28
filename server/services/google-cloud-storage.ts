@@ -59,8 +59,8 @@ export class GoogleCloudStorageService {
 
         stream.end(fileBuffer);
       });
-    } catch (error) {
-      logger.error('Failed to upload file', { error: error.message, fileName });
+    } catch (error: any) {
+      Logger.error('Failed to upload file', { error: error.message, fileName });
       throw new Error('File upload failed');
     }
   }
@@ -71,10 +71,10 @@ export class GoogleCloudStorageService {
       const file = bucket.file(fileName);
 
       const [buffer] = await file.download();
-      logger.info('File downloaded successfully', { fileName, size: buffer.length });
+      Logger.info('File downloaded successfully', { fileName, size: buffer.length });
       return buffer;
-    } catch (error) {
-      logger.error('Failed to download file', { error: error.message, fileName });
+    } catch (error: any) {
+      Logger.error('Failed to download file', { error: error.message, fileName });
       throw new Error('File download failed');
     }
   }
@@ -85,9 +85,9 @@ export class GoogleCloudStorageService {
       const file = bucket.file(fileName);
 
       await file.delete();
-      logger.info('File deleted successfully', { fileName });
-    } catch (error) {
-      logger.error('Failed to delete file', { error: error.message, fileName });
+      Logger.info('File deleted successfully', { fileName });
+    } catch (error: any) {
+      Logger.error('Failed to delete file', { error: error.message, fileName });
       throw new Error('File deletion failed');
     }
   }
@@ -104,10 +104,10 @@ export class GoogleCloudStorageService {
       };
 
       const [url] = await file.getSignedUrl(options);
-      logger.info('Signed URL generated', { fileName, action, expiresIn });
+      Logger.info('Signed URL generated', { fileName, action, expiresIn });
       return url;
-    } catch (error) {
-      logger.error('Failed to generate signed URL', { error: error.message, fileName });
+    } catch (error: any) {
+      Logger.error('Failed to generate signed URL', { error: error.message, fileName });
       throw new Error('Signed URL generation failed');
     }
   }
@@ -119,8 +119,8 @@ export class GoogleCloudStorageService {
 
       const [exists] = await file.exists();
       return exists;
-    } catch (error) {
-      logger.error('Failed to check file existence', { error: error.message, fileName });
+    } catch (error: any) {
+      Logger.error('Failed to check file existence', { error: error.message, fileName });
       return false;
     }
   }
@@ -133,10 +133,10 @@ export class GoogleCloudStorageService {
       const [files] = await bucket.getFiles(options);
       const fileNames = files.map(file => file.name);
       
-      logger.info('Files listed successfully', { count: fileNames.length, prefix });
+      Logger.info('Files listed successfully', { count: fileNames.length, prefix });
       return fileNames;
-    } catch (error) {
-      logger.error('Failed to list files', { error: error.message, prefix });
+    } catch (error: any) {
+      Logger.error('Failed to list files', { error: error.message, prefix });
       throw new Error('File listing failed');
     }
   }
