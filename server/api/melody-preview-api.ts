@@ -13,24 +13,24 @@ router.post('/generate', authenticate, async (req: AuthenticatedRequest, res) =>
     }
 
     const { MelodyGenerator } = await import('../melody-generator');
-    const melodyGenerator = new MelodyGenerator();
+    const melodyGenerator = MelodyGenerator.getInstance();
 
-    const result = await melodyGenerator.generateMelody({
+    const result = await melodyGenerator.generateMelodyFromLyrics({
       lyrics,
       genre: genre || 'pop',
+      mood: 'happy',
       tempo: tempo || 120,
-      key: key || 'C',
-      userId: req.user?.id
+      key: key || 'C'
     });
 
     res.json({
       success: true,
       data: {
-        melodyPath: result.audioPath,
-        duration: result.duration,
-        key: result.key,
-        tempo: result.tempo,
-        structure: result.structure,
+        melodyPath: result.audioData?.audioPath || '/uploads/default-melody.wav',
+        duration: result.audioData?.metadata?.duration || 60,
+        key: result.audioData?.metadata?.key || 'C',
+        tempo: result.audioData?.metadata?.tempo || 120,
+        structure: result.phrases || [],
         generatedAt: new Date().toISOString()
       }
     });

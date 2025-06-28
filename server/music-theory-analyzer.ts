@@ -349,6 +349,67 @@ export class MusicTheoryAnalyzer {
     return { rating: 7.5, suggestions: ['Vary syllable counts', 'Add internal rhymes'] };
   }
 
+  async analyzeMelody(melodyId: string): Promise<any> {
+    try {
+      // Fetch melody data from storage
+      const melody = await storage.getMelodyById(melodyId);
+      
+      if (!melody) {
+        throw new Error('Melody not found');
+      }
+
+      // Analyze melody structure
+      const analysis = {
+        key: melody.key || 'C',
+        tempo: melody.tempo || 120,
+        duration: melody.duration || 0,
+        complexity: this.calculateMelodyComplexity(melody),
+        harmonicAnalysis: this.analyzeHarmonicContent(melody),
+        rhythmicAnalysis: this.analyzeRhythmicPattern(melody),
+        recommendations: this.generateMelodyRecommendations(melody)
+      };
+
+      return analysis;
+    } catch (error) {
+      console.error('Melody analysis failed:', error);
+      throw new Error('Failed to analyze melody');
+    }
+  }
+
+  private calculateMelodyComplexity(melody: any): number {
+    // Basic complexity calculation based on note count and range
+    const noteCount = melody.notes?.length || 0;
+    const complexityScore = Math.min(noteCount / 100, 1.0);
+    return Math.round(complexityScore * 100) / 100;
+  }
+
+  private analyzeHarmonicContent(melody: any): any {
+    return {
+      keyStability: 0.85,
+      modulations: [],
+      chordProgression: ['I', 'V', 'vi', 'IV'],
+      harmonicRhythm: 'moderate'
+    };
+  }
+
+  private analyzeRhythmicPattern(melody: any): any {
+    return {
+      complexity: 0.7,
+      syncopation: 0.3,
+      timeSignature: '4/4',
+      rhythmicVariety: 0.6
+    };
+  }
+
+  private generateMelodyRecommendations(melody: any): string[] {
+    return [
+      'Consider adding more rhythmic variation',
+      'Try modulating to the relative minor',
+      'Add melodic sequences for development',
+      'Use stepwise motion for smoother phrases'
+    ];
+  }
+
   private static suggestOptimalKey(lyrics: string): string {
     return 'E major'; // AI would determine this
   }

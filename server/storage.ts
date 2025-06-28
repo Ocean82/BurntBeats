@@ -36,6 +36,9 @@ export interface IStorage {
   getSong(id: number): Promise<Song | undefined>;
   updateSong(id: number, updates: Partial<Song>): Promise<Song | undefined>;
   deleteSong(id: number): Promise<boolean>;
+
+  // Melody operations
+  getMelodyById(melodyId: string): Promise<any | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -174,6 +177,29 @@ export class DatabaseStorage implements IStorage {
         deletedAt: new Date() 
       })
       .where(and(eq(songs.id, songId), eq(songs.userId, userId)));
+  }
+
+  // Melody operations
+  async getMelodyById(melodyId: string): Promise<any | undefined> {
+    try {
+      // For now, return a basic melody structure
+      // In production, this would fetch from a melodies table
+      return {
+        id: melodyId,
+        key: 'C',
+        tempo: 120,
+        duration: 60,
+        notes: [],
+        metadata: {
+          key: 'C',
+          tempo: 120,
+          duration: 60
+        }
+      };
+    } catch (error) {
+      console.error('Failed to get melody:', error);
+      return undefined;
+    }
   }
 
   async restoreSong(songId: number, userId: string): Promise<void> {

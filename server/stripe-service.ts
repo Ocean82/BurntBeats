@@ -4,7 +4,7 @@ import { storage } from './storage';
 
 // Initialize Stripe - use test key for development
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_...', {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2024-11-20.acacia' as any,
 });
 
 export interface PaymentIntentData {
@@ -26,7 +26,7 @@ export class StripeService {
         currency: data.currency,
         customer: data.customerId,
         metadata: {
-          planType: data.planType,
+          planType: data.planType || '',
           userId: data.userId,
           appName: 'Burnt Beats'
         },

@@ -565,19 +565,20 @@ Taking over, making vows`
         return res.status(400).json({ success: false, message: "Text is required for vocal generation" });
       }
 
-      const audioBuffer = await voiceBankIntegration.generateVocalSample(voiceId, text);
+      const vocalResult = await voiceBankIntegration.generateVocalSample(voiceId, text);
 
-      if (!audioBuffer) {
+      if (!vocalResult || !vocalResult.audioPath) {
         return res.status(404).json({ success: false, message: "Failed to generate vocal sample" });
       }
 
-      res.set({
-        'Content-Type': 'audio/mpeg',
-        'Content-Length': audioBuffer.length.toString(),
-        'Content-Disposition': `attachment; filename="vocal-sample-${voiceId}.mp3"`
+      res.json({
+        success: true,
+        data: {
+          audioPath: vocalResult.audioPath,
+          duration: vocalResult.duration,
+          voiceUsed: vocalResult.voiceUsed
+        }
       });
-
-      res.send(audioBuffer);
     } catch (error) {
       res.status(500).json({ success: false, message: "Failed to generate vocal sample" });
     }
