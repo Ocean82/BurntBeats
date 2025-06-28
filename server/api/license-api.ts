@@ -1,7 +1,7 @@
 
 import { Request, Response, Router } from 'express';
 import { db } from '../db';
-import { licenseAcknowledgments } from '../models/LicenseAcknowledgment';
+import { licenseAcknowledgments } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 

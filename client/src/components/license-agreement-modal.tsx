@@ -174,7 +174,7 @@ export function LicenseAgreementModal({
     setIsSubmitting(true);
     
     try {
-      const response = await fetch("/api/license/acknowledge", {
+      const response = await fetch("/api/license-acknowledgment", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

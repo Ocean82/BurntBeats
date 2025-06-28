@@ -967,8 +967,8 @@ Taking over, making vows`
     }
   });
 
-  // License acknowledgment endpoints
-  app.use("/api/license", (await import("./api/license-api")).default);
+  // License acknowledgment endpoints - unified routes
+  app.use("/api/license-acknowledgment", LicenseAcknowledgmentAPI.router);
 
   app.post("/api/stripe/webhook", express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
     try {
@@ -1097,7 +1097,7 @@ Taking over, making vows`
   app.use('/api/melody-preview', melodyPreviewRouter);
 
   // License Acknowledgment API routes
-  app.use('/api/license-acknowledgment', LicenseAcknowledgmentAPI.router);
+  app.use('/api/license-acknowledgment', (await import('./api/license-acknowledgment-api')).router);
 
   // Return a basic HTTP server instead of just the app
   return http.createServer(app);

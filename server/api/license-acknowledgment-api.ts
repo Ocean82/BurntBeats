@@ -1,8 +1,10 @@
-
 import { Request, Response } from 'express';
 import { db } from '../db';
 import { licenseAcknowledgments } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
+import { Router } from 'express';
+
+const router = Router();
 
 export class LicenseAcknowledgmentAPI {
   // POST /api/license-acknowledgment
@@ -168,3 +170,12 @@ export class LicenseAcknowledgmentAPI {
     }
   }
 }
+
+// Routes
+router.post('/', LicenseAcknowledgmentAPI.acknowledgeLicense);
+router.get('/:userId/:trackId', LicenseAcknowledgmentAPI.checkAcknowledgment);
+router.get('/user/:userId', LicenseAcknowledgmentAPI.getUserAcknowledgments);
+router.put('/link-purchase', LicenseAcknowledgmentAPI.linkPurchase);
+
+export { LicenseAcknowledgmentAPI };
+export { router };

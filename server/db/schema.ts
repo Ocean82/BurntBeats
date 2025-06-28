@@ -3,11 +3,11 @@
 
 // License Acknowledgments Table
 export const licenseAcknowledgments = pgTable('license_acknowledgments', {
-  id: serial('id').primaryKey(),
-  userId: varchar('user_id', { length: 255 }).notNull(),
-  trackId: varchar('track_id', { length: 255 }).notNull(),
-  acceptedAt: timestamp('accepted_at').defaultNow().notNull(),
-  purchaseId: varchar('purchase_id', { length: 255 }), // Optional Stripe session ID
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: text('user_id').notNull(),
+  trackId: text('track_id').notNull(),
+  acceptedAt: timestamp('accepted_at').notNull(),
+  purchaseId: text('purchase_id'), // Optional Stripe session ID
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow()
 });
