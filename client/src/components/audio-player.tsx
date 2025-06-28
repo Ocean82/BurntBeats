@@ -47,7 +47,7 @@ interface WatermarkIndicatorProps {
 
 const WatermarkIndicator = ({ watermark, hasWatermark }: WatermarkIndicatorProps) => {
   if (!hasWatermark || !watermark?.hasWatermark) return null;
-  
+
   return (
     <div className="flex items-center gap-1 text-xs text-orange-500">
       <AlertCircle className="w-3 h-3" />
@@ -86,7 +86,7 @@ export default function AudioPlayerFixed({
 
   // Get audio URL from song
   const audioUrl = song.audioUrl || song.generatedAudioPath || null;
-  
+
   // Parse duration safely
   const songDuration = useMemo(() => {
     if (typeof song.duration === 'number') return song.duration;
@@ -125,7 +125,7 @@ export default function AudioPlayerFixed({
     if (!audio || !audioUrl) return;
 
     const handleLoadStart = () => setIsLoading(true);
-    
+
     const handleLoadedMetadata = () => {
       setDuration(audio.duration || songDuration);
       setIsLoading(false);
@@ -210,12 +210,12 @@ export default function AudioPlayerFixed({
     const newTime = values[0];
     setCurrentTime(newTime);
     setIsDragging(true);
-    
+
     const audio = audioRef.current;
     if (audio) {
       audio.currentTime = newTime;
     }
-    
+
     setTimeout(() => setIsDragging(false), 100);
   }, []);
 
@@ -224,7 +224,7 @@ export default function AudioPlayerFixed({
     const newVolume = values[0];
     setVolume(newVolume);
     setIsMuted(newVolume === 0);
-    
+
     const audio = audioRef.current;
     if (audio) {
       audio.volume = newVolume;
@@ -308,7 +308,7 @@ export default function AudioPlayerFixed({
         loop={loop}
         preload="metadata"
       />
-      
+
       <CardContent className="p-6">
         {/* Song Info Header */}
         <div className="flex items-start justify-between mb-4">
@@ -318,7 +318,7 @@ export default function AudioPlayerFixed({
               {song.genre} • {formatTime(duration)}
             </p>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <WatermarkIndicator 
               watermark={watermarkConfig}

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import Sidebar from "@/components/sidebar";
 import SongForm from "@/components/song-form";
 import AudioPlayer from "@/components/audio-player";
