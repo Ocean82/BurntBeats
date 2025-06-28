@@ -80,13 +80,18 @@ router.post('/synthesize', authenticate, async (req: AuthenticatedRequest, res) 
     const { TextToSpeechService } = await import('../text-to-speech-service');
     const ttsService = new TextToSpeechService();
 
-    const result = await ttsService.synthesizeSpeech(text, {
-      voiceId: voiceId || 'default',
-      speed: settings?.speed || 1.0,
-      pitch: settings?.pitch || 1.0,
-      tone: settings?.tone || 'neutral',
-      quality: settings?.quality || 'high'
-    });
+    const result = await ttsService.generateVocals(
+      { text }, 
+      { voiceId: voiceId || 'default' }, 
+      null, 
+      {
+        speed: settings?.speed || 1.0,
+        pitch: settings?.pitch || 1.0,
+        tone: settings?.tone || 'neutral',
+        quality: settings?.quality || 'high',
+        fallbackMode: true
+      }
+    );
 
     res.json({
       success: true,
