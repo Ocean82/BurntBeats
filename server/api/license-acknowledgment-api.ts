@@ -115,3 +115,9 @@ export async function getLicenseAcknowledgment(req: Request, res: Response) {
     });
   }
 }
+
+// Default export for router integration
+export default {
+  createLicenseAcknowledgment,
+  getLicenseAcknowledgment
+};

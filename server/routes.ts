@@ -421,7 +421,6 @@ Taking over, making vows`
   // Authentication API Routes
   app.post("/api/auth/login", AuthAPI.login);
   app.post("/api/auth/register", AuthAPI.register);
-  app.get("/api/auth/user", AuthAPI.getCurrentUser);
   app.post("/api/auth/logout", AuthAPI.logout);
 
   // Legacy auth routes for compatibility
