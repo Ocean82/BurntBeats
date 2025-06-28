@@ -1,5 +1,8 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+// Base URL for API requests - using environment variable or empty string for relative URLs
+const BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '';
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;

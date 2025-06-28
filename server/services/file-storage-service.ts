@@ -61,10 +61,10 @@ export class FileStorageService {
       }
 
       if (cleanedCount > 0) {
-        logger.info('Temporary files cleaned up', { count: cleanedCount });
+        Logger.info('Temporary files cleaned up', { count: cleanedCount });
       }
     } catch (error) {
-      logger.warn('Failed to cleanup temp files', { error: error.message });
+      Logger.warn('Failed to cleanup temp files', { error: (error as any).message });
     }
   }
 
@@ -79,18 +79,18 @@ export class FileStorageService {
       
       if (this.useCloudStorage) {
         await googleCloudStorage.uploadFile(fileData, fileName, `audio/${extension}`);
-        logger.info('File stored in cloud storage', { fileName, size: fileData.length, category });
+        Logger.info('File stored in cloud storage', { fileName, size: fileData.length, category });
       } else {
         const categoryDir = path.join(env.STORAGE_BASE_PATH, category);
         await fs.mkdir(categoryDir, { recursive: true });
         const filePath = path.join(categoryDir, `${uuidv4()}.${extension}`);
         await fs.writeFile(filePath, fileData);
-        logger.info('File stored locally', { fileName, size: fileData.length, category });
+        Logger.info('File stored locally', { fileName, size: fileData.length, category });
       }
       
       return fileName;
     } catch (error) {
-      logger.error('Failed to store file', { error: error.message });
+      Logger.error('Failed to store file', { error: (error as any).message });
       throw new Error('Failed to store file');
     }
   }
@@ -104,11 +104,11 @@ export class FileStorageService {
       const filePath = path.join(tempDir, fileName);
       
       await fs.writeFile(filePath, fileData);
-      logger.info('Temporary file stored', { fileName, size: fileData.length });
+      Logger.info('Temporary file stored', { fileName, size: fileData.length });
       
       return filePath;
     } catch (error) {
-      logger.error('Failed to store temporary file', { error: error.message });
+      Logger.error('Failed to store temporary file', { error: (error as any).message });
       throw new Error('Failed to store temporary file');
     }
   }
@@ -122,7 +122,7 @@ export class FileStorageService {
         return await fs.readFile(filePath);
       }
     } catch (error) {
-      logger.error('Failed to get file', { error: error.message, fileName });
+      Logger.error('Failed to get file', { error: (error as any).message, fileName });
       throw new Error('File not found');
     }
   }
@@ -131,10 +131,10 @@ export class FileStorageService {
     try {
       const filePath = path.join(this.storagePath, fileName);
       await fs.unlink(filePath);
-      logger.info('File deleted', { fileName });
+      Logger.info('File deleted', { fileName });
     } catch (error) {
       // Don't throw on delete failures, just log
-      logger.warn('Failed to delete file', { error: error.message, fileName });
+      Logger.warn('Failed to delete file', { error: (error as any).message, fileName });
     }
   }
 
@@ -143,10 +143,10 @@ export class FileStorageService {
       // This would implement actual URL copying
       // For now, return a mock filename
       const fileName = `copied_${uuidv4()}.wav`;
-      logger.info('File copied from URL', { url, fileName });
+      Logger.info('File copied from URL', { url, fileName });
       return fileName;
     } catch (error) {
-      logger.error('Failed to copy from URL', { error: error.message, url });
+      Logger.error('Failed to copy from URL', { error: (error as any).message, url });
       throw new Error('Failed to copy file from URL');
     }
   }
