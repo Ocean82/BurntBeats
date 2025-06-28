@@ -64,7 +64,7 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-export async function registerRoutes(app: express.Application): Promise<http.Server> {
+export async function registerRoutes(app: express.Application): Promise<void> {
 
   // Apply global middleware
   app.use(securityHeaders);
@@ -1053,29 +1053,6 @@ Taking over, making vows`
   // Initialize health and error endpoints
   setupHealthAndErrorEndpoints();
 
-  // Serve frontend static files
-  const frontendPath = path.join(process.cwd(), 'dist', 'public');
-  if (fs.existsSync(frontendPath)) {
-    app.use(express.static(frontendPath, {
-      maxAge: '1d',
-      etag: true,
-      lastModified: true
-    }));
-    console.log('📁 Serving frontend from:', frontendPath);
-  } else {
-    console.warn('⚠️  Frontend build not found at:', frontendPath);
-  }
-
-  // SPA fallback route - serve index.html for client-side routing
-  app.get('*', (req: Request, res: Response) => {
-    const indexPath = path.join(frontendPath, 'index.html');
-    if (fs.existsSync(indexPath)) {
-      res.sendFile(indexPath);
-    } else {
-      res.status(404).send('Application not found. Please build the frontend first.');
-    }
-  });
-
   try {
     const voiceBankRouter = await import('./api/voice-bank');
     const voiceProcessingRouter = await import('./api/voice-processing');
@@ -1093,6 +1070,5 @@ Taking over, making vows`
     console.warn('⚠️  Some voice/melody APIs not available:', error);
   }
 
-  // Return a basic HTTP server instead of just the app
-  return http.createServer(app);
+  console.log('✅ All routes registered successfully');
 }

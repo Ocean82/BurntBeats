@@ -283,14 +283,48 @@ const heartbeatInterval = setInterval(() => {
 }, HEARTBEAT_INTERVAL);
 
 // ======================
-// ROUTES AND API ENDPOINTS
+// HEALTH CHECK (before other routes)
 // ======================
-registerRoutes(app);
-app.use('/api', bonusFeaturesApi);
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    port: port,
+    websocketClients: wss.clients.size
+  });
+});
 
-// Webhook test endpoint
-import webhookTestApi from "./api/webhook-test";
-app.use('/', webhookTestApi);
+// ======================
+// ROUTES AND API ENDPOINTS (ASYNC REGISTRATION)
+// ======================
+async function initializeRoutes() {
+  console.log('🔧 Registering routes...');
+  
+  // Add a simple test route first
+  app.get('/api/test', (req, res) => {
+    res.json({ message: 'Test route working', timestamp: new Date().toISOString() });
+  });
+  console.log('✅ Test route added');
+  
+  try {
+    await registerRoutes(app);
+    console.log('✅ Routes registered successfully');
+  } catch (error) {
+    console.error('❌ Route registration failed:', error);
+  }
+
+  console.log('🔧 Adding bonus features API...');
+  app.use('/api', bonusFeaturesApi);
+
+  // Webhook test endpoint
+  try {
+    const webhookTestApi = await import("./api/webhook-test");
+    app.use('/', webhookTestApi.default);
+  } catch (error) {
+    console.warn('⚠️ Webhook test API not available:', error);
+  }
+}
 
 // ======================
 // STATIC FILE SERVING
@@ -319,8 +353,13 @@ if (process.env.NODE_ENV === 'production') {
     }));
     console.log('🎯 Serving frontend UI from:', frontendPath);
 
-    // SPA fallback
-    app.get('*', (req, res) => {
+    // SPA fallback - ONLY for frontend routes, not API
+    app.get('*', (req, res, next) => {
+      // Skip SPA fallback for API routes entirely
+      if (req.path.startsWith('/api/')) {
+        return next();
+      }
+      
       const indexPath = path.join(frontendPath, 'index.html');
       if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
@@ -337,18 +376,7 @@ if (process.env.NODE_ENV === 'production') {
   console.log('🔧 Development mode - using Vite dev server');
 }
 
-// ======================
-// HEALTH CHECK
-// ======================
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    port: port,
-    websocketClients: wss.clients.size
-  });
-});
+
 
 // ======================
 // ERROR HANDLING
@@ -422,13 +450,25 @@ app.post('/api/generate', requireAuth, async (req, res) => {
 });
 
 // ======================
-// SERVER STARTUP
+// ASYNC SERVER STARTUP
 // ======================
-server.listen(port, () => {
-  console.log(`🚀 Burnt Beats server running on http://0.0.0.0:${port}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
-  console.log(`📊 Environment status:`, JSON.stringify(envStatus, null, 2));
-  console.log('🎵 Ready to create amazing music!');
+async function startServer() {
+  // Wait for routes to be initialized
+  await initializeRoutes();
+  
+  // Start the server after routes are ready
+  server.listen(port, () => {
+    console.log(`🚀 Burnt Beats server running on http://0.0.0.0:${port}`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+    console.log(`📊 Environment status:`, JSON.stringify(envStatus, null, 2));
+    console.log('🎵 Ready to create amazing music!');
+  });
+}
+
+// Start the server
+startServer().catch(error => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
 });
 
 // ======================
