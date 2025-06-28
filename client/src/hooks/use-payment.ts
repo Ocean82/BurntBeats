@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
@@ -10,34 +9,42 @@ interface PaymentIntent {
   clientSecret: string;
   amount: number;
   currency: string;
-  planType: string;
+  downloadType: string;
+  songId: string;
 }
 
 interface UsePaymentProps {
-  onPaymentSuccess?: (planType: string) => void;
+  onPaymentSuccess?: (downloadType: string, songId: string) => void;
   onPaymentError?: (error: Error) => void;
 }
 
 export const usePayment = ({ onPaymentSuccess, onPaymentError }: UsePaymentProps = {}) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentIntent, setPaymentIntent] = useState<PaymentIntent | null>(null);
-  
+
   const { toast } = useToast();
   const { handleError } = useErrorHandler();
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
 
-  // Create payment intent
+  // Create payment intent for song download
   const createPaymentIntentMutation = useMutation({
-    mutationFn: async ({ planType, amount }: { planType: string; amount: number }) => {
-      if (!user) throw new Error('User not authenticated');
-      
-      const response = await apiRequest('POST', '/api/payments/create-intent', {
-        planType,
+    mutationFn: async ({ 
+      downloadType, 
+      amount, 
+      songId 
+    }: { 
+      downloadType: string; 
+      amount: number; 
+      songId: string; 
+    }) => {
+      const response = await apiRequest('POST', '/api/create-payment-intent', {
+        downloadType,
         amount,
-        userId: user.id,
-        currency: 'usd'
+        songId,
+        currency: 'usd',
+        userEmail: user?.email || 'guest@example.com'
       });
-      
+
       if (!response.ok) throw new Error('Failed to create payment intent');
       return response.json() as Promise<PaymentIntent>;
     },
@@ -45,7 +52,7 @@ export const usePayment = ({ onPaymentSuccess, onPaymentError }: UsePaymentProps
       setPaymentIntent(intent);
       toast({
         title: "Payment initialized",
-        description: "Please complete your payment to upgrade your plan",
+        description: `Ready to purchase ${intent.downloadType} download for $${(intent.amount / 100).toFixed(2)}`,
       });
     },
     onError: (error) => {
@@ -54,43 +61,36 @@ export const usePayment = ({ onPaymentSuccess, onPaymentError }: UsePaymentProps
     },
   });
 
-  // Confirm payment
+  // Confirm download payment
   const confirmPaymentMutation = useMutation({
     mutationFn: async ({ paymentIntentId, paymentMethodId }: { 
       paymentIntentId: string; 
       paymentMethodId: string; 
     }) => {
-      if (!user) throw new Error('User not authenticated');
-      
-      const response = await apiRequest('POST', '/api/payments/confirm', {
+      const response = await apiRequest('POST', '/api/payments/confirm-download', {
         paymentIntentId,
         paymentMethodId,
-        userId: user.id
+        userEmail: user?.email || 'guest@example.com'
       });
-      
+
       if (!response.ok) throw new Error('Payment confirmation failed');
       return response.json();
     },
     onSuccess: (result) => {
       if (result.status === 'succeeded') {
         toast({
-          title: "Payment successful!",
-          description: `Welcome to ${result.planType} plan! Your account has been upgraded.`,
+          title: "Download purchased!",
+          description: `Your ${result.downloadType} is ready for download`,
         });
-        
-        // Update user plan
-        updateUser({ 
-          plan: result.planType as 'free' | 'pro'
-        });
-        
-        onPaymentSuccess?.(result.planType);
+
+        onPaymentSuccess?.(result.downloadType, result.songId);
         setPaymentIntent(null);
       } else {
         throw new Error('Payment requires additional authentication');
       }
     },
     onError: (error) => {
-      handleError(error as Error, 'Payment failed');
+      handleError(error as Error, 'Download payment failed');
       onPaymentError?.(error as Error);
     },
   });
@@ -101,7 +101,7 @@ export const usePayment = ({ onPaymentSuccess, onPaymentError }: UsePaymentProps
       const response = await apiRequest('POST', '/api/payments/cancel', {
         paymentIntentId
       });
-      
+
       if (!response.ok) throw new Error('Failed to cancel payment');
       return response.json();
     },
@@ -117,50 +117,29 @@ export const usePayment = ({ onPaymentSuccess, onPaymentError }: UsePaymentProps
     },
   });
 
-  // Get subscription status
-  const getSubscriptionMutation = useMutation({
+  // Get purchase history
+  const getPurchaseHistoryMutation = useMutation({
     mutationFn: async () => {
-      if (!user) throw new Error('User not authenticated');
-      
-      const response = await apiRequest('GET', `/api/payments/subscription?userId=${user.id}`);
-      if (!response.ok) throw new Error('Failed to get subscription');
-      return response.json();
-    },
-    onError: (error) => {
-      handleError(error as Error, 'Failed to get subscription status');
-    },
-  });
+      if (!user?.email) throw new Error('User not authenticated');
 
-  // Create customer portal session
-  const createPortalSessionMutation = useMutation({
-    mutationFn: async () => {
-      if (!user) throw new Error('User not authenticated');
-      
-      const response = await apiRequest('POST', '/api/payments/portal', {
-        userId: user.id,
-        returnUrl: window.location.origin
-      });
-      
-      if (!response.ok) throw new Error('Failed to create portal session');
+      const response = await apiRequest('GET', `/api/purchases/history?userEmail=${user.email}`);
+      if (!response.ok) throw new Error('Failed to get purchase history');
       return response.json();
     },
-    onSuccess: (result) => {
-      window.location.href = result.url;
-    },
     onError: (error) => {
-      handleError(error as Error, 'Failed to open billing portal');
+      handleError(error as Error, 'Failed to get purchase history');
     },
   });
 
   // High-level payment functions
-  const initializePayment = useCallback((planType: string, amount: number) => {
+  const initializeDownloadPayment = useCallback((downloadType: string, amount: number, songId: string) => {
     setIsProcessing(true);
-    createPaymentIntentMutation.mutate({ planType, amount });
+    createPaymentIntentMutation.mutate({ downloadType, amount, songId });
   }, [createPaymentIntentMutation]);
 
-  const processPayment = useCallback(async (paymentMethodId: string) => {
+  const processDownloadPayment = useCallback(async (paymentMethodId: string) => {
     if (!paymentIntent) throw new Error('No payment intent available');
-    
+
     setIsProcessing(true);
     try {
       await confirmPaymentMutation.mutateAsync({
@@ -174,39 +153,33 @@ export const usePayment = ({ onPaymentSuccess, onPaymentError }: UsePaymentProps
 
   const cancelPayment = useCallback(() => {
     if (!paymentIntent) return;
-    
+
     const paymentIntentId = paymentIntent.clientSecret.split('_secret_')[0];
     cancelPaymentMutation.mutate(paymentIntentId);
   }, [paymentIntent, cancelPaymentMutation]);
 
-  const openBillingPortal = useCallback(() => {
-    createPortalSessionMutation.mutate();
-  }, [createPortalSessionMutation]);
-
-  const getSubscriptionStatus = useCallback(() => {
-    return getSubscriptionMutation.mutateAsync();
-  }, [getSubscriptionMutation]);
+  const getPurchaseHistory = useCallback(() => {
+    return getPurchaseHistoryMutation.mutateAsync();
+  }, [getPurchaseHistoryMutation]);
 
   return {
     // State
     isProcessing,
     paymentIntent,
-    
+
     // Actions
-    initializePayment,
-    processPayment,
+    initializeDownloadPayment,
+    processDownloadPayment,
     cancelPayment,
-    openBillingPortal,
-    getSubscriptionStatus,
-    
+    getPurchaseHistory,
+
     // Status
     isCreatingIntent: createPaymentIntentMutation.isPending,
     isConfirming: confirmPaymentMutation.isPending,
     isCancelling: cancelPaymentMutation.isPending,
-    isLoadingPortal: createPortalSessionMutation.isPending,
-    isLoadingSubscription: getSubscriptionMutation.isPending,
-    
+    isLoadingHistory: getPurchaseHistoryMutation.isPending,
+
     // Data
-    subscriptionData: getSubscriptionMutation.data,
+    purchaseHistory: getPurchaseHistoryMutation.data,
   };
 };

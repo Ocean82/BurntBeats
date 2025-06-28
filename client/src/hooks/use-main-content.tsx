@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Button } from "@/components/ui/button";
-import { Crown } from "lucide-react";
+import { Music } from "lucide-react";
 import SongForm from "@/components/song-form";
 import SongLibrary from "@/components/song-library";
 import AnalyticsDashboard from "@/components/analytics-dashboard";
@@ -52,102 +52,65 @@ export const useMainContent = ({
       case "Song Library":
       case "Recent Creations":
         return <SongLibrary userId={user?.id || 1} onEditSong={handleEditSong} />;
-        
+
       case "Voice Samples":
         return <VoiceRecorder userId={user?.id || 1} />;
-        
+
       case "Analytics":
-        return userPlan === "pro" ? (
-          <AnalyticsDashboard userId={user?.id || 1} />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Pro Feature</h3>
-              <p className="text-gray-400 mb-4">Analytics dashboard is available with Pro subscription</p>
-              <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
-                Upgrade to Pro
-              </Button>
-            </div>
-          </div>
-        );
-        
+        // Analytics available to all users - they can see their download history and spending
+        return <AnalyticsDashboard userId={user?.id || 1} />;
+
       case "Version Control":
-        return userPlan === "pro" ? (
-          completedSong ? (
-            <VersionControl song={completedSong} userId={user?.id || 1} />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-gray-400">Select a song to view version history</p>
-            </div>
-          )
+        // Version control available to all users for their songs
+        return completedSong ? (
+          <VersionControl song={completedSong} userId={user?.id || 1} />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Pro Feature</h3>
-              <p className="text-gray-400 mb-4">Version control is available with Pro subscription</p>
-              <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
-                Upgrade to Pro
-              </Button>
-            </div>
+            <p className="text-gray-400">Select a song to view version history</p>
           </div>
         );
-        
+
       case "Collaborative Workspace":
-        return userPlan === "pro" ? (
-          completedSong ? (
-            <CollaborativeWorkspace 
-              song={completedSong} 
-              currentUser={{ id: user?.id || 1, username: user?.username || "User" }}
-              onSongUpdate={handleSongUpdated}
-            />
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-gray-400">Select a song to start collaborative editing</p>
-            </div>
-          )
+        // Collaboration available to all users
+        return completedSong ? (
+          <CollaborativeWorkspace 
+            song={completedSong} 
+            currentUser={{ id: user?.id || 1, username: user?.username || "User" }}
+            onSongUpdate={handleSongUpdated}
+          />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Pro Feature</h3>
-              <p className="text-gray-400 mb-4">Real-time collaborative workspace is available with Pro subscription</p>
-              <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
-                Upgrade to Pro
-              </Button>
-            </div>
+            <p className="text-gray-400">Select a song to start collaborative editing</p>
           </div>
         );
-        
+
       case "Music Theory":
-        return userPlan === "pro" ? (
-          <MusicTheoryTools />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Pro Feature</h3>
-              <p className="text-gray-400 mb-4">Music theory tools are available with Pro subscription</p>
-              <Button onClick={onUpgrade} className="bg-gradient-to-r from-vibrant-orange to-orange-600">
-                Upgrade to Pro
-              </Button>
-            </div>
-          </div>
-        );
-        
+        // Music theory tools available to all users
+        return <MusicTheoryTools />;
+
       case "Social Hub":
         return <SocialFeatures userId={user?.id || 1} currentSong={completedSong} />;
-        
+
       case "Downloads":
         return completedSong ? (
           <DownloadOptions song={completedSong} />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <p className="text-gray-400">Generate a song to access downloads</p>
+            <div className="text-center">
+              <Music className="w-16 h-16 text-orange-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Generate a Song First</h3>
+              <p className="text-gray-400 mb-4">Create your music, then choose from our download options</p>
+              <div className="text-sm text-gray-500 space-y-1">
+                <p>💿 Bonus Track - $0.99 (Watermarked demo)</p>
+                <p>🔉 Base Song - $1.99 (Under 9MB, clean)</p>
+                <p>🎧 Premium Song - $4.99 (9MB-20MB, high quality)</p>
+                <p>💽 Ultra Song - $8.99 (Over 20MB, studio quality)</p>
+                <p>🪪 Full License - $10.00 (Complete ownership)</p>
+              </div>
+            </div>
           </div>
         );
-        
+
       case "Song Editor":
         return editingSong ? (
           <SongEditor
@@ -157,7 +120,7 @@ export const useMainContent = ({
             onUpgrade={onUpgrade}
           />
         ) : null;
-        
+
       default:
         return (
           <>
@@ -184,13 +147,19 @@ export const useMainContent = ({
 
             {/* Main Content Based on Step */}
             {currentStep === 1 && (
-              <SongForm
-                onSongGenerated={handleSongGenerated}
-                currentStep={currentStep}
-                setCurrentStep={setCurrentStep}
-                user={user}
-                onUpgrade={onUpgrade}
-              />
+              <div className="space-y-6">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold text-white mb-2">Create Your Music</h2>
+                  <p className="text-gray-400">Generate unlimited songs for free. Pay only when you download.</p>
+                </div>
+                <SongForm
+                  onSongGenerated={handleSongGenerated}
+                  currentStep={currentStep}
+                  setCurrentStep={setCurrentStep}
+                  user={user}
+                  onUpgrade={onUpgrade}
+                />
+              </div>
             )}
 
             {currentStep === 2 && generatingSong && (
@@ -202,6 +171,10 @@ export const useMainContent = ({
 
             {currentStep === 3 && completedSong && (
               <div className="space-y-6">
+                <div className="text-center mb-6">
+                  <h2 className="text-2xl font-bold text-white mb-2">Your Song is Ready!</h2>
+                  <p className="text-gray-400">Listen first, then choose your download option.</p>
+                </div>
                 <AudioPlayer song={completedSong} />
                 <DownloadOptions song={completedSong} />
               </div>
