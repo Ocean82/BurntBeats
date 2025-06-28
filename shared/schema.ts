@@ -238,3 +238,143 @@ export interface GeneratedMelody {
     tempo: number;
   };
 }
+import { z } from 'zod';
+
+// User schemas
+export const UserSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  username: z.string().min(1),
+  subscription_tier: z.enum(['free', 'premium', 'pro']).default('free'),
+  monthly_songs_generated: z.number().default(0),
+  monthly_limit: z.number().default(10),
+  created_at: z.date(),
+  updated_at: z.date()
+});
+
+export const CreateUserSchema = UserSchema.omit({ 
+  id: true, 
+  created_at: true, 
+  updated_at: true 
+});
+
+export const UpdateUserSchema = CreateUserSchema.partial();
+
+// Song schemas
+export const SongSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  title: z.string().min(1),
+  lyrics: z.string().optional(),
+  genre: z.string(),
+  mood: z.string().optional(),
+  style_reference: z.string().optional(),
+  status: z.enum(['generating', 'completed', 'failed']).default('generating'),
+  file_path: z.string().optional(),
+  duration: z.number().optional(),
+  file_size: z.number().optional(),
+  created_at: z.date(),
+  updated_at: z.date()
+});
+
+export const CreateSongSchema = SongSchema.omit({ 
+  id: true, 
+  created_at: true, 
+  updated_at: true 
+});
+
+export const UpdateSongSchema = CreateSongSchema.partial();
+
+// Voice Sample schemas
+export const VoiceSampleSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  name: z.string().min(1),
+  file_path: z.string(),
+  status: z.enum(['processing', 'ready', 'failed']).default('processing'),
+  metadata: z.record(z.any()).optional(),
+  created_at: z.date(),
+  updated_at: z.date()
+});
+
+export const CreateVoiceSampleSchema = VoiceSampleSchema.omit({ 
+  id: true, 
+  created_at: true, 
+  updated_at: true 
+});
+
+export const UpdateVoiceSampleSchema = CreateVoiceSampleSchema.partial();
+
+// Voice Clone schemas
+export const VoiceCloneSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  name: z.string().min(1),
+  voice_sample_id: z.string(),
+  status: z.enum(['training', 'ready', 'failed']).default('training'),
+  model_path: z.string().optional(),
+  metadata: z.record(z.any()).optional(),
+  created_at: z.date(),
+  updated_at: z.date()
+});
+
+export const CreateVoiceCloneSchema = VoiceCloneSchema.omit({ 
+  id: true, 
+  created_at: true, 
+  updated_at: true 
+});
+
+export const UpdateVoiceCloneSchema = CreateVoiceCloneSchema.partial();
+
+// License Acknowledgment schemas
+export const LicenseAcknowledgmentSchema = z.object({
+  id: z.string(),
+  song_id: z.string(),
+  user_id: z.string(),
+  license_type: z.string(),
+  acknowledgment_text: z.string(),
+  created_at: z.date()
+});
+
+export const CreateLicenseAcknowledgmentSchema = LicenseAcknowledgmentSchema.omit({ 
+  id: true, 
+  created_at: true 
+});
+
+// Request/Response schemas
+export const ApiResponseSchema = z.object({
+  success: z.boolean(),
+  message: z.string().optional(),
+  data: z.any().optional(),
+  error: z.string().optional()
+});
+
+export const PaginationSchema = z.object({
+  page: z.number().min(1).default(1),
+  limit: z.number().min(1).max(100).default(10),
+  total: z.number().optional(),
+  totalPages: z.number().optional()
+});
+
+// Type exports
+export type User = z.infer<typeof UserSchema>;
+export type CreateUser = z.infer<typeof CreateUserSchema>;
+export type UpdateUser = z.infer<typeof UpdateUserSchema>;
+
+export type Song = z.infer<typeof SongSchema>;
+export type CreateSong = z.infer<typeof CreateSongSchema>;
+export type UpdateSong = z.infer<typeof UpdateSongSchema>;
+
+export type VoiceSample = z.infer<typeof VoiceSampleSchema>;
+export type CreateVoiceSample = z.infer<typeof CreateVoiceSampleSchema>;
+export type UpdateVoiceSample = z.infer<typeof UpdateVoiceSampleSchema>;
+
+export type VoiceClone = z.infer<typeof VoiceCloneSchema>;
+export type CreateVoiceClone = z.infer<typeof CreateVoiceCloneSchema>;
+export type UpdateVoiceClone = z.infer<typeof UpdateVoiceCloneSchema>;
+
+export type LicenseAcknowledgment = z.infer<typeof LicenseAcknowledgmentSchema>;
+export type CreateLicenseAcknowledgment = z.infer<typeof CreateLicenseAcknowledgmentSchema>;
+
+export type ApiResponse = z.infer<typeof ApiResponseSchema>;
+export type Pagination = z.infer<typeof PaginationSchema>;
