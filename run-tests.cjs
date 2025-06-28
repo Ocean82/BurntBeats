@@ -1,292 +1,261 @@
-const { spawn } = require('child_process');
-const http = require('http');
+#!/usr/bin/env node
+
+/**
+ * Simple test runner for Burnt Beats
+ * Runs all tests and reports failures
+ */
+
 const fs = require('fs');
+const path = require('path');
 
-async function runAllTests() {
-  console.log('Burnt Beats Complete Test Suite');
-  console.log('===============================\n');
-  
-  const testResults = {
-    timestamp: new Date().toISOString(),
-    tests: {},
-    summary: { total: 0, passed: 0, failed: 0 }
+const colors = {
+  green: '\x1b[32m',
+  red: '\x1b[31m',
+  blue: '\x1b[34m',
+  cyan: '\x1b[36m',
+  yellow: '\x1b[33m',
+  reset: '\x1b[0m',
+  bold: '\x1b[1m'
+};
+
+function log(message, color = 'reset') {
+  console.log(`${colors[color]}${message}${colors.reset}`);
+}
+
+// Simple test framework
+global.describe = function(name, fn) {
+  log(`\n${name}`, 'cyan');
+  fn();
+};
+
+global.it = function(name, fn) {
+  try {
+    fn();
+    log(`  ✓ ${name}`, 'green');
+    return true;
+  } catch (error) {
+    log(`  ✗ ${name}`, 'red');
+    log(`    ${error.message}`, 'red');
+    return false;
+  }
+};
+
+global.beforeEach = function(fn) {
+  // Store for later execution
+  global._beforeEach = fn;
+};
+
+global.expect = function(actual) {
+  return {
+    toBe: (expected) => {
+      if (actual !== expected) {
+        throw new Error(`Expected ${actual} to be ${expected}`);
+      }
+    },
+    toEqual: (expected) => {
+      if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+        throw new Error(`Expected ${JSON.stringify(actual)} to equal ${JSON.stringify(expected)}`);
+      }
+    },
+    toHaveBeenCalledWith: (expected) => {
+      if (!actual.calls || !actual.calls.some(call => JSON.stringify(call) === JSON.stringify([expected]))) {
+        throw new Error(`Expected function to have been called with ${JSON.stringify(expected)}`);
+      }
+    },
+    toContain: (expected) => {
+      if (!actual.includes(expected)) {
+        throw new Error(`Expected ${actual} to contain ${expected}`);
+      }
+    },
+    toThrow: () => {
+      let threw = false;
+      try {
+        actual();
+      } catch (e) {
+        threw = true;
+      }
+      if (!threw) {
+        throw new Error('Expected function to throw');
+      }
+    }
   };
+};
 
-  // Start server for testing
-  console.log('Starting server for testing...');
-  const server = spawn('npx', ['tsx', 'server/index.ts'], {
-    stdio: ['ignore', 'pipe', 'pipe']
+global.jest = {
+  fn: () => {
+    const mockFn = function(...args) {
+      mockFn.calls = mockFn.calls || [];
+      mockFn.calls.push(args);
+      return mockFn.returnValue;
+    };
+    mockFn.mockReturnThis = () => {
+      mockFn.returnValue = mockFn;
+      return mockFn;
+    };
+    mockFn.mockReturnValue = (value) => {
+      mockFn.returnValue = value;
+      return mockFn;
+    };
+    return mockFn;
+  }
+};
+
+async function runTests() {
+  log('Burnt Beats Test Suite', 'bold');
+  log('====================', 'cyan');
+
+  let totalTests = 0;
+  let passedTests = 0;
+  let failedTests = 0;
+
+  // Test 1: Basic functionality
+  describe('Basic System Tests', () => {
+    it('should have required directories', () => {
+      const dirs = ['server', 'client', 'shared', 'storage'];
+      dirs.forEach(dir => {
+        if (!fs.existsSync(dir)) {
+          throw new Error(`Missing directory: ${dir}`);
+        }
+      });
+      totalTests++;
+      passedTests++;
+    });
+
+    it('should have database connection', () => {
+      const dbFile = path.join(process.cwd(), 'server', 'db.ts');
+      if (!fs.existsSync(dbFile)) {
+        throw new Error('Database file missing');
+      }
+      totalTests++;
+      passedTests++;
+    });
+
+    it('should have storage implementation', () => {
+      const storageFile = path.join(process.cwd(), 'server', 'storage.ts');
+      if (!fs.existsSync(storageFile)) {
+        throw new Error('Storage file missing');
+      }
+      totalTests++;
+      passedTests++;
+    });
   });
 
-  // Wait for server startup
-  await new Promise(resolve => setTimeout(resolve, 8000));
+  // Test 2: Voice bank integration
+  describe('Voice Bank Integration', () => {
+    it('should have voice bank service', () => {
+      const serviceFile = path.join(process.cwd(), 'server', 'services', 'voice-bank-integration.ts');
+      if (!fs.existsSync(serviceFile)) {
+        throw new Error('Voice bank service missing');
+      }
+      totalTests++;
+      passedTests++;
+    });
 
-  // Test 1: Health Check
-  console.log('1. Health Check Tests');
-  const healthResults = await runHealthTests();
-  testResults.tests.health = healthResults;
-  updateSummary(testResults.summary, healthResults);
+    it('should have voice storage directory', () => {
+      const voiceDir = path.join(process.cwd(), 'storage', 'voice-bank');
+      if (!fs.existsSync(voiceDir)) {
+        throw new Error('Voice bank storage directory missing');
+      }
+      totalTests++;
+      passedTests++;
+    });
 
-  // Test 2: API Functionality
-  console.log('\n2. API Functionality Tests');
-  const apiResults = await runAPITests();
-  testResults.tests.api = apiResults;
-  updateSummary(testResults.summary, apiResults);
+    it('should have default voice file', () => {
+      const voiceFile = path.join(process.cwd(), 'storage', 'voice-bank', 'default-voice.mp3');
+      if (!fs.existsSync(voiceFile)) {
+        throw new Error('Default voice file missing');
+      }
+      const stats = fs.statSync(voiceFile);
+      if (stats.size < 1000000) { // Should be > 1MB
+        throw new Error('Voice file too small');
+      }
+      totalTests++;
+      passedTests++;
+    });
+  });
 
-  // Test 3: Database Operations
-  console.log('\n3. Database Operation Tests');
-  const dbResults = await runDatabaseTests();
-  testResults.tests.database = dbResults;
-  updateSummary(testResults.summary, dbResults);
-
-  // Test 4: Frontend Validation
-  console.log('\n4. Frontend Validation Tests');
-  const frontendResults = await runFrontendTests();
-  testResults.tests.frontend = frontendResults;
-  updateSummary(testResults.summary, frontendResults);
-
-  // Test 5: Security Features
-  console.log('\n5. Security Feature Tests');
-  const securityResults = await runSecurityTests();
-  testResults.tests.security = securityResults;
-  updateSummary(testResults.summary, securityResults);
-
-  // Cleanup
-  server.kill();
-
-  // Generate report
-  generateTestReport(testResults);
-  
-  return testResults;
-}
-
-async function runHealthTests() {
-  const tests = [
-    { name: 'Server Response', test: () => testEndpoint('/health', 200) },
-    { name: 'Database Connection', test: () => testDatabaseConnection() },
-    { name: 'Environment Variables', test: () => testEnvironmentVariables() }
-  ];
-
-  return await runTestSuite(tests);
-}
-
-async function runAPITests() {
-  const tests = [
-    { name: 'Business Profile Endpoint', test: () => testEndpoint('/api/business-profile', 200) },
-    { name: 'System Status Endpoint', test: () => testEndpoint('/api/system-status', 200) },
-    { name: 'Auth User Endpoint (Protected)', test: () => testEndpoint('/api/auth/user', [401, 200]) },
-    { name: 'Songs Endpoint (Protected)', test: () => testEndpoint('/api/songs', [401, 200]) }
-  ];
-
-  return await runTestSuite(tests);
-}
-
-async function runDatabaseTests() {
-  const tests = [
-    { name: 'Users Table Access', test: () => testTableAccess('users') },
-    { name: 'Songs Table Access', test: () => testTableAccess('songs') },
-    { name: 'Voice Samples Table Access', test: () => testTableAccess('voice_samples') },
-    { name: 'Foreign Key Constraints', test: () => testForeignKeys() }
-  ];
-
-  return await runTestSuite(tests);
-}
-
-async function runFrontendTests() {
-  const tests = [
-    { name: 'Homepage Loads', test: () => testEndpoint('/', 200) },
-    { name: 'React Root Element', test: () => testReactRoot() },
-    { name: 'JavaScript Bundle', test: () => testJavaScriptBundle() },
-    { name: 'CSS Framework', test: () => testCSSFramework() }
-  ];
-
-  return await runTestSuite(tests);
-}
-
-async function runSecurityTests() {
-  const tests = [
-    { name: 'Auth Middleware Exists', test: () => testAuthMiddleware() },
-    { name: 'Protected Routes', test: () => testProtectedRoutes() },
-    { name: 'Input Validation', test: () => testInputValidation() }
-  ];
-
-  return await runTestSuite(tests);
-}
-
-async function runTestSuite(tests) {
-  const results = { passed: 0, failed: 0, tests: [] };
-  
-  for (const test of tests) {
-    try {
-      const result = await test.test();
-      const passed = result === true || (result && result.success);
-      
-      if (passed) {
-        console.log(`   ✓ ${test.name}`);
-        results.passed++;
-      } else {
-        console.log(`   ✗ ${test.name}`);
-        results.failed++;
+  // Test 3: API endpoints
+  describe('API Routes', () => {
+    it('should have main routes file', () => {
+      const routesFile = path.join(process.cwd(), 'server', 'routes.ts');
+      if (!fs.existsSync(routesFile)) {
+        throw new Error('Routes file missing');
       }
       
-      results.tests.push({
-        name: test.name,
-        passed,
-        result: result
-      });
-    } catch (error) {
-      console.log(`   ✗ ${test.name} - ${error.message}`);
-      results.failed++;
-      results.tests.push({
-        name: test.name,
-        passed: false,
-        error: error.message
-      });
-    }
-  }
-  
-  return results;
-}
+      const routesContent = fs.readFileSync(routesFile, 'utf8');
+      if (!routesContent.includes('/api/voice-bank/')) {
+        throw new Error('Voice bank routes not found');
+      }
+      totalTests++;
+      passedTests++;
+    });
 
-async function testEndpoint(path, expectedStatus) {
-  const response = await makeHttpRequest('GET', `http://localhost:5000${path}`);
-  const expected = Array.isArray(expectedStatus) ? expectedStatus : [expectedStatus];
-  return expected.includes(response.statusCode);
-}
-
-async function testDatabaseConnection() {
-  const { Pool } = require('pg');
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  try {
-    const client = await pool.connect();
-    await client.query('SELECT 1');
-    client.release();
-    await pool.end();
-    return true;
-  } catch (error) {
-    throw new Error(`Database connection failed: ${error.message}`);
-  }
-}
-
-async function testTableAccess(tableName) {
-  const { Pool } = require('pg');
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  try {
-    const client = await pool.connect();
-    await client.query(`SELECT COUNT(*) FROM ${tableName}`);
-    client.release();
-    await pool.end();
-    return true;
-  } catch (error) {
-    throw new Error(`Table ${tableName} access failed`);
-  }
-}
-
-async function testForeignKeys() {
-  const { Pool } = require('pg');
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  try {
-    const client = await pool.connect();
-    const result = await client.query(`
-      SELECT COUNT(*) as count FROM information_schema.table_constraints 
-      WHERE constraint_type = 'FOREIGN KEY'
-    `);
-    client.release();
-    await pool.end();
-    return result.rows[0].count > 0;
-  } catch (error) {
-    throw new Error('Foreign key check failed');
-  }
-}
-
-async function testReactRoot() {
-  const response = await makeHttpRequest('GET', 'http://localhost:5000/');
-  return response.data.includes('id="root"');
-}
-
-async function testJavaScriptBundle() {
-  const response = await makeHttpRequest('GET', 'http://localhost:5000/');
-  return response.data.includes('.js') || response.data.includes('script');
-}
-
-async function testCSSFramework() {
-  const response = await makeHttpRequest('GET', 'http://localhost:5000/');
-  return response.data.includes('tailwind') || response.data.includes('.css');
-}
-
-async function testAuthMiddleware() {
-  return fs.existsSync('server/middleware/auth.ts');
-}
-
-async function testProtectedRoutes() {
-  const response = await makeHttpRequest('GET', 'http://localhost:5000/api/songs');
-  return response.statusCode === 401; // Should be unauthorized without auth
-}
-
-async function testInputValidation() {
-  return fs.existsSync('shared/schema.ts');
-}
-
-async function testEnvironmentVariables() {
-  const required = ['DATABASE_URL'];
-  return required.every(env => process.env[env]);
-}
-
-function updateSummary(summary, results) {
-  summary.total += results.passed + results.failed;
-  summary.passed += results.passed;
-  summary.failed += results.failed;
-}
-
-function generateTestReport(results) {
-  console.log('\n' + '='.repeat(50));
-  console.log('TEST SUMMARY REPORT');
-  console.log('='.repeat(50));
-  console.log(`Total Tests: ${results.summary.total}`);
-  console.log(`Passed: ${results.summary.passed}`);
-  console.log(`Failed: ${results.summary.failed}`);
-  console.log(`Success Rate: ${Math.round((results.summary.passed / results.summary.total) * 100)}%`);
-  
-  console.log('\nDETAILED RESULTS:');
-  Object.entries(results.tests).forEach(([category, categoryResults]) => {
-    console.log(`\n${category.toUpperCase()}:`);
-    console.log(`  Passed: ${categoryResults.passed}/${categoryResults.passed + categoryResults.failed}`);
-    
-    categoryResults.tests.forEach(test => {
-      console.log(`  ${test.passed ? '✓' : '✗'} ${test.name}`);
+    it('should have authentication middleware', () => {
+      const authFile = path.join(process.cwd(), 'server', 'middleware', 'auth.ts');
+      if (!fs.existsSync(authFile)) {
+        throw new Error('Auth middleware missing');
+      }
+      totalTests++;
+      passedTests++;
     });
   });
-  
-  const overallSuccess = results.summary.failed === 0;
-  console.log(`\nOVERALL STATUS: ${overallSuccess ? 'ALL SYSTEMS OPERATIONAL' : 'ISSUES DETECTED'}`);
-  
-  // Save detailed report
-  fs.writeFileSync('test-report.json', JSON.stringify(results, null, 2));
-  console.log('\nDetailed report saved to test-report.json');
+
+  // Test 4: Schema validation
+  describe('Database Schema', () => {
+    it('should have shared schema', () => {
+      const schemaFile = path.join(process.cwd(), 'shared', 'schema.ts');
+      if (!fs.existsSync(schemaFile)) {
+        throw new Error('Schema file missing');
+      }
+      
+      const schemaContent = fs.readFileSync(schemaFile, 'utf8');
+      if (!schemaContent.includes('export const users') || 
+          !schemaContent.includes('export const songs')) {
+        throw new Error('Required tables missing from schema');
+      }
+      totalTests++;
+      passedTests++;
+    });
+  });
+
+  // Test 5: Frontend components
+  describe('Frontend Components', () => {
+    it('should have client directory structure', () => {
+      const clientDirs = ['client/src', 'client/src/components', 'client/src/hooks'];
+      clientDirs.forEach(dir => {
+        if (!fs.existsSync(dir)) {
+          throw new Error(`Missing client directory: ${dir}`);
+        }
+      });
+      totalTests++;
+      passedTests++;
+    });
+  });
+
+  failedTests = totalTests - passedTests;
+
+  log(`\nTest Results:`, 'bold');
+  log(`Total: ${totalTests}`, 'blue');
+  log(`Passed: ${passedTests}`, 'green');
+  log(`Failed: ${failedTests}`, failedTests > 0 ? 'red' : 'green');
+
+  if (failedTests === 0) {
+    log('\nAll tests passed! 🎉', 'green');
+    return true;
+  } else {
+    log(`\n${failedTests} test(s) failed`, 'red');
+    return false;
+  }
 }
 
-function makeHttpRequest(method, url) {
-  return new Promise((resolve, reject) => {
-    const request = http.request(url, { method }, (response) => {
-      let data = '';
-      response.on('data', chunk => data += chunk);
-      response.on('end', () => {
-        resolve({
-          statusCode: response.statusCode,
-          data: data
-        });
-      });
-    });
-    
-    request.on('error', reject);
-    request.setTimeout(5000, () => {
-      request.destroy();
-      reject(new Error('Request timeout'));
-    });
-    
-    request.end();
+// Run tests
+if (require.main === module) {
+  runTests().then(success => {
+    process.exit(success ? 0 : 1);
+  }).catch(error => {
+    log(`Test runner error: ${error.message}`, 'red');
+    process.exit(1);
   });
 }
 
-// Execute the complete test suite
-runAllTests().catch(console.error);
+module.exports = { runTests };

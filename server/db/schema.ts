@@ -1,84 +1,74 @@
-import { pgTable, serial, text, timestamp, integer, boolean, jsonb, uuid } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, integer, jsonb } from 'drizzle-orm/pg-core';
 import { createId } from '@paralleldrive/cuid2';
 
 // Users table
 export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
+  id: text('id').primaryKey().$defaultFn(() => createId()),
   email: text('email').notNull().unique(),
-  name: text('name'),
-  plan: text('plan').default('free'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
+  username: text('username').notNull(),
+  subscription_tier: text('subscription_tier').notNull().default('free'),
+  monthly_songs_generated: integer('monthly_songs_generated').notNull().default(0),
+  monthly_limit: integer('monthly_limit').notNull().default(10),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow()
 });
 
 // Songs table
 export const songs = pgTable('songs', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id').references(() => users.id),
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  user_id: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   lyrics: text('lyrics'),
-  style: text('style'),
+  genre: text('genre').notNull(),
   mood: text('mood'),
-  tempo: text('tempo'),
-  generatedAudioPath: text('generated_audio_path'),
-  status: text('status').default('pending'),
-  generationProgress: integer('generation_progress').default(0),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
+  style_reference: text('style_reference'),
+  status: text('status').notNull().default('generating'),
+  file_path: text('file_path'),
+  duration: integer('duration'),
+  file_size: integer('file_size'),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow()
 });
 
 // Voice samples table
-export const voiceSamples = pgTable('voice_samples', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id').references(() => users.id),
+export const voice_samples = pgTable('voice_samples', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  user_id: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
-  filePath: text('file_path').notNull(),
-  duration: integer('duration'),
-  format: text('format'),
-  createdAt: timestamp('created_at').defaultNow(),
+  file_path: text('file_path').notNull(),
+  status: text('status').notNull().default('processing'),
+  metadata: jsonb('metadata'),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow()
 });
 
 // Voice clones table
-export const voiceClones = pgTable('voice_clones', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id').references(() => users.id),
+export const voice_clones = pgTable('voice_clones', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  user_id: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
-  voiceSampleId: integer('voice_sample_id').references(() => voiceSamples.id),
-  modelPath: text('model_path'),
-  status: text('status').default('training'),
-  createdAt: timestamp('created_at').defaultNow(),
+  voice_sample_id: text('voice_sample_id').notNull().references(() => voice_samples.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('training'),
+  model_path: text('model_path'),
+  metadata: jsonb('metadata'),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow()
 });
 
-// Song versions table
-export const songVersions = pgTable('song_versions', {
-  id: serial('id').primaryKey(),
-  songId: integer('song_id').references(() => songs.id),
-  version: integer('version').notNull(),
-  changes: jsonb('changes'),
-  audioPath: text('audio_path'),
-  createdAt: timestamp('created_at').defaultNow(),
+// Sessions table
+export const sessions = pgTable('sessions', {
+  id: text('id').primaryKey(),
+  user_id: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  expires_at: timestamp('expires_at').notNull(),
+  created_at: timestamp('created_at').notNull().defaultNow()
 });
 
-// License Acknowledgments Table
-export const licenseAcknowledgments = pgTable("license_acknowledgments", {
-  id: text("id").primaryKey().$defaultFn(() => createId()),
-  userId: text("user_id").notNull(),
-  trackId: text("track_id").notNull(),
-  acceptedAt: timestamp("accepted_at").notNull(),
-  purchaseId: text("purchase_id"), // Optional Stripe session ID
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
+// License acknowledgments table
+export const license_acknowledgments = pgTable('license_acknowledgments', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  song_id: text('song_id').notNull().references(() => songs.id, { onDelete: 'cascade' }),
+  user_id: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  license_type: text('license_type').notNull(),
+  acknowledgment_text: text('acknowledgment_text').notNull(),
+  created_at: timestamp('created_at').notNull().defaultNow()
 });
-
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
-export type Song = typeof songs.$inferSelect;
-export type NewSong = typeof songs.$inferInsert;
-export type VoiceSample = typeof voiceSamples.$inferSelect;
-export type NewVoiceSample = typeof voiceSamples.$inferInsert;
-export type VoiceClone = typeof voiceClones.$inferSelect;
-export type NewVoiceClone = typeof voiceClones.$inferInsert;
-export type SongVersion = typeof songVersions.$inferSelect;
-export type NewSongVersion = typeof songVersions.$inferInsert;
-export type LicenseAcknowledgment = typeof licenseAcknowledgments.$inferSelect;
-export type NewLicenseAcknowledgment = typeof licenseAcknowledgments.$inferInsert;

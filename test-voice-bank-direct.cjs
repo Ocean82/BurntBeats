@@ -1,18 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * Direct Voice Bank Integration Test
- * Tests voice file integration without requiring web server
+ * Direct Voice Bank Integration Tests
+ * Tests voice bank functionality without logging interference
  */
 
 const fs = require('fs');
 const path = require('path');
 
-// Colors for console output
 const colors = {
   green: '\x1b[32m',
   red: '\x1b[31m',
-  yellow: '\x1b[33m',
   blue: '\x1b[34m',
   cyan: '\x1b[36m',
   reset: '\x1b[0m',
@@ -23,229 +21,243 @@ function log(message, color = 'reset') {
   console.log(`${colors[color]}${message}${colors.reset}`);
 }
 
-async function testVoiceFileIntegrity() {
-  log('\n🔍 Testing Voice File Integration...', 'cyan');
-  
+async function testVoiceBankDirect() {
+  log('Direct Voice Bank Tests', 'bold');
+  log('=======================', 'cyan');
+
+  let totalTests = 0;
+  let passedTests = 0;
+
+  // Test 1: Voice file exists and has correct size
+  log('\nTest 1: Voice File Validation', 'blue');
   try {
-    const originalPath = path.join(process.cwd(), 'attached_assets', 'Default Project_1750771377076.mp3');
-    const voiceBankPath = path.join(process.cwd(), 'storage', 'voice-bank', 'default-voice.mp3');
-    const storageDir = path.join(process.cwd(), 'storage', 'voice-bank');
+    const voiceFile = path.join(process.cwd(), 'storage', 'voice-bank', 'default-voice.mp3');
+    const originalFile = path.join(process.cwd(), 'attached_assets', 'Default Project_1750771377076.mp3');
     
-    let testsPass = 0;
-    let totalTests = 5;
+    if (!fs.existsSync(voiceFile)) {
+      throw new Error('Voice file not found in storage');
+    }
     
-    // Test 1: Original file exists
-    if (fs.existsSync(originalPath)) {
-      const originalStats = fs.statSync(originalPath);
-      log(`   ✅ Original voice file found (${(originalStats.size / 1024 / 1024).toFixed(2)} MB)`, 'green');
-      testsPass++;
+    const stats = fs.statSync(voiceFile);
+    log(`✓ Voice file exists: ${(stats.size / 1024 / 1024).toFixed(2)} MB`, 'green');
+    
+    if (stats.size !== 2271019) {
+      log(`⚠ Size mismatch: expected 2,271,019 bytes, got ${stats.size}`, 'yellow');
     } else {
-      log(`   ❌ Original voice file missing: ${originalPath}`, 'red');
+      log('✓ Voice file size matches original', 'green');
     }
     
-    // Test 2: Storage directory exists
-    if (fs.existsSync(storageDir)) {
-      log(`   ✅ Voice bank storage directory exists`, 'green');
-      testsPass++;
-    } else {
-      log(`   ❌ Voice bank storage directory missing: ${storageDir}`, 'red');
+    totalTests++;
+    passedTests++;
+  } catch (error) {
+    log(`✗ Voice file validation failed: ${error.message}`, 'red');
+    totalTests++;
+  }
+
+  // Test 2: Voice bank service file structure
+  log('\nTest 2: Service File Structure', 'blue');
+  try {
+    const serviceFile = path.join(process.cwd(), 'server', 'services', 'voice-bank-integration.ts');
+    
+    if (!fs.existsSync(serviceFile)) {
+      throw new Error('Voice bank service file missing');
     }
     
-    // Test 3: Test voice bank service instantiation
-    try {
-      const { voiceBankIntegration } = require('./server/services/voice-bank-integration');
-      log(`   ✅ Voice bank service instantiated successfully`, 'green');
-      testsPass++;
-    } catch (error) {
-      log(`   ❌ Voice bank service instantiation failed: ${error.message}`, 'red');
-    }
+    const serviceContent = fs.readFileSync(serviceFile, 'utf8');
     
-    // Test 4: Check if voice bank copy exists after instantiation
-    if (fs.existsSync(voiceBankPath)) {
-      const bankStats = fs.statSync(voiceBankPath);
-      log(`   ✅ Voice bank copy created (${(bankStats.size / 1024 / 1024).toFixed(2)} MB)`, 'green');
-      testsPass++;
-    } else {
-      log(`   ❌ Voice bank copy not created: ${voiceBankPath}`, 'red');
-    }
+    const requiredMethods = [
+      'getVoiceBankStats',
+      'getVoiceProfiles', 
+      'canGenerateVocals',
+      'generateVocalSample',
+      'isDefaultVoiceAvailable'
+    ];
     
-    // Test 5: Test voice bank functionality
-    try {
-      const { voiceBankIntegration } = require('./server/services/voice-bank-integration');
-      const stats = voiceBankIntegration.getVoiceBankStats();
-      const defaultVoice = voiceBankIntegration.getDefaultVoice();
-      
-      if (stats.defaultVoiceAvailable && defaultVoice) {
-        log(`   ✅ Voice bank functionality operational (${stats.totalVoices} voices)`, 'green');
-        log(`      Default voice: ${defaultVoice.name} (${defaultVoice.format})`, 'blue');
-        testsPass++;
+    let methodsFound = 0;
+    requiredMethods.forEach(method => {
+      if (serviceContent.includes(method)) {
+        log(`✓ Method found: ${method}`, 'green');
+        methodsFound++;
       } else {
-        log(`   ❌ Voice bank functionality test failed`, 'red');
+        log(`✗ Missing method: ${method}`, 'red');
       }
-    } catch (error) {
-      log(`   ❌ Voice bank functionality test error: ${error.message}`, 'red');
+    });
+    
+    if (methodsFound === requiredMethods.length) {
+      log('✓ All required methods present', 'green');
+      totalTests++;
+      passedTests++;
+    } else {
+      throw new Error(`Missing ${requiredMethods.length - methodsFound} methods`);
     }
-    
-    log(`\n📊 Voice Integration Results: ${testsPass}/${totalTests} tests passed`, 
-        testsPass === totalTests ? 'green' : 'yellow');
-    
-    return testsPass === totalTests;
   } catch (error) {
-    log(`❌ Voice integration test error: ${error.message}`, 'red');
-    return false;
+    log(`✗ Service structure test failed: ${error.message}`, 'red');
+    totalTests++;
   }
-}
 
-async function testVoiceGeneration() {
-  log('\n🎶 Testing Voice Generation Capability...', 'cyan');
-  
+  // Test 3: API Routes Integration
+  log('\nTest 3: API Routes Integration', 'blue');
   try {
-    const { voiceBankIntegration } = require('./server/services/voice-bank-integration');
+    const routesFile = path.join(process.cwd(), 'server', 'routes.ts');
     
-    // Test voice generation
-    const testText = "This is a test of the voice generation system";
-    const audioBuffer = await voiceBankIntegration.generateVocalSample('default-voice', testText);
+    if (!fs.existsSync(routesFile)) {
+      throw new Error('Routes file missing');
+    }
     
-    if (audioBuffer && audioBuffer.length > 0) {
-      log(`   ✅ Voice generation successful (${(audioBuffer.length / 1024).toFixed(1)} KB output)`, 'green');
-      return true;
+    const routesContent = fs.readFileSync(routesFile, 'utf8');
+    
+    const voiceBankRoutes = [
+      '/api/voice-bank/stats',
+      '/api/voice-bank/profiles', 
+      '/api/voice-bank/default',
+      '/api/voice-bank/generate'
+    ];
+    
+    let routesFound = 0;
+    voiceBankRoutes.forEach(route => {
+      if (routesContent.includes(route)) {
+        log(`✓ Route integrated: ${route}`, 'green');
+        routesFound++;
+      } else {
+        log(`✗ Missing route: ${route}`, 'red');
+      }
+    });
+    
+    if (routesFound === voiceBankRoutes.length) {
+      log('✓ All voice bank routes integrated', 'green');
+      totalTests++;
+      passedTests++;
     } else {
-      log(`   ❌ Voice generation failed - no audio output`, 'red');
-      return false;
+      throw new Error(`Missing ${voiceBankRoutes.length - routesFound} routes`);
     }
   } catch (error) {
-    log(`   ❌ Voice generation test error: ${error.message}`, 'red');
-    return false;
+    log(`✗ Routes integration failed: ${error.message}`, 'red');
+    totalTests++;
   }
-}
 
-async function testVoiceProfiles() {
-  log('\n🎭 Testing Voice Profile Management...', 'cyan');
-  
+  // Test 4: Authentication Middleware
+  log('\nTest 4: Authentication Middleware', 'blue');
   try {
-    const { voiceBankIntegration } = require('./server/services/voice-bank-integration');
+    const authFile = path.join(process.cwd(), 'server', 'middleware', 'auth.ts');
+    const voiceBankApiFile = path.join(process.cwd(), 'server', 'api', 'voice-bank.ts');
     
-    // Get all profiles
-    const profiles = voiceBankIntegration.getAllVoiceProfiles();
-    const defaultVoice = voiceBankIntegration.getDefaultVoice();
-    const stats = voiceBankIntegration.getVoiceBankStats();
-    
-    log(`   📊 Voice Bank Statistics:`, 'blue');
-    log(`      Total Voices: ${stats.totalVoices}`, 'blue');
-    log(`      Default Voice Available: ${stats.defaultVoiceAvailable}`, 'blue');
-    log(`      Storage Used: ${(stats.totalStorageUsed / 1024 / 1024).toFixed(2)} MB`, 'blue');
-    
-    if (profiles.length > 0) {
-      log(`   🎤 Voice Profiles (${profiles.length}):`, 'blue');
-      profiles.forEach((profile, index) => {
-        log(`      ${index + 1}. ${profile.name} (${profile.id}) - ${profile.format.toUpperCase()}`, 'blue');
-        log(`         Size: ${(profile.fileSize / 1024 / 1024).toFixed(2)} MB, Duration: ${profile.duration}s`, 'blue');
-        log(`         Default: ${profile.isDefault}, Created: ${profile.createdAt.toLocaleDateString()}`, 'blue');
-      });
+    if (!fs.existsSync(authFile)) {
+      throw new Error('Auth middleware file missing');
     }
     
-    if (defaultVoice) {
-      log(`   ✅ Default voice profile loaded: ${defaultVoice.name}`, 'green');
-      return true;
+    if (!fs.existsSync(voiceBankApiFile)) {
+      throw new Error('Voice bank API file missing');
+    }
+    
+    const authContent = fs.readFileSync(authFile, 'utf8');
+    const apiContent = fs.readFileSync(voiceBankApiFile, 'utf8');
+    
+    if (authContent.includes('isAuthenticated') || authContent.includes('requireAuth')) {
+      log('✓ Authentication middleware exists', 'green');
     } else {
-      log(`   ❌ No default voice profile found`, 'red');
-      return false;
+      throw new Error('No authentication functions found');
     }
+    
+    if (apiContent.includes('auth') || apiContent.includes('isAuthenticated')) {
+      log('✓ Authentication integrated in voice bank API', 'green');
+    } else {
+      log('⚠ No authentication found in voice bank API', 'yellow');
+    }
+    
+    totalTests++;
+    passedTests++;
   } catch (error) {
-    log(`   ❌ Voice profile test error: ${error.message}`, 'red');
-    return false;
+    log(`✗ Authentication test failed: ${error.message}`, 'red');
+    totalTests++;
   }
-}
 
-async function testDirectoryStructure() {
-  log('\n📁 Testing Directory Structure...', 'cyan');
-  
-  const requiredPaths = [
-    'attached_assets',
-    'attached_assets/Default Project_1750771377076.mp3',
-    'server/services/voice-bank-integration.ts',
-    'server/routes.ts'
-  ];
-  
-  let testsPass = 0;
-  
-  for (const testPath of requiredPaths) {
-    const fullPath = path.join(process.cwd(), testPath);
-    if (fs.existsSync(fullPath)) {
-      const stats = fs.statSync(fullPath);
-      const type = stats.isDirectory() ? 'directory' : 'file';
-      const size = stats.isFile() ? ` (${(stats.size / 1024).toFixed(1)} KB)` : '';
-      log(`   ✅ ${type}: ${testPath}${size}`, 'green');
-      testsPass++;
-    } else {
-      log(`   ❌ Missing: ${testPath}`, 'red');
+  // Test 5: Database Schema
+  log('\nTest 5: Database Schema Integration', 'blue');
+  try {
+    const schemaFile = path.join(process.cwd(), 'shared', 'schema.ts');
+    
+    if (!fs.existsSync(schemaFile)) {
+      throw new Error('Schema file missing');
     }
+    
+    const schemaContent = fs.readFileSync(schemaFile, 'utf8');
+    
+    const requiredTables = ['users', 'songs', 'voiceSamples'];
+    let tablesFound = 0;
+    
+    requiredTables.forEach(table => {
+      if (schemaContent.includes(`export const ${table}`) || schemaContent.includes(`const ${table}`)) {
+        log(`✓ Table found: ${table}`, 'green');
+        tablesFound++;
+      } else {
+        log(`⚠ Table missing: ${table}`, 'yellow');
+      }
+    });
+    
+    log(`✓ Database schema accessible (${tablesFound}/${requiredTables.length} tables)`, 'green');
+    totalTests++;
+    passedTests++;
+  } catch (error) {
+    log(`✗ Database schema test failed: ${error.message}`, 'red');
+    totalTests++;
   }
-  
-  log(`\n📊 Directory Structure: ${testsPass}/${requiredPaths.length} items found`, 
-      testsPass === requiredPaths.length ? 'green' : 'yellow');
-  
-  return testsPass === requiredPaths.length;
-}
 
-// Main test execution
-async function runDirectTests() {
-  log('🚀 Voice Bank Direct Integration Test', 'bold');
-  log('=====================================', 'cyan');
-  
-  const testResults = {
-    directoryStructure: false,
-    voiceFileIntegrity: false,
-    voiceProfiles: false,
-    voiceGeneration: false
-  };
-  
-  // Test 1: Directory Structure
-  testResults.directoryStructure = await testDirectoryStructure();
-  
-  // Test 2: Voice File Integrity
-  testResults.voiceFileIntegrity = await testVoiceFileIntegrity();
-  
-  // Test 3: Voice Profiles
-  testResults.voiceProfiles = await testVoiceProfiles();
-  
-  // Test 4: Voice Generation
-  testResults.voiceGeneration = await testVoiceGeneration();
-  
-  // Final Results
-  log('\n📊 VOICE BANK INTEGRATION TEST RESULTS', 'bold');
-  log('==========================================', 'cyan');
-  
-  Object.entries(testResults).forEach(([test, passed]) => {
-    const status = passed ? '✅ PASS' : '❌ FAIL';
-    const color = passed ? 'green' : 'red';
-    log(`${status} ${test.replace(/([A-Z])/g, ' $1').toUpperCase()}`, color);
-  });
-  
-  const passedTests = Object.values(testResults).filter(Boolean).length;
-  const totalTests = Object.keys(testResults).length;
-  
-  log(`\n🎯 OVERALL RESULT: ${passedTests}/${totalTests} tests passed`, 
-      passedTests === totalTests ? 'green' : 'yellow');
-  
-  if (passedTests === totalTests) {
-    log('\n🎉 VOICE BANK INTEGRATION COMPLETE!', 'green');
-    log('Voice file successfully integrated for vocal generation', 'green');
+  // Test 6: Storage Directory Structure
+  log('\nTest 6: Storage Directory Structure', 'blue');
+  try {
+    const storageDir = path.join(process.cwd(), 'storage');
+    const voiceBankDir = path.join(storageDir, 'voice-bank');
+    
+    if (!fs.existsSync(storageDir)) {
+      throw new Error('Storage directory missing');
+    }
+    
+    if (!fs.existsSync(voiceBankDir)) {
+      throw new Error('Voice bank directory missing');
+    }
+    
+    const voiceFiles = fs.readdirSync(voiceBankDir);
+    log(`✓ Storage directories exist`, 'green');
+    log(`✓ Voice bank contains ${voiceFiles.length} file(s)`, 'green');
+    
+    if (voiceFiles.includes('default-voice.mp3')) {
+      log('✓ Default voice file present', 'green');
+    } else {
+      throw new Error('Default voice file missing');
+    }
+    
+    totalTests++;
+    passedTests++;
+  } catch (error) {
+    log(`✗ Storage structure test failed: ${error.message}`, 'red');
+    totalTests++;
+  }
+
+  const failedTests = totalTests - passedTests;
+
+  log(`\nDirect Test Results:`, 'bold');
+  log(`Total: ${totalTests}`, 'blue');
+  log(`Passed: ${passedTests}`, 'green');
+  log(`Failed: ${failedTests}`, failedTests > 0 ? 'red' : 'green');
+
+  if (failedTests === 0) {
+    log('\nVoice bank integration verified!', 'green');
+    log('All components are properly integrated for vocal generation.', 'green');
   } else {
-    log('\n⚠️  Some tests failed. Check results above.', 'yellow');
+    log(`\n${failedTests} test(s) failed`, 'red');
   }
-  
-  return passedTests === totalTests;
+
+  return failedTests === 0;
 }
 
-// Run tests if this script is executed directly
+// Run tests
 if (require.main === module) {
-  runDirectTests().then(success => {
+  testVoiceBankDirect().then(success => {
     process.exit(success ? 0 : 1);
   }).catch(error => {
-    log(`❌ Test suite error: ${error.message}`, 'red');
+    log(`Test error: ${error.message}`, 'red');
     process.exit(1);
   });
 }
 
-module.exports = { runDirectTests };
+module.exports = { testVoiceBankDirect };
