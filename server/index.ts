@@ -296,24 +296,41 @@ app.use('/', webhookTestApi);
 // STATIC FILE SERVING
 // ======================
 if (process.env.NODE_ENV === 'production') {
-  const publicPath = path.join(process.cwd(), 'dist', 'public');
-  if (fs.existsSync(publicPath)) {
-    app.use(express.static(publicPath, {
+  // Try multiple possible frontend build locations
+  const possiblePaths = [
+    path.join(process.cwd(), 'dist', 'public'),
+    path.join(process.cwd(), 'client', 'dist'),
+    path.join(process.cwd(), 'dist')
+  ];
+  
+  let frontendPath = null;
+  for (const possiblePath of possiblePaths) {
+    if (fs.existsSync(path.join(possiblePath, 'index.html'))) {
+      frontendPath = possiblePath;
+      break;
+    }
+  }
+  
+  if (frontendPath) {
+    app.use(express.static(frontendPath, {
       maxAge: '1y',
       etag: true,
       lastModified: true
     }));
-    console.log('📁 Serving static files from:', publicPath);
+    console.log('🎯 Serving frontend UI from:', frontendPath);
 
     // SPA fallback
     app.get('*', (req, res) => {
-      const indexPath = path.join(publicPath, 'index.html');
+      const indexPath = path.join(frontendPath, 'index.html');
       if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
       } else {
         res.status(404).send('Page not found');
       }
     });
+  } else {
+    console.warn('⚠️ Frontend build not found in any expected location');
+    console.warn('Checked paths:', possiblePaths);
   }
 } else {
   // Development mode - use Vite middleware
