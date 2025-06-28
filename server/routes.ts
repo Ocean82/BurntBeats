@@ -967,6 +967,9 @@ Taking over, making vows`
     }
   });
 
+  // License acknowledgment endpoints
+  app.use("/api/license", (await import("./api/license-api")).default);
+
   app.post("/api/stripe/webhook", express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
     try {
       const { default: Stripe } = await import("stripe");
