@@ -56,7 +56,8 @@ import {
 } from './middleware/plan-enforcement';
 import { fileCleanupService } from "./file-cleanup-service";
 import { storage } from './storage';
-import { LicenseAcknowledgmentAPI, router as licenseAcknowledgmentRouter } from './api/license-acknowledgment-api';
+import { LicenseAcknowledgmentAPI } from './api/license-acknowledgment-api';
+import { router as licenseAcknowledgmentRouter } from './api/license-acknowledgment-api';
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), "uploads");
