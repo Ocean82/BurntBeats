@@ -64,16 +64,16 @@ if (!fs.existsSync(uploadsDir)) {
 }
 
 export async function registerRoutes(app: express.Application): http.Server {
-  
+
   // Apply global middleware
   app.use(securityHeaders);
   app.use(requestLogger);
-  
+
   // Auth middleware
   await setupAuth(app);
 
   // Public endpoints (no authentication required)
-  
+
   // Business profile endpoint for Stripe verification
   app.get("/api/business-profile", (req: Request, res: Response) => {
     res.json({
@@ -453,7 +453,7 @@ Taking over, making vows`
   app.get("/api/music", generalRateLimit, authenticate, MusicAPI.getUserSongs);
 
   // Protected API endpoints with proper authorization
-  
+
   // Song management endpoints
   app.get('/api/auth/user', isAuthenticated, async (req: any, res: Response) => {
     try {
@@ -539,7 +539,7 @@ Taking over, making vows`
       if (!defaultVoice) {
         return res.status(404).json({ success: false, message: "No default voice available" });
       }
-      
+
       const sanitizedProfile = {
         id: defaultVoice.id,
         name: defaultVoice.name,
@@ -550,7 +550,7 @@ Taking over, making vows`
         createdAt: defaultVoice.createdAt,
         metadata: defaultVoice.metadata
       };
-      
+
       res.json({ success: true, data: sanitizedProfile });
     } catch (error) {
       res.status(500).json({ success: false, message: "Failed to get default voice" });
@@ -560,13 +560,13 @@ Taking over, making vows`
   app.post("/api/voice-bank/generate", authenticate, async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { voiceId = 'default-voice', text, melody, duration } = req.body;
-      
+
       if (!text) {
         return res.status(400).json({ success: false, message: "Text is required for vocal generation" });
       }
 
       const audioBuffer = await voiceBankIntegration.generateVocalSample(voiceId, text);
-      
+
       if (!audioBuffer) {
         return res.status(404).json({ success: false, message: "Failed to generate vocal sample" });
       }
@@ -1044,7 +1044,7 @@ Taking over, making vows`
       app.post("/api/error-report", (req: Request, res: Response) => {
         res.json({ success: true, message: "Error reported" });
       });
-      
+
       app.get("/api/error-summary", (req: Request, res: Response) => {
         res.json({ errors: [], summary: "No errors" });
       });
@@ -1078,6 +1078,15 @@ Taking over, making vows`
       res.status(404).send('Application not found. Please build the frontend first.');
     }
   });
+
+  import voiceBankRouter from './api/voice-bank';
+  import voiceProcessingRouter from './api/voice-processing';
+
+  // Voice Bank API routes
+  app.use('/api/voice-bank', voiceBankRouter);
+
+  // Voice Processing API routes
+  app.use('/api/voice-processing', voiceProcessingRouter);
 
   // Return a basic HTTP server instead of just the app
   return http.createServer(app);
