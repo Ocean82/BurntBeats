@@ -56,7 +56,7 @@ import {
 } from './middleware/plan-enforcement';
 import { fileCleanupService } from "./file-cleanup-service";
 import { storage } from './storage';
-import { LicenseAcknowledgmentAPI } from './api/license-acknowledgment-api';
+import { LicenseAcknowledgmentAPI, router as licenseAcknowledgmentRouter } from './api/license-acknowledgment-api';
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), "uploads");
@@ -968,7 +968,7 @@ Taking over, making vows`
   });
 
   // License acknowledgment endpoints - unified routes
-  app.use("/api/license-acknowledgment", LicenseAcknowledgmentAPI.router);
+  app.use("/api/license-acknowledgment", licenseAcknowledgmentRouter);
 
   app.post("/api/stripe/webhook", express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
     try {
@@ -1095,9 +1095,6 @@ Taking over, making vows`
 
   // Melody Preview API routes
   app.use('/api/melody-preview', melodyPreviewRouter);
-
-  // License Acknowledgment API routes
-  app.use('/api/license-acknowledgment', (await import('./api/license-acknowledgment-api')).router);
 
   // Return a basic HTTP server instead of just the app
   return http.createServer(app);

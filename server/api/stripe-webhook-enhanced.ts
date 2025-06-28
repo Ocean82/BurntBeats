@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import Stripe from 'stripe';
 import { db } from '../db';
 import { licenseAcknowledgments } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-12-18.acacia',
@@ -58,8 +58,10 @@ export class StripeWebhookEnhanced {
         .select()
         .from(licenseAcknowledgments)
         .where(
-          eq(licenseAcknowledgments.userId, userId) &&
-          eq(licenseAcknowledgments.trackId, trackId)
+          and(
+            eq(licenseAcknowledgments.userId, userId),
+            eq(licenseAcknowledgments.trackId, trackId)
+          )
         )
         .limit(1);
 
@@ -72,8 +74,10 @@ export class StripeWebhookEnhanced {
             updatedAt: new Date()
           })
           .where(
-            eq(licenseAcknowledgments.userId, userId) &&
-            eq(licenseAcknowledgments.trackId, trackId)
+            and(
+              eq(licenseAcknowledgments.userId, userId),
+              eq(licenseAcknowledgments.trackId, trackId)
+            )
           );
 
         console.log('✅ Linked purchase to existing license acknowledgment');

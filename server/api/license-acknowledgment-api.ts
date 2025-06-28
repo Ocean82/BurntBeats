@@ -1,8 +1,7 @@
-import { Request, Response } from 'express';
+import { Request, Response, Router } from 'express';
 import { db } from '../db';
 import { licenseAcknowledgments } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
-import { Router } from 'express';
 
 const router = Router();
 
