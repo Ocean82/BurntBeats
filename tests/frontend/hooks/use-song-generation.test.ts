@@ -2,8 +2,8 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi } from 'vitest';
-import { useSongGeneration } from '../../../client/src/hooks/use-song-generation';
-import type { Song } from '../../../shared/schema';
+import { useSongGeneration } from '@/hooks/use-song-generation';
+import type { Song } from '@shared/schema';
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
