@@ -23,7 +23,9 @@
     "test:security": "jest tests/security",
     "test:performance": "jest tests/performance",
     "lint": "eslint . --ext .ts,.tsx",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "analyze": "source-map-explorer 'build/static/js/*.js'",
+    "profile": "react-scripts --profile build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
