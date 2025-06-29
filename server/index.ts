@@ -457,7 +457,7 @@ async function startServer() {
   await initializeRoutes();
   
   // Start the server after routes are ready
-  server.listen(port, () => {
+  server.listen(port, '0.0.0.0', () => {
     console.log(`🚀 Burnt Beats server running on http://0.0.0.0:${port}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
     console.log(`📊 Environment status:`, JSON.stringify(envStatus, null, 2));
