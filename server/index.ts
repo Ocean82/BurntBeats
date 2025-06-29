@@ -13,12 +13,11 @@ import { WebSocket, WebSocketServer } from 'ws';
 import { IncomingMessage } from 'http';
 import helmet from "helmet";
 import compression from "compression";
+import connectPgSimple from "connect-pg-simple";
 
 // Initialize Express app
 const app = express();
-const port = process.env.NODE_ENV === 'production' 
-  ? parseInt(process.env.PORT || '80', 10)
-  : parseInt(process.env.PORT || '5000', 10);
+const port = parseInt(process.env.PORT || '8080', 10);
 
 // Apply environment stubs for development
 if (process.env.NODE_ENV !== 'production') {
@@ -68,16 +67,25 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // ======================
-// SESSION CONFIGURATION
+// SESSION CONFIGURATION WITH POSTGRESQL STORE
 // ======================
+const pgSession = connectPgSimple(session);
+const sessionStore = new pgSession({
+  conString: process.env.DATABASE_URL,
+  tableName: 'sessions',
+  createTableIfMissing: true,
+  ttl: 7 * 24 * 60 * 60, // 1 week in seconds
+});
+
 app.use(session({
+  store: sessionStore,
   secret: process.env.SESSION_SECRET || 'burnt-beats-secret-key',
   resave: false,
   saveUninitialized: false,
   cookie: { 
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
   },
   name: 'burntBeats.sid',

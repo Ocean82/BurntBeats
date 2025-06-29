@@ -10,10 +10,13 @@ modules = ["nodejs-20", "postgresql-16"]
 # Local port configuration
 localPort = 5000
 
-# Ports configuration for the deployment
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
 
 [nix]
 channel = "stable-24_05"
@@ -69,7 +72,3 @@ build = ["sh", "-c", "node deploy-production-fix.cjs"]
 [env]
 NODE_ENV = "production"
 PORT = "5000"
-
-[[ports]]
-localPort = 5000
-externalPort = 80

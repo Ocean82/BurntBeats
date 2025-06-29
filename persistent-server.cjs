@@ -10,7 +10,7 @@ console.log('Starting persistent server...');
 
 // Set environment
 process.env.NODE_ENV = 'production';
-process.env.PORT = '5000';
+process.env.PORT = '8080';
 
 let serverProcess;
 let isReady = false;
@@ -60,7 +60,7 @@ function validateServer() {
   
   const req = http.request({
     hostname: 'localhost',
-    port: 5000,
+    port: 8080,
     path: '/health',
     method: 'GET',
     timeout: 5000
@@ -71,7 +71,7 @@ function validateServer() {
     res.on('data', (chunk) => data += chunk);
     res.on('end', () => {
       console.log('Server validation successful');
-      console.log('Frontend accessible at http://localhost:5000');
+      console.log('Frontend accessible at http://localhost:8080');
       
       // Keep process alive
       setInterval(() => {
