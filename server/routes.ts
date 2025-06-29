@@ -107,6 +107,13 @@ export async function registerRoutes(app: express.Application): Promise<void> {
     });
   });
 
+  // Stripe configuration endpoint - serves publishable key to frontend
+  app.get("/api/stripe/config", (req: Request, res: Response) => {
+    res.json({
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || ''
+    });
+  });
+
   // Enhanced Bonus Features API Endpoints
 
   // Post-purchase AI feedback endpoint

@@ -9,10 +9,10 @@ import { ArrowLeft, CreditCard, Shield, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
-if (!import.meta.env.VITE_STRIPE_PUBLIC_KEY) {
-  throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLIC_KEY');
+if (!import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) {
+  throw new Error('Missing required Stripe key: VITE_STRIPE_PUBLISHABLE_KEY');
 }
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 interface Feature {
   id: string;

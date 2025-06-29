@@ -3,7 +3,11 @@ import Stripe from 'stripe';
 import { storage } from './storage';
 
 // Initialize Stripe - use test key for development
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_...', {
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('STRIPE_SECRET_KEY environment variable is required');
+}
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2024-11-20.acacia' as any,
 });
 
