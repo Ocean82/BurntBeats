@@ -34,10 +34,15 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrcElem: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https://*.your-domain.com"],
-      connectSrc: ["'self'", "ws://localhost:*", "wss://your-domain.com"]
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'", "ws://localhost:*", "wss://*.replit.dev", "wss://*.replit.app"],
+      fontSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'", "data:", "blob:"],
+      frameSrc: ["'none'"]
     }
   },
   crossOriginEmbedderPolicy: false
@@ -355,9 +360,14 @@ if (process.env.NODE_ENV === 'production') {
   
   if (frontendPath) {
     app.use(express.static(frontendPath, {
-      maxAge: '1y',
-      etag: true,
-      lastModified: true
+      maxAge: 0,
+      etag: false,
+      lastModified: false,
+      setHeaders: (res, path) => {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      }
     }));
     console.log('🎯 Serving frontend UI from:', frontendPath);
 
