@@ -17,7 +17,7 @@ import connectPgSimple from "connect-pg-simple";
 
 // Initialize Express app
 const app = express();
-const port = parseInt(process.env.PORT || '8080', 10);
+const port = parseInt(process.env.PORT || '3000', 10);
 
 // Apply environment stubs for development
 if (process.env.NODE_ENV !== 'production') {
