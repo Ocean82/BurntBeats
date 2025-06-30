@@ -640,6 +640,57 @@ Taking over, making vows`
     }
   );
 
+  // Advanced AI Music Generation
+  app.post("/api/generate-advanced-ai", 
+    authenticate, 
+    rateLimitByPlan({ free: 2, basic: 10, pro: 25, enterprise: 50 }),
+    validateMusicGenerationInput,
+    async (req: AuthenticatedRequest, res: Response) => {
+      try {
+        const { AdvancedAIMusicService } = await import("./services/advanced-ai-music-service");
+        const aiService = AdvancedAIMusicService.getInstance();
+        
+        const options = {
+          ...req.body,
+          userId: req.user!.id,
+          aiEnhanced: true,
+          complexityLevel: req.body.complexityLevel || 'medium',
+          outputFormat: req.body.outputFormat || 'both'
+        };
+        
+        const result = await aiService.generateAdvancedMusic(options);
+        
+        if (result.success) {
+          // Store in database
+          const song = await storage.createSong({
+            ...req.body,
+            userId: req.user!.id,
+            generatedAudioPath: result.audioPath,
+            midiPath: result.midiPath,
+            metadata: result.metadata,
+            aiInsights: result.aiInsights,
+            status: 'completed'
+          });
+          
+          res.json({
+            success: true,
+            song,
+            aiInsights: result.aiInsights,
+            processingTime: result.processingTime
+          });
+        } else {
+          res.status(500).json({
+            success: false,
+            error: result.error
+          });
+        }
+      } catch (error) {
+        logger.error('Advanced AI generation failed:', error);
+        res.status(500).json({ error: "Advanced AI generation failed" });
+      }
+    }
+  );
+
   // Legacy compatibility routes
   app.post("/api/generate", authenticate, checkPlanQuota(), validateMusicGenerationInput, MusicAPI.generateSong);
   app.post("/api/generate-ai-music", authenticate, authorizePlan('pro'), validateMusicGenerationInput, MusicAPI.generateAIMusic);
