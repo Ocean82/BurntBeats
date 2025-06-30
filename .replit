@@ -5,7 +5,7 @@ entrypoint = "main.py"
 
 # Command to start the Node.js app
 externalPortCommand = "nvm start"
-modules = ["nodejs-20", "postgresql-16"]
+modules = ["nodejs-20", "postgresql-16", "python-3.11"]
 
 # Local port configuration
 localPort = 5000
