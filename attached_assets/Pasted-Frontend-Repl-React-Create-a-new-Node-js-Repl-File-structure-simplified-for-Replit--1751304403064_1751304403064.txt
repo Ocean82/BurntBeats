@@ -1,0 +1,118 @@
+Frontend Repl (React)
+Create a new Node.js Repl
+
+File structure:
+
+ (simplified for Replit):
+
+jsx
+
+import React, { useState, useRef } from 'react';
+import AudioPlayer from './components/AudioPlayer';
+
+export default function App() {
+  const [file, setFile] = useState(null);
+  const [text, setText] = useState('');
+  const [voiceId, setVoiceId] = useState('');
+  const [audioUrl, setAudioUrl] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Replace with your backend Repl URL
+  const BACKEND_URL = "https://your-backend-username.backend-repl-name.repl.co";
+
+  const handleUpload = async () => {
+    if (!file) return;
+    
+    setIsProcessing(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const response = await fetch(`${BACKEND_URL}/register-voice`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json();
+      setVoiceId(data.voice_id);
+    } catch (error) {
+      console.error("Upload failed:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleSynthesize = async () => {
+    if (!text) return;
+    
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`${BACKEND_URL}/synthesize?text=${encodeURIComponent(text)}&voice_id=${voiceId}`);
+      const data = await response.json();
+      setAudioUrl(`${BACKEND_URL}${data.audio_url}`);
+    } catch (error) {
+      console.error("Synthesis failed:", error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
+      <h1>Voice Cloning App</h1>
+      
+      <div style={{ marginBottom: '20px' }}>
+        <h2>1. Upload Voice Sample</h2>
+        <input 
+          type="file" 
+          accept="audio/*" 
+          onChange={(e) => setFile(e.target.files[0])} 
+        />
+        <button 
+          onClick={handleUpload}
+          disabled={isProcessing || !file}
+        >
+          {isProcessing ? 'Uploading...' : 'Upload Voice'}
+        </button>
+      </div>
+      
+      <div style={{ marginBottom: '20px' }}>
+        <h2>2. Enter Text</h2>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Type what you want the voice to say..."
+          style={{ width: '100%', minHeight: '100px' }}
+        />
+      </div>
+      
+      <div style={{ marginBottom: '20px' }}>
+        <button 
+          onClick={handleSynthesize}
+          disabled={isProcessing || !text}
+        >
+          {isProcessing ? 'Synthesizing...' : 'Generate Voice'}
+        </button>
+      </div>
+      
+      {audioUrl && (
+        <div>
+          <h2>Result:</h2>
+          <AudioPlayer src={audioUrl} />
+        </div>
+      )}
+    </div>
+  );
+}
+:
+jsx
+
+import React from 'react';
+
+export default function AudioPlayer({ src }) {
+  return (
+    <audio controls style={{ width: '100%' }}>
+      <source src={src} type="audio/wav" />
+      Your browser does not support the audio element.
+    </audio>
+  );
+}

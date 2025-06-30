@@ -1,0 +1,21 @@
+fastapi>=0.95.2
+uvicorn>=0.22.0
+python-multipart>=0.0.6
+numpy>=1.24.3
+soundfile>=0.12.1
+pydantic>=2.0.0
+python-jose>=3.3.0
+python-dotenv>=1.0.0
+aiofiles>=23.0.0
+
+# For RVC integration (uncomment when implementing)
+# torch>=2.0.0
+# torchaudio>=2.0.0
+# fairseq>=0.12.2
+# librosa>=0.10.0
+# scipy>=1.10.0
+
+# For Bark integration (uncomment when implementing)
+# transformers>=4.30.0
+# accelerate>=0.20.0
+# bark-voice-synthesis>=1.0.0
