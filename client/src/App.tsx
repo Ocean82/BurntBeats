@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Route, Switch } from 'wouter';
 import { Toaster } from '@/components/ui/toaster';
@@ -23,7 +23,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Check for stored user on app load
-  useState(() => {
+  useEffect(() => {
     const storedUser = localStorage.getItem('burntbeats_user');
     if (storedUser) {
       try {
@@ -33,7 +33,7 @@ function App() {
         localStorage.removeItem('burntbeats_user');
       }
     }
-  });
+  }, []);
 
   const handleAuthSuccess = (userData: any) => {
     setUser(userData);
