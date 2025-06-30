@@ -51,8 +51,10 @@ export const env = {
   ESPEAK_NG_PATH: process.env.ESPEAK_NG_PATH || '',
   CMUDICT_PATH: process.env.CMUDICT_PATH || '',
 
-  // Google Cloud Storage
-  GOOGLE_CLOUD_KEY_FILE: process.env.GOOGLE_CLOUD_KEY_FILE || '',
+  // Google Cloud Storage - using individual environment variables for security
+  GOOGLE_CLOUD_PROJECT_ID: process.env.GOOGLE_CLOUD_PROJECT_ID || '',
+  GOOGLE_CLOUD_PRIVATE_KEY: process.env.GOOGLE_CLOUD_PRIVATE_KEY || '',
+  GOOGLE_CLOUD_CLIENT_EMAIL: process.env.GOOGLE_CLOUD_CLIENT_EMAIL || '',
   GOOGLE_CLOUD_BUCKET: process.env.GOOGLE_CLOUD_BUCKET || 'burnt-beats-storage',
 
   // Model and File Storage Configuration

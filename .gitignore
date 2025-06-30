@@ -65,3 +65,13 @@ temp/
 google-cloud-credentials.json
 *-credentials.json
 service-account-key.json
+gcp-*.json
+*-service-account.json
+*.pem
+google-service-account.json
+service_account.json
+credentials.json
+gcloud-service-key.json
+
+# Any JSON files that might contain credentials
+gcp-key-*.json
