@@ -9,25 +9,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Mic, Play, Pause, Download, Share2, Heart, MoreHorizontal, Flame, Eye, EyeOff } from "lucide-react"
-import { useAuth } from "@/hooks/useAuth"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { apiRequest } from "@/lib/queryClient"
-import EnhancedAudioPlayer from "./enhanced-audio-player"
-import EnhancedVoiceCloner from "./enhanced-voice-cloner"
+import { Mic, Share2, Heart, Eye, EyeOff, Music } from "lucide-react"
+import MusicDiscovery from "@/components/music-discovery"
 
 export default function BurntBeatsApp() {
-  const { user, isAuthenticated, isLoading } = useAuth()
-  const queryClient = useQueryClient()
-  
   const [selectedLogo, setSelectedLogo] = useState("/logos/demon-logo.jpeg")
   const [showLogoSelector, setShowLogoSelector] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isLogin, setIsLogin] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [currentPage, setCurrentPage] = useState("create") // "create" or "discover"
   const [loginForm, setLoginForm] = useState({ email: "", password: "" })
   const [registerForm, setRegisterForm] = useState({
     username: "",
@@ -38,17 +32,11 @@ export default function BurntBeatsApp() {
 
   // Music generation states
   const [lyrics, setLyrics] = useState("")
-  const [songTitle, setSongTitle] = useState("")
-  const [artistName, setArtistName] = useState("")
-  const [genre, setGenre] = useState("")
-  const [mood, setMood] = useState("")
-  const [voiceType, setVoiceType] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [tempo, setTempo] = useState([120])
   const [duration, setDuration] = useState([180])
   const [isPlaying, setIsPlaying] = useState(false)
   const [isSimpleMode, setIsSimpleMode] = useState(true)
-  const [currentPlayingId, setCurrentPlayingId] = useState<string | null>(null)
 
   // Advanced features states
   const [totalFileSize, setTotalFileSize] = useState(0)
@@ -58,80 +46,11 @@ export default function BurntBeatsApp() {
   const [showMixer, setShowMixer] = useState(false)
   const [showAI, setShowAI] = useState(true)
   const [aiMessages, setAiMessages] = useState(["Oh look, another 'producer' who thinks they're the next Kanye... 🙄"])
-  const [stems, setStems] = useState<{[key: string]: {volume: number, muted: boolean}}>({
+  const [stems, setStems] = useState({
     vocals: { volume: 75, muted: false },
     drums: { volume: 80, muted: false },
     bass: { volume: 70, muted: false },
     melody: { volume: 85, muted: false },
-  })
-
-  // Advanced vocal cloning and synthesis states
-  const [voiceCloneFile, setVoiceCloneFile] = useState<File | null>(null)
-  const [isVoiceCloningEnabled, setIsVoiceCloningEnabled] = useState(false)
-  const [voiceCloneProgress, setVoiceCloneProgress] = useState(0)
-  const [clonedVoices, setClonedVoices] = useState<any[]>([])
-  const [selectedClonedVoice, setSelectedClonedVoice] = useState("")
-  const [isAdvancedMode, setIsAdvancedMode] = useState(false)
-  const [melodyComplexity, setMelodyComplexity] = useState([5])
-  const [harmonizationLevel, setHarmonizationLevel] = useState([3])
-  const [breathingPattern, setBreathingPattern] = useState("natural")
-  const [vibratoIntensity, setVibratoIntensity] = useState([30])
-  const [articulation, setArticulation] = useState("clear_melodic")
-  const [reverbType, setReverbType] = useState("studio")
-  const [compressionLevel, setCompressionLevel] = useState([60])
-  const [eqSettings, setEqSettings] = useState({ low: 0, mid: 10, high: 20 })
-  const [isGeneratingVoiceClone, setIsGeneratingVoiceClone] = useState(false)
-
-  // Get user's songs
-  const { data: songs = [], refetch: refetchSongs } = useQuery({
-    queryKey: ['/api/songs'],
-    enabled: isAuthenticated,
-  })
-
-  // Type the songs array properly
-  const typedSongs = songs as any[]
-
-  // Song generation mutation
-  const generateSongMutation = useMutation({
-    mutationFn: async (songData: any) => {
-      return await apiRequest('/api/songs', 'POST', songData)
-    },
-    onSuccess: () => {
-      setIsGenerating(false)
-      refetchSongs()
-      addSassyComment()
-    },
-    onError: () => {
-      setIsGenerating(false)
-      setAiMessages(prev => [...prev, "Well that was a spectacular failure... Even I'm embarrassed 🤦‍♂️"])
-    }
-  })
-
-  // Voice cloning mutation
-  const voiceCloneMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      return await fetch('/api/voice/clone', {
-        method: 'POST',
-        body: formData,
-      }).then(res => res.json())
-    },
-    onSuccess: (data) => {
-      setIsGeneratingVoiceClone(false)
-      setClonedVoices(prev => [...prev, data])
-      setVoiceCloneProgress(100)
-      setAiMessages(prev => [...prev, `Voice cloned successfully! Now you sound ${data.compatibilityScore > 0.8 ? 'absolutely fire' : 'decent enough'} 🎤`])
-    },
-    onError: () => {
-      setIsGeneratingVoiceClone(false)
-      setVoiceCloneProgress(0)
-      setAiMessages(prev => [...prev, "Voice cloning failed harder than my last relationship 💔"])
-    }
-  })
-
-  // Get cloned voices
-  const { data: existingVoices = [] } = useQuery({
-    queryKey: ['/api/voice/clones'],
-    enabled: isAuthenticated,
   })
 
   // Sassy AI responses
@@ -147,6 +66,14 @@ export default function BurntBeatsApp() {
     "This beat hits different... like a wet noodle 🍜",
     "I've analyzed 10 million songs, and this... this is definitely one of them 📊",
   ]
+
+  // Mock file sizes for generated tracks
+  const mockFileSizes = {
+    "Burnt Nights": 4.2,
+    "Fire Dreams": 5.8,
+    "Inferno Vibes": 3.9,
+    "Blazing Bars": 4.7,
+  }
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -174,51 +101,63 @@ export default function BurntBeatsApp() {
     setAiMessages((prev) => [...prev, newMessage])
   }
 
+  // Update the handleGenerate function to include file size calculation
   const handleGenerate = () => {
-    if (!lyrics.trim()) {
-      setAiMessages(prev => [...prev, "You expect me to make music from thin air? Write some lyrics first! 🙄"])
-      return
-    }
-
     setIsGenerating(true)
-    
-    const songData = {
-      title: songTitle || "Untitled Fire Track",
-      lyrics: lyrics,
-      genre: genre || "electronic",
-      vocalStyle: voiceType || "energetic",
-      tempo: tempo[0],
-      songLength: duration[0],
-      mood: mood || "energetic"
-    }
+    setTimeout(() => {
+      setIsGenerating(false)
+      // Simulate adding file size
+      const newSize = Math.random() * 3 + 2 // Random size between 2-5 MB
+      setTotalFileSize((prev) => prev + newSize)
 
-    generateSongMutation.mutate(songData)
-  }
-
-  const handlePlayPause = (songId: string) => {
-    if (currentPlayingId === songId) {
-      setCurrentPlayingId(null)
-      setIsPlaying(false)
-    } else {
-      setCurrentPlayingId(songId)
-      setIsPlaying(true)
-    }
+      // Add sassy comment about generation
+      addSassyComment()
+    }, 3000)
   }
 
   const genres = [
-    "Pop", "Rock", "Hip Hop", "Electronic", "Jazz", "Classical", 
-    "Country", "R&B", "Reggae", "Blues", "Folk", "Punk", 
-    "Metal", "Indie", "Alternative", "Ambient",
+    "Pop",
+    "Rock",
+    "Hip Hop",
+    "Electronic",
+    "Jazz",
+    "Classical",
+    "Country",
+    "R&B",
+    "Reggae",
+    "Blues",
+    "Folk",
+    "Punk",
+    "Metal",
+    "Indie",
+    "Alternative",
+    "Ambient",
   ]
 
   const voiceTypes = [
-    "Male Vocalist", "Female Vocalist", "Child Voice", "Elderly Voice", 
-    "Robotic", "Whisper", "Powerful", "Soft", "Raspy", "Smooth",
+    "Male Vocalist",
+    "Female Vocalist",
+    "Child Voice",
+    "Elderly Voice",
+    "Robotic",
+    "Whisper",
+    "Powerful",
+    "Soft",
+    "Raspy",
+    "Smooth",
   ]
 
   const moods = [
-    "Happy", "Sad", "Energetic", "Calm", "Romantic", "Aggressive", 
-    "Mysterious", "Uplifting", "Melancholic", "Dreamy",
+    "Happy",
+    "Sad",
+    "Energetic",
+    "Calm",
+    "Romantic",
+    "Aggressive",
+    "Mysterious",
+    "Uplifting",
+    "Melancholic",
+    "Dreamy",
   ]
 
   const logoOptions = [
@@ -246,8 +185,8 @@ export default function BurntBeatsApp() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    // Redirect to Replit OAuth
-    window.location.href = '/api/login'
+    // Simulate login
+    setIsLoggedIn(true)
   }
 
   const handleRegister = (e: React.FormEvent) => {
@@ -256,36 +195,12 @@ export default function BurntBeatsApp() {
       alert("Passwords don't match!")
       return
     }
-    // Redirect to Replit OAuth
-    window.location.href = '/api/login'
+    // Simulate registration
+    setIsLoggedIn(true)
   }
-
-  const handleLogout = () => {
-    window.location.href = '/api/logout'
-  }
-
-  // Calculate total file size from songs
-  useEffect(() => {
-    if (typedSongs.length > 0) {
-      const total = typedSongs.reduce((sum: number, song: any) => {
-        // Estimate file size based on duration (rough calculation)
-        const estimatedSize = (song.songLength || 180) * 0.02 // ~0.02MB per second
-        return sum + estimatedSize
-      }, 0)
-      setTotalFileSize(total)
-    }
-  }, [typedSongs])
 
   // Login/Register Screen
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-green-900 flex items-center justify-center">
-        <div className="text-green-300 text-xl">Loading Burnt Beats...</div>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated) {
+  if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-green-900 flex items-center justify-center p-4">
         <Card className="w-full max-w-md bg-black/80 backdrop-blur-sm border border-green-500/30 shadow-2xl shadow-green-500/20">
@@ -344,7 +259,7 @@ export default function BurntBeatsApp() {
                         placeholder="Enter your password"
                         value={loginForm.password}
                         onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                        className="bg-black/60 border-green-500/30 text-green-100 placeholder:text-green-400/60 focus:border-green-400 focus:ring-green-400/20 pr-10"
+                        className="bg-black/60 border-green-500/30 text-green-100 placeholder:text-green-400/60 resize-none focus:border-green-400 focus:ring-green-400/20 pr-10"
                         required
                       />
                       <Button
@@ -456,6 +371,11 @@ export default function BurntBeatsApp() {
     )
   }
 
+  // Show Music Discovery page
+  if (currentPage === "discover") {
+    return <MusicDiscovery />
+  }
+
   // Main Music Generation Interface
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-green-900">
@@ -511,6 +431,13 @@ export default function BurntBeatsApp() {
             </h1>
           </div>
           <div className="flex items-center gap-4">
+            <Button
+              onClick={() => setCurrentPage("discover")}
+              className="relative overflow-hidden bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 hover:from-purple-700 hover:via-pink-600 hover:to-red-600 text-white font-bold shadow-lg shadow-pink-500/50 animate-pulse border-2 border-pink-400/50"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+              <Music className="w-4 h-4 mr-2 animate-bounce" />🏆 ENTER THE ARENA 🏆
+            </Button>
             <div className="text-green-300/80 text-sm">
               Total: <span className="font-bold text-green-400 glow-text">{totalFileSize.toFixed(1)} MB</span>
             </div>
@@ -531,7 +458,7 @@ export default function BurntBeatsApp() {
             <Button
               variant="outline"
               className="text-green-300 border-green-500/30 bg-black/40 hover:bg-green-500/10 hover:border-green-400"
-              onClick={handleLogout}
+              onClick={() => setIsLoggedIn(false)}
             >
               Logout
             </Button>
@@ -655,8 +582,6 @@ Example: 'A hard-hitting hip-hop track with heavy bass and aggressive vocals abo
                     <Label className="text-green-300 mb-2 block">Track Title</Label>
                     <Input
                       placeholder="Enter track title..."
-                      value={songTitle}
-                      onChange={(e) => setSongTitle(e.target.value)}
                       className="bg-black/60 border-green-500/30 text-green-100 placeholder:text-green-400/60 focus:border-green-400 focus:ring-green-400/20"
                     />
                   </div>
@@ -664,8 +589,6 @@ Example: 'A hard-hitting hip-hop track with heavy bass and aggressive vocals abo
                     <Label className="text-green-300 mb-2 block">Artist Name</Label>
                     <Input
                       placeholder="Enter artist name..."
-                      value={artistName}
-                      onChange={(e) => setArtistName(e.target.value)}
                       className="bg-black/60 border-green-500/30 text-green-100 placeholder:text-green-400/60 focus:border-green-400 focus:ring-green-400/20"
                     />
                   </div>
@@ -737,359 +660,134 @@ Example: 'A hard-hitting hip-hop track with heavy bass and aggressive vocals abo
               </CardContent>
             </Card>
 
-            {/* Enhanced Voice Synthesis & Cloning */}
+            {/* Voice Synthesis */}
             <Card className="bg-black/80 backdrop-blur-sm border border-green-500/30 shadow-xl shadow-green-500/10">
               <CardHeader>
-                <CardTitle className="text-green-300 flex items-center gap-2">
-                  <Mic className="w-5 h-5" />
-                  Professional Voice Synthesis
-                </CardTitle>
+                <CardTitle className="text-green-300">Voice Synthesis</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <Tabs defaultValue="synthesis" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 bg-black/60 border border-green-500/20">
-                    <TabsTrigger
-                      value="synthesis"
-                      className="text-green-300 data-[state=active]:bg-green-500/30 data-[state=active]:text-white"
-                    >
-                      Voice Synthesis
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="cloning"
-                      className="text-green-300 data-[state=active]:bg-green-500/30 data-[state=active]:text-white"
-                    >
-                      Voice Cloning
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="synthesis" className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-green-300 mb-2 block">Voice Type</Label>
-                        <Select value={voiceType} onValueChange={setVoiceType}>
-                          <SelectTrigger className="bg-black/60 border-green-500/30 text-green-100 focus:border-green-400 focus:ring-green-400/20">
-                            <SelectValue placeholder="Select voice type" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black/90 border-green-500/30">
-                            {voiceTypes.map((voice) => (
-                              <SelectItem
-                                key={voice}
-                                value={voice.toLowerCase()}
-                                className="text-green-100 focus:bg-green-500/20"
-                              >
-                                {voice}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-green-300 mb-2 block">Genre Style</Label>
-                        <Select value={genre} onValueChange={setGenre}>
-                          <SelectTrigger className="bg-black/60 border-green-500/30 text-green-100 focus:border-green-400 focus:ring-green-400/20">
-                            <SelectValue placeholder="Select genre" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black/90 border-green-500/30">
-                            {genres.map((g) => (
-                              <SelectItem
-                                key={g}
-                                value={g.toLowerCase()}
-                                className="text-green-100 focus:bg-green-500/20"
-                              >
-                                {g}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="cloning" className="space-y-4">
-                    <EnhancedVoiceCloner 
-                      userId={user?.id || "anonymous"}
-                      onVoiceCloned={(voiceData) => {
-                        setClonedVoices(prev => [...prev, voiceData])
-                        setSelectedClonedVoice(voiceData.id)
-                        setAiMessages(prev => [...prev, `Voice cloned with ${Math.round(voiceData.compatibilityScore * 100)}% compatibility! Now THAT'S what I call professional 🎤`])
-                      }}
+              <CardContent className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-green-300 mb-2 block">Voice Type</Label>
+                    <Select>
+                      <SelectTrigger className="bg-black/60 border-green-500/30 text-green-100 focus:border-green-400 focus:ring-green-400/20">
+                        <SelectValue placeholder="Select voice type" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-black/90 border-green-500/30">
+                        {voiceTypes.map((voice) => (
+                          <SelectItem
+                            key={voice}
+                            value={voice.toLowerCase()}
+                            className="text-green-100 focus:bg-green-500/20"
+                          >
+                            {voice}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-green-300 mb-2 block">Voice Clone</Label>
+                    <Input
+                      type="file"
+                      accept="audio/*"
+                      className="bg-black/60 border-green-500/30 text-green-100 file:bg-green-500/20 file:border-0 file:text-green-300 focus:border-green-400 focus:ring-green-400/20"
                     />
-                  </TabsContent>
-                </Tabs>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Controls Panel */}
+          {/* Right Sidebar */}
           <div className="space-y-6">
-            <Card className="bg-black/80 backdrop-blur-sm border border-green-500/30 shadow-xl shadow-green-500/10">
-              <CardHeader>
-                <CardTitle className="text-green-300">Beat Parameters</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <Label className="text-green-300 mb-2 block">Export Format</Label>
-                  <Select value={exportFormat} onValueChange={setExportFormat}>
-                    <SelectTrigger className="bg-black/60 border-green-500/30 text-green-100 focus:border-green-400 focus:ring-green-400/20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-black/90 border-green-500/30">
-                      <SelectItem value="mp3" className="text-green-100 focus:bg-green-500/20">
-                        MP3 (Smaller file)
-                      </SelectItem>
-                      <SelectItem value="wav" className="text-green-100 focus:bg-green-500/20">
-                        WAV (High quality)
-                      </SelectItem>
-                      <SelectItem value="flac" className="text-green-100 focus:bg-green-500/20">
-                        FLAC (Lossless)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label className="text-green-300 mb-2 block">Genre</Label>
-                  <Select value={genre} onValueChange={setGenre}>
-                    <SelectTrigger className="bg-black/60 border-green-500/30 text-green-100 focus:border-green-400 focus:ring-green-400/20">
-                      <SelectValue placeholder="Select genre" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-black/90 border-green-500/30">
-                      {genres.map((genreOption) => (
-                        <SelectItem
-                          key={genreOption}
-                          value={genreOption.toLowerCase()}
-                          className="text-green-100 focus:bg-green-500/20"
-                        >
-                          {genreOption}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label className="text-green-300 mb-2 block">Mood</Label>
-                  <Select value={mood} onValueChange={setMood}>
-                    <SelectTrigger className="bg-black/60 border-green-500/30 text-green-100 focus:border-green-400 focus:ring-green-400/20">
-                      <SelectValue placeholder="Select mood" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-black/90 border-green-500/30">
-                      {moods.map((moodOption) => (
-                        <SelectItem
-                          key={moodOption}
-                          value={moodOption.toLowerCase()}
-                          className="text-green-100 focus:bg-green-500/20"
-                        >
-                          {moodOption}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label className="text-green-300 mb-3 block">
-                    Tempo: <span className="text-green-400">{tempo[0]} BPM</span>
-                  </Label>
-                  <Slider value={tempo} onValueChange={setTempo} max={200} min={60} step={1} className="w-full" />
-                </div>
-
-                <div>
-                  <Label className="text-green-300 mb-3 block">
-                    Duration:{" "}
-                    <span className="text-green-400">
-                      {Math.floor(duration[0] / 60)}:{(duration[0] % 60).toString().padStart(2, "0")}
-                    </span>
-                  </Label>
-                  <Slider
-                    value={duration}
-                    onValueChange={setDuration}
-                    max={600}
-                    min={30}
-                    step={15}
-                    className="w-full"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-green-300">Instrumental</Label>
-                    <Switch />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-green-300">Add Harmony</Label>
-                    <Switch />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-green-300">Auto-Tune</Label>
-                    <Switch />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-green-300">Stem Separation</Label>
-                    <Switch />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Advanced Mixer */}
-            <Card className="bg-black/80 backdrop-blur-sm border border-green-500/30 shadow-xl shadow-green-500/10">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-green-300">Advanced Mixer</CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowMixer(!showMixer)}
-                    className="text-green-300 hover:text-green-100"
-                  >
-                    {showMixer ? "Hide" : "Show"}
-                  </Button>
-                </div>
-              </CardHeader>
-              {showMixer && (
+            {/* Settings Panel */}
+            {!isSimpleMode && (
+              <Card className="bg-black/80 backdrop-blur-sm border border-green-500/30 shadow-xl shadow-green-500/10">
+                <CardHeader>
+                  <CardTitle className="text-green-300">Advanced Settings</CardTitle>
+                </CardHeader>
                 <CardContent className="space-y-4">
-                  {Object.entries(stems).map(([stem, settings]) => (
-                    <div key={stem} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-green-300 capitalize">{stem}</Label>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setStems((prev) => ({
-                              ...prev,
-                              [stem]: { ...prev[stem], muted: !prev[stem].muted },
-                            }))
-                          }
-                          className={`text-xs ${settings.muted ? "text-red-400" : "text-green-400"}`}
-                        >
-                          {settings.muted ? "MUTED" : "ON"}
-                        </Button>
-                      </div>
-                      <Slider
-                        value={[settings.volume]}
-                        onValueChange={(value) =>
-                          setStems((prev) => ({
-                            ...prev,
-                            [stem]: { ...prev[stem], volume: value[0] },
-                          }))
-                        }
-                        max={100}
-                        min={0}
-                        step={1}
-                        className="w-full"
-                        disabled={settings.muted}
-                      />
-                      <div className="text-xs text-green-400/60">{settings.volume}%</div>
-                    </div>
-                  ))}
+                  <div>
+                    <Label className="text-green-300 mb-2 block">Genre</Label>
+                    <Select>
+                      <SelectTrigger className="bg-black/60 border-green-500/30 text-green-100 focus:border-green-400 focus:ring-green-400/20">
+                        <SelectValue placeholder="Select genre" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-black/90 border-green-500/30">
+                        {genres.map((genre) => (
+                          <SelectItem
+                            key={genre}
+                            value={genre.toLowerCase()}
+                            className="text-green-100 focus:bg-green-500/20"
+                          >
+                            {genre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="text-green-300 mb-2 block">Mood</Label>
+                    <Select>
+                      <SelectTrigger className="bg-black/60 border-green-500/30 text-green-100 focus:border-green-400 focus:ring-green-400/20">
+                        <SelectValue placeholder="Select mood" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-black/90 border-green-500/30">
+                        {moods.map((mood) => (
+                          <SelectItem
+                            key={mood}
+                            value={mood.toLowerCase()}
+                            className="text-green-100 focus:bg-green-500/20"
+                          >
+                            {mood}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="text-green-300 mb-2 block">Tempo: {tempo[0]} BPM</Label>
+                    <input
+                      type="range"
+                      min="60"
+                      max="200"
+                      value={tempo[0]}
+                      onChange={(e) => setTempo([parseInt(e.target.value)])}
+                      className="w-full h-2 bg-black/60 rounded-lg appearance-none cursor-pointer slider-thumb"
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="text-green-300 mb-2 block">Duration: {Math.floor(duration[0] / 60)}:{(duration[0] % 60).toString().padStart(2, '0')}</Label>
+                    <input
+                      type="range"
+                      min="30"
+                      max="600"
+                      value={duration[0]}
+                      onChange={(e) => setDuration([parseInt(e.target.value)])}
+                      className="w-full h-2 bg-black/60 rounded-lg appearance-none cursor-pointer slider-thumb"
+                    />
+                  </div>
                 </CardContent>
-              )}
-            </Card>
+              </Card>
+            )}
 
             {/* Generate Button */}
-            <Button
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="w-full h-12 bg-gradient-to-r from-orange-500 via-red-500 to-green-500 hover:from-orange-600 hover:via-red-600 hover:to-green-600 text-white font-semibold shadow-lg shadow-green-500/30"
-            >
-              {isGenerating ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Cooking Up Fire...
-                </>
-              ) : (
-                <>
-                  <Flame className="w-4 h-4 mr-2" />
-                  Generate Fire Track
-                </>
-              )}
-            </Button>
+            <Card className="bg-black/80 backdrop-blur-sm border border-green-500/30 shadow-xl shadow-green-500/10">
+              <CardContent className="pt-6">
+                <Button
+                  onClick={handleGenerate}
+                  disabled={isGenerating}
+                  className="w-full bg-gradient-to-r from-orange-500 via-red-500 to-green-500 hover:from-orange-600 hover:via-red-600 hover:to-green-600 text-white font-bold py-4 text-lg shadow-xl shadow-green-500/50 disabled:opacity-50"
+                >
+                  {isGenerating ? "🔥 COOKING FIRE... 🔥" : "🎵 BURN THE TRACK 🎵"}
+                </Button>
+              </CardContent>
+            </Card>
           </div>
-
-          {/* Generated Results */}
-          <Card className="bg-black/80 backdrop-blur-sm border border-green-500/30 shadow-xl shadow-green-500/10">
-            <CardHeader>
-              <CardTitle className="text-green-300">Your Fire Tracks</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                {typedSongs.length > 0 ? (
-                  typedSongs.map((song: any) => (
-                    <div
-                      key={song.id}
-                      className="flex items-center justify-between p-3 bg-black/60 border border-green-500/20 rounded-lg hover:border-green-400/40 transition-all"
-                    >
-                      <div>
-                        <p className="text-green-100 font-medium">{song.title}</p>
-                        <p className="text-green-400/60 text-sm">
-                          {exportFormat.toUpperCase()} • {((song.songLength || 180) * 0.02).toFixed(1)} MB • {Math.floor((song.songLength || 180) / 60)}:{((song.songLength || 180) % 60).toString().padStart(2, "0")}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-green-300 hover:text-green-100 hover:bg-green-500/10"
-                          onClick={() => handlePlayPause(song.id)}
-                        >
-                          {currentPlayingId === song.id && isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-green-300 hover:text-green-100 hover:bg-green-500/10"
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-green-300 hover:text-green-100 hover:bg-green-500/10"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-green-400/60">
-                    <p>No tracks generated yet</p>
-                    <p className="text-sm mt-2">Create your first fire track above!</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Stats */}
-          <Card className="bg-black/80 backdrop-blur-sm border border-green-500/30 shadow-xl shadow-green-500/10">
-            <CardHeader>
-              <CardTitle className="text-green-300 text-sm">Session Stats</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-green-400/60">Tracks Generated:</span>
-                <span className="text-green-400">{typedSongs.length}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-green-400/60">Total Duration:</span>
-                <span className="text-green-400">
-                  {Math.floor(typedSongs.reduce((sum: number, song: any) => sum + (song.songLength || 180), 0) / 60)}:
-                  {(typedSongs.reduce((sum: number, song: any) => sum + (song.songLength || 180), 0) % 60).toString().padStart(2, "0")}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-green-400/60">Storage Used:</span>
-                <span className="text-green-400">{totalFileSize.toFixed(1)} MB</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-green-400/60">User:</span>
-                <span className="text-green-400">{user?.email || 'Anonymous'}</span>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
