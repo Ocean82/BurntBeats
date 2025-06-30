@@ -16,13 +16,14 @@ import { z } from "zod";
 const burntBeatsLogo = "/burnt-beats-logo.jpeg";
 
 const loginSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 // Using Replit Auth - no signup schema needed
 const signupSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -41,7 +42,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
     },
   });
@@ -50,6 +51,7 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
     resolver: zodResolver(signupSchema),
     defaultValues: {
       username: "",
+      email: "",
       password: "",
       confirmPassword: "",
     },
@@ -57,7 +59,10 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
 
   const loginMutation = useMutation({
     mutationFn: async (data: z.infer<typeof loginSchema>) => {
-      const response = await apiRequest("POST", "/api/auth/login", data);
+      const response = await apiRequest("POST", "/api/auth/login", {
+        username: data.email, // Backend expects username field
+        password: data.password
+      });
       if (!response.ok) {
         throw new Error('Login failed');
       }
@@ -189,16 +194,17 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
                   <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
                     <FormField
                       control={loginForm.control}
-                      name="username"
+                      name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-white">Username</FormLabel>
+                          <FormLabel className="text-white">Email</FormLabel>
                           <FormControl>
                             <div className="relative">
                               <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                               <Input
                                 {...field}
-                                placeholder="Enter your username"
+                                type="email"
+                                placeholder="Enter your email"
                                 className="bg-gray-800 border-gray-600 pl-10"
                               />
                             </div>
@@ -254,6 +260,27 @@ export default function AuthForm({ onAuthSuccess }: AuthFormProps) {
                               <Input
                                 {...field}
                                 placeholder="Choose a username"
+                                className="bg-gray-800 border-gray-600 pl-10"
+                              />
+                            </div>
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={signupForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-white">Email</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                              <Input
+                                {...field}
+                                type="email"
+                                placeholder="Enter your email"
                                 className="bg-gray-800 border-gray-600 pl-10"
                               />
                             </div>
