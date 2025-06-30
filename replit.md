@@ -255,6 +255,14 @@ The application uses three main database tables:
 
 ## Changelog
 
+### Critical Security Fix: Google Cloud Credentials Secured (June 30, 2025)
+- **SECURITY VULNERABILITY RESOLVED**: Removed hardcoded Google Cloud service account credentials from codebase that were exposed in google-cloud-credentials.json and server/services/google-cloud-storage.ts
+- **PROPER CREDENTIAL MANAGEMENT**: Migrated to secure environment variables (GOOGLE_CLOUD_PROJECT_ID, GOOGLE_CLOUD_PRIVATE_KEY, GOOGLE_CLOUD_CLIENT_EMAIL) stored in Replit secrets
+- **GITIGNORE UPDATED**: Added comprehensive exclusion patterns for Google Cloud credential files to prevent future exposure
+- **CODE SANITIZATION**: Removed all hardcoded private keys, client emails, and project IDs from source code
+- **SECURE INITIALIZATION**: Google Cloud Storage service now properly initializes using environment variables with fallback to local storage
+- **DEPLOYMENT READY**: Production system secured with proper credential management following security best practices
+
 ### Google Cloud Storage Integration & File Management Complete (June 29, 2025)
 - **GOOGLE CLOUD STORAGE CONFIGURED**: Service account burnt-beats-access@aqueous-thought-464214-j3.iam.gserviceaccount.com operational with complete JSON credentials
 - **FILE UPLOAD/DOWNLOAD SYSTEM**: Complete file management with upload, download, existence checking, signed URL generation, and cleanup operations

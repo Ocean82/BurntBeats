@@ -60,3 +60,8 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# Google Cloud credentials (NEVER commit these)
+google-cloud-credentials.json
+*-credentials.json
+service-account-key.json
