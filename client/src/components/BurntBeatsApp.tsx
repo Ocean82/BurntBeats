@@ -690,135 +690,92 @@ Example: 'A hard-hitting hip-hop track with heavy bass and aggressive vocals abo
                   </div>
                   <div>
                     <Label className="text-green-300 mb-2 block">Voice Clone</Label>
-                    <Button
-                      variant="outline"
-                      className="w-full text-green-300 border-green-500/30 bg-black/40 hover:bg-green-500/10 hover:border-green-400"
-                    >
-                      <Mic className="w-4 h-4 mr-2" />
-                      Upload Voice Sample
-                    </Button>
+                    <Input
+                      type="file"
+                      accept="audio/*"
+                      className="bg-black/60 border-green-500/30 text-green-100 file:bg-green-500/20 file:border-0 file:text-green-300 focus:border-green-400 focus:ring-green-400/20"
+                    />
                   </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <Label className="text-green-300">Enable Voice Cloning</Label>
-                  <Switch />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Controls Panel */}
+          {/* Right Sidebar */}
           <div className="space-y-6">
-            <Card className="bg-black/80 backdrop-blur-sm border border-green-500/30 shadow-xl shadow-green-500/10">
-              <CardHeader>
-                <CardTitle className="text-green-300">Beat Parameters</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <Label className="text-green-300 mb-2 block">Export Format</Label>
-                  <Select value={exportFormat} onValueChange={setExportFormat}>
-                    <SelectTrigger className="bg-black/60 border-green-500/30 text-green-100 focus:border-green-400 focus:ring-green-400/20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-black/90 border-green-500/30">
-                      <SelectItem value="mp3" className="text-green-100 focus:bg-green-500/20">
-                        MP3 (Smaller file)
-                      </SelectItem>
-                      <SelectItem value="wav" className="text-green-100 focus:bg-green-500/20">
-                        WAV (High quality)
-                      </SelectItem>
-                      <SelectItem value="flac" className="text-green-100 focus:bg-green-500/20">
-                        FLAC (Lossless)
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label className="text-green-300 mb-2 block">Genre</Label>
-                  <Select>
-                    <SelectTrigger className="bg-black/60 border-green-500/30 text-green-100 focus:border-green-400 focus:ring-green-400/20">
-                      <SelectValue placeholder="Select genre" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-black/90 border-green-500/30">
-                      {genres.map((genre) => (
-                        <SelectItem
-                          key={genre}
-                          value={genre.toLowerCase()}
-                          className="text-green-100 focus:bg-green-500/20"
-                        >
-                          {genre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label className="text-green-300 mb-2 block">Mood</Label>
-                  <Select>
-                    <SelectTrigger className="bg-black/60 border-green-500/30 text-green-100 focus:border-green-400 focus:ring-green-400/20">
-                      <SelectValue placeholder="Select mood" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-black/90 border-green-500/30">
-                      {moods.map((mood) => (
-                        <SelectItem
-                          key={mood}
-                          value={mood.toLowerCase()}
-                          className="text-green-100 focus:bg-green-500/20"
-                        >
-                          {mood}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label className="text-green-300 mb-3 block">
-                    Tempo: <span className="text-green-400">{tempo[0]} BPM</span>
-                  </Label>
-                  <Slider value={tempo} onValueChange={setTempo} max={200} min={60} step={1} className="w-full" />
-                </div>
-
-                <div>
-                  <Label className="text-green-300 mb-3 block">
-                    Duration:{" "}
-                    <span className="text-green-400">
-                      {Math.floor(duration[0] / 60)}:{(duration[0] % 60).toString().padStart(2, "0")}
-                    </span>
-                  </Label>
-                  <Slider
-                    value={duration}
-                    onValueChange={setDuration}
-                    max={600}
-                    min={30}
-                    step={15}
-                    className="w-full"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-green-300">Instrumental</Label>
-                    <Switch />
+            {/* Settings Panel */}
+            {!isSimpleMode && (
+              <Card className="bg-black/80 backdrop-blur-sm border border-green-500/30 shadow-xl shadow-green-500/10">
+                <CardHeader>
+                  <CardTitle className="text-green-300">Advanced Settings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label className="text-green-300 mb-2 block">Genre</Label>
+                    <Select>
+                      <SelectTrigger className="bg-black/60 border-green-500/30 text-green-100 focus:border-green-400 focus:ring-green-400/20">
+                        <SelectValue placeholder="Select genre" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-black/90 border-green-500/30">
+                        {genres.map((genre) => (
+                          <SelectItem
+                            key={genre}
+                            value={genre.toLowerCase()}
+                            className="text-green-100 focus:bg-green-500/20"
+                          >
+                            {genre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-green-300">Add Harmony</Label>
-                    <Switch />
+
+                  <div>
+                    <Label className="text-green-300 mb-2 block">Mood</Label>
+                    <Select>
+                      <SelectTrigger className="bg-black/60 border-green-500/30 text-green-100 focus:border-green-400 focus:ring-green-400/20">
+                        <SelectValue placeholder="Select mood" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-black/90 border-green-500/30">
+                        {moods.map((mood) => (
+                          <SelectItem
+                            key={mood}
+                            value={mood.toLowerCase()}
+                            className="text-green-100 focus:bg-green-500/20"
+                          >
+                            {mood}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-green-300">Auto-Tune</Label>
-                    <Switch />
+
+                  <div>
+                    <Label className="text-green-300 mb-3 block">
+                      Tempo: <span className="text-green-400">{tempo[0]} BPM</span>
+                    </Label>
+                    <Slider value={tempo} onValueChange={setTempo} max={200} min={60} step={1} className="w-full" />
                   </div>
-                  <div className="flex items-center justify-between">
-                    <Label className="text-green-300">Stem Separation</Label>
-                    <Switch />
+
+                  <div>
+                    <Label className="text-green-300 mb-3 block">
+                      Duration:{" "}
+                      <span className="text-green-400">
+                        {Math.floor(duration[0] / 60)}:{(duration[0] % 60).toString().padStart(2, "0")}
+                      </span>
+                    </Label>
+                    <Slider
+                      value={duration}
+                      onValueChange={setDuration}
+                      max={600}
+                      min={30}
+                      step={15}
+                      className="w-full"
+                    />
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Advanced Mixer */}
             <Card className="bg-black/80 backdrop-blur-sm border border-green-500/30 shadow-xl shadow-green-500/10">
@@ -876,24 +833,75 @@ Example: 'A hard-hitting hip-hop track with heavy bass and aggressive vocals abo
               )}
             </Card>
 
+            {/* Export Format Settings */}
+            <Card className="bg-black/80 backdrop-blur-sm border border-green-500/30 shadow-xl shadow-green-500/10">
+              <CardHeader>
+                <CardTitle className="text-green-300">Export Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label className="text-green-300 mb-2 block">Export Format</Label>
+                  <Select value={exportFormat} onValueChange={setExportFormat}>
+                    <SelectTrigger className="bg-black/60 border-green-500/30 text-green-100 focus:border-green-400 focus:ring-green-400/20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-black/90 border-green-500/30">
+                      <SelectItem value="mp3" className="text-green-100 focus:bg-green-500/20">
+                        MP3 (Smaller file)
+                      </SelectItem>
+                      <SelectItem value="wav" className="text-green-100 focus:bg-green-500/20">
+                        WAV (High quality)
+                      </SelectItem>
+                      <SelectItem value="flac" className="text-green-100 focus:bg-green-500/20">
+                        FLAC (Lossless)
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-green-300">Instrumental</Label>
+                    <Switch />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-green-300">Add Harmony</Label>
+                    <Switch />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-green-300">Auto-Tune</Label>
+                    <Switch />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-green-300">Stem Separation</Label>
+                    <Switch />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Generate Button */}
-            <Button
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="w-full h-12 bg-gradient-to-r from-orange-500 via-red-500 to-green-500 hover:from-orange-600 hover:via-red-600 hover:to-green-600 text-white font-semibold shadow-lg shadow-green-500/30"
-            >
-              {isGenerating ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Cooking Up Fire...
-                </>
-              ) : (
-                <>
-                  <Flame className="w-4 h-4 mr-2" />
-                  Generate Fire Track
-                </>
-              )}
-            </Button>
+            <Card className="bg-black/80 backdrop-blur-sm border border-green-500/30 shadow-xl shadow-green-500/10">
+              <CardContent className="pt-6">
+                <Button
+                  onClick={handleGenerate}
+                  disabled={isGenerating}
+                  className="w-full bg-gradient-to-r from-orange-500 via-red-500 to-green-500 hover:from-orange-600 hover:via-red-600 hover:to-green-600 text-white font-bold py-4 text-lg shadow-xl shadow-green-500/50 disabled:opacity-50"
+                >
+                  {isGenerating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      🔥 COOKING FIRE... 🔥
+                    </>
+                  ) : (
+                    <>
+                      <Flame className="w-4 h-4 mr-2" />
+                      🎵 BURN THE TRACK 🎵
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
 
             {/* Generated Results */}
             <Card className="bg-black/80 backdrop-blur-sm border border-green-500/30 shadow-xl shadow-green-500/10">
