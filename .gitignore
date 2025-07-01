@@ -32,13 +32,29 @@ uploads/
 .DS_Store
 Thumbs.db
 
+# Compiled Sources
+.com
+.class
+.dll
+.exe
+.o
+.so
+
 # Database
 *.db
 *.sqlite
+.backup
+.json
 
 # Logs
 logs/
 *.log
+.sql
+.sqlite
+
+# packages
+.zip
+.tar
 
 # Runtime data
 pids/
@@ -75,3 +91,13 @@ gcloud-service-key.json
 
 # Any JSON files that might contain credentials
 gcp-key-*.json
+
+# Voice cloning assets
+models/
+checkpoints/
+pretrained/
+voice-data/
+
+# Music generator
+*-generator.ts
+
