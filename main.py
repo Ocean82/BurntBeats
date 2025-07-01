@@ -8,6 +8,11 @@ import time
 import logging
 import socket
 from typing import Optional, Dict, List, NoReturn
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 # Configure logging
 logging.basicConfig(
