@@ -34,6 +34,8 @@ export const users = pgTable("users", {
   stripeCustomerId: text("stripe_customer_id"),
   subscriptionId: text("subscription_id"),
   subscriptionStatus: text("subscription_status"),
+  agreementAccepted: boolean("agreement_accepted").default(false),
+  agreementAcceptedAt: timestamp("agreement_accepted_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -109,6 +111,19 @@ export const licenseAcknowledgments = pgTable("license_acknowledgments", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
+// User Agreement Records Table - Compressed filing system for agreement retention
+export const userAgreementRecords = pgTable("user_agreement_records", {
+  id: text("id").primaryKey().$defaultFn(() => createId()),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  username: text("username").notNull(),
+  email: text("email").notNull(),
+  acceptedAt: timestamp("accepted_at").notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  compressedRecord: text("compressed_record").notNull(), // Base64 compressed JSON
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Define relations for proper ownership tracking
 export const userRelations = relations(users, ({ many }) => ({
   songs: many(songs),
@@ -182,6 +197,9 @@ export type InsertSongVersion = typeof songVersions.$inferInsert;
 
 export type LicenseAcknowledgment = typeof licenseAcknowledgments.$inferSelect;
 export type InsertLicenseAcknowledgment = typeof licenseAcknowledgments.$inferInsert;
+
+export type UserAgreementRecord = typeof userAgreementRecords.$inferSelect;
+export type InsertUserAgreementRecord = typeof userAgreementRecords.$inferInsert;
 
 export interface SongSection {
   id: string;

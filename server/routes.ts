@@ -122,6 +122,8 @@ export async function registerRoutes(app: express.Application): Promise<void> {
   app.post("/api/auth/forgot-password", AuthAPI.forgotPassword);
   app.post("/api/auth/reset-password", AuthAPI.resetPassword);
   app.get("/api/auth/check-username/:username", AuthAPI.checkUsername);
+  app.post("/api/auth/accept-agreement", AuthAPI.acceptAgreement);
+  app.get("/api/auth/get-ip", AuthAPI.getIpAddress);
   
   // Legacy admin login for backwards compatibility
   app.post("/api/auth/admin-login", AuthAPI.adminLogin);

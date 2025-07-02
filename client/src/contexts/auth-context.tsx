@@ -12,6 +12,8 @@ interface User {
   maxSongs: number;
   songsThisMonth: number;
   createdAt: string;
+  agreementAccepted?: boolean;
+  agreementAcceptedAt?: string;
 }
 
 interface AuthContextType {

@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 
 // Import pages
 import AuthPage from '@/pages/auth-page';
+import UserAgreement from '@/components/UserAgreement';
 import BurntBeatsEnhancedComplete from './components/BurntBeatsEnhancedComplete';
 
 const queryClient = new QueryClient({
@@ -18,7 +19,7 @@ const queryClient = new QueryClient({
 });
 
 function AppContent() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
 
   // Show loading spinner while checking authentication
   if (isLoading) {
@@ -37,20 +38,30 @@ function AppContent() {
     );
   }
 
-  return (
-    <Switch>
-      {/* Protected routes - require authentication */}
-      {isAuthenticated ? (
-        <Route path="/">
-          <BurntBeatsEnhancedComplete />
-        </Route>
-      ) : (
-        <Route>
-          <AuthPage />
-        </Route>
-      )}
-    </Switch>
-  );
+  // Not authenticated - show login page
+  if (!user) {
+    return <AuthPage />;
+  }
+
+  // Authenticated but hasn't accepted agreement - show agreement page
+  if (user && !user.agreementAccepted) {
+    return (
+      <UserAgreement 
+        user={{
+          id: user.id,
+          username: user.username,
+          email: user.email
+        }}
+        onAccepted={() => {
+          // Refresh user data to show agreement accepted
+          window.location.reload();
+        }}
+      />
+    );
+  }
+
+  // Authenticated and agreement accepted - show main app
+  return <BurntBeatsEnhancedComplete />;
 }
 
 function App() {

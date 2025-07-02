@@ -195,4 +195,79 @@ export class AuthAPI {
       res.status(500).json({ error: 'Logout failed' });
     }
   }
+
+  // Accept user agreement endpoint
+  static async acceptAgreement(req: Request, res: Response) {
+    try {
+      const { userId, username, email, accepted, acceptedAt, ipAddress, userAgent } = req.body;
+
+      if (!userId || !username || !email || !accepted) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      // Create compressed record for filing system
+      const agreementRecord = {
+        id: require('@paralleldrive/cuid2').createId(),
+        userId,
+        username,
+        email,
+        acceptedAt,
+        ipAddress: ipAddress || 'unknown',
+        userAgent: userAgent || 'unknown',
+        agreementText: '🔥 Burnt Beats Contributor Acknowledgment & Usage Agreement - User has read and accepted all terms including usage rights, ownership licensing, copyright compliance, indemnification, disclaimers, liability, and arbitration clauses.',
+        timestamp: new Date().toISOString()
+      };
+
+      // Compress the record using zlib
+      const recordString = JSON.stringify(agreementRecord);
+      const compressed = require('zlib').gzipSync(recordString);
+      const compressedBase64 = compressed.toString('base64');
+
+      // Store in database
+      const { db } = await import('../db');
+      const { users, userAgreementRecords } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+
+      // Update user's agreement status
+      await db.update(users)
+        .set({ 
+          agreementAccepted: true, 
+          agreementAcceptedAt: new Date(acceptedAt) 
+        })
+        .where(eq(users.id, userId));
+
+      // Store compressed record
+      await db.insert(userAgreementRecords).values({
+        userId,
+        username,
+        email,
+        acceptedAt: new Date(acceptedAt),
+        ipAddress: ipAddress || 'unknown',
+        userAgent: userAgent || 'unknown',
+        compressedRecord: compressedBase64
+      });
+
+      res.json({ 
+        success: true, 
+        message: 'Agreement accepted and recorded successfully',
+        recordId: agreementRecord.id
+      });
+    } catch (error) {
+      console.error('Agreement acceptance error:', error);
+      res.status(500).json({ error: 'Failed to record agreement acceptance' });
+    }
+  }
+
+  // Get user IP address for agreement recording
+  static async getIpAddress(req: Request, res: Response) {
+    try {
+      const ip = req.ip || 
+                 req.connection.remoteAddress || 
+                 req.socket.remoteAddress || 
+                 'unknown';
+      res.send(ip);
+    } catch (error) {
+      res.send('unknown');
+    }
+  }
 }

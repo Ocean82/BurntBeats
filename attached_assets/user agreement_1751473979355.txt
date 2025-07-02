@@ -1,0 +1,39 @@
+🔥 Burnt Beats Contributor Acknowledgment & Usage Agreement
+Effective: [Insert Date]
+By accessing or contributing to the Burnt Beats platform, users acknowledge and agree to the following terms. This agreement is designed to protect both the contributors and the platform while encouraging a fair, respectful, and creative environment.
+
+1. Usage Rights
+Burnt Beats and its affiliates retain the irrevocable right to use, modify, distribute, and display any content, code, assets, vocal samples, or feedback submitted to the platform (“Contributions”) for any purpose deemed appropriate, including commercial use, without additional compensation—unless otherwise agreed in writing.
+
+2. Ownership & Licensing
+Users who purchase a full license to content they create through Burnt Beats (e.g. beats, vocals, lyrics, tracks) retain 100% ownership of that content. Burnt Beats will not sell, 
+license, or share such content with any third party or affiliate without explicit written consent from the creator.
+However, contributors acknowledge and grant Burnt Beats the right to:
+- Feature content in charts, promotional assets, community competitions, and curated playlists (e.g. “Top 10 of the Month”, “Featured Remixes”).
+- Anonymously store cloned vocal models from users in a shared vocal bank, accessible by others, without revealing the source user’s identity.
+- Use short excerpts or visuals in platform demos, onboarding materials, or promotional previews without affecting ownership.
+These rights exist solely to support platform functionality, creative discovery, and community building.
+
+3. Copyright & Compliance
+All submitted content must be original or lawfully sourced. Users agree not to submit, upload, or incorporate any material that violates copyright laws, trademarks, patents, third-party licenses, or any applicable intellectual property regulations.
+
+4. Indemnification
+You agree to indemnify, defend, and hold harmless Burnt Beats, its founders, contributors, and affiliates from and against any and all claims, damages, liabilities, legal actions, or losses arising from your Contributions, use of the platform, or violation of this agreement.
+
+5. Acknowledgment of Terms
+By proceeding, you confirm that you’ve read and understood this agreement in full. Claims of “I didn’t know” are not a valid defense—because, well, we wrote this exact line.
+
+6. Disclaimers, Liability & Arbitration
+6.1 No Blame Game
+You release Burnt Beats and everyone ever even remotely involved—including the founder, devs, collaborators, and that one intern who maybe tweaked the color scheme—from any past, present, or future legal claims caused by your actions, another user’s actions, or anything weird the internet might do.
+6.2 You Can’t Sue Us
+Even if we do something unexpectedly dumb (which we try very hard not to), you agree not to bring legal action against us—for the next 5,631 years.
+6.3 I Actually Read This
+By continuing, you agree that you truly read this agreement. You didn’t just skim. You’re nodding your head right now. See? That’s binding.
+6.4 In the Unlikely Event of Drama...
+Should a legal dispute arise, you agree to resolve it via binding arbitration before pursuing any court action. Burnt Beats will select the arbitrator. The user shall cover all related fees, including legal representation, filing fees, vending machine snacks, and the babysitter.
+You also agree not to sue us for our house. But if you try, we reserve the right to rename it The Burnt Bungalow.
+
+☐ I accept and agree to the terms above.
+
+
