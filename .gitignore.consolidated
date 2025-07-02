@@ -212,4 +212,3 @@ playwright-report/
 # Development artifacts
 *.backup
 .json
-

@@ -28,6 +28,7 @@ externalPort = 8080
 
 [nix]
 channel = "stable-24_05"
+packages = ["run"]
 
 [workflows]
 runButton = "Development Server"
