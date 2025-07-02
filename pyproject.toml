@@ -1,5 +1,5 @@
 [project]
-name = "Burnt Beats"
+name = "Burnt-Beats"
 version = "0.1.0"
 description = "Nix workspace for REPL-based music processing and machine learning"
 authors = [

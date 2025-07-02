@@ -39,12 +39,11 @@ author = 41134091
 mode = "sequential"
 
 [[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
+task = "packager.installForLanguage"
+args = "nodejs"
 
 [[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx tsx server/index.ts"
+task = "packager.installForAll"
 
 [[workflows.workflow]]
 name = "Production Server"
