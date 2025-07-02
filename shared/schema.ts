@@ -24,6 +24,8 @@ export const users = pgTable("users", {
   profileImageUrl: varchar("profile_image_url"),
   username: text("username").unique(),
   password: text("password"),
+  passwordResetToken: text("password_reset_token"),
+  passwordResetExpires: timestamp("password_reset_expires"),
   plan: text("plan").default("free"),
   songsGenerated: integer("songs_generated").default(0),
   maxSongs: integer("max_songs").default(3),

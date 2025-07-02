@@ -1,9 +1,53 @@
 
 import { Request, Response } from 'express';
+import { 
+  login, 
+  register, 
+  logout, 
+  getCurrentUser, 
+  forgotPassword, 
+  resetPassword, 
+  checkUsername 
+} from '../auth';
 
 export class AuthAPI {
   // Login endpoint
   static async login(req: Request, res: Response) {
+    return await login(req, res);
+  }
+
+  // Register endpoint
+  static async register(req: Request, res: Response) {
+    return await register(req, res);
+  }
+
+  // Logout endpoint
+  static async logout(req: Request, res: Response) {
+    return await logout(req, res);
+  }
+
+  // Get current user endpoint
+  static async getCurrentUser(req: Request, res: Response) {
+    return await getCurrentUser(req, res);
+  }
+
+  // Forgot password endpoint
+  static async forgotPassword(req: Request, res: Response) {
+    return await forgotPassword(req, res);
+  }
+
+  // Reset password endpoint  
+  static async resetPassword(req: Request, res: Response) {
+    return await resetPassword(req, res);
+  }
+
+  // Check username availability endpoint
+  static async checkUsername(req: Request, res: Response) {
+    return await checkUsername(req, res);
+  }
+
+  // Legacy admin login for existing tests
+  static async adminLogin(req: Request, res: Response) {
     try {
       const { username, password } = req.body;
 

@@ -114,6 +114,18 @@ export async function registerRoutes(app: express.Application): Promise<void> {
     });
   });
 
+  // Authentication endpoints (new user authentication system)
+  app.post("/api/auth/login", AuthAPI.login);
+  app.post("/api/auth/register", AuthAPI.register);
+  app.post("/api/auth/logout", AuthAPI.logout);
+  app.get("/api/auth/user", AuthAPI.getCurrentUser);
+  app.post("/api/auth/forgot-password", AuthAPI.forgotPassword);
+  app.post("/api/auth/reset-password", AuthAPI.resetPassword);
+  app.get("/api/auth/check-username/:username", AuthAPI.checkUsername);
+  
+  // Legacy admin login for backwards compatibility
+  app.post("/api/auth/admin-login", AuthAPI.adminLogin);
+
   // Enhanced Bonus Features API Endpoints
 
   // Post-purchase AI feedback endpoint
