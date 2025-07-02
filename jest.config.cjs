@@ -4,7 +4,11 @@ const config = {
   testEnvironment: 'node',
   roots: ['<rootDir>/tests'],
   testMatch: [
-    '**/tests/unit/**/*.test.js'
+    '**/tests/unit/**/*.test.js',
+    '**/tests/integration/**/*.test.js',
+    '**/tests/frontend/**/*.test.js',
+    '**/tests/performance/**/*.test.js',
+    '**/tests/security/**/*.test.js'
   ],
   
   // Enhanced coverage including frontend files
