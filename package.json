@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "cross-env NODE_ENV=development tsx server/index.ts",
-    "build": "node quick-deployment-fix.cjs",
+    "build": "node comprehensive-ci-fix.cjs",
     "build:client": "node package-scripts.js build:client",
     "build:server": "node package-scripts.js build:server",
     "build:watch": "node package-scripts.js watch",
@@ -25,7 +25,8 @@
     "lint": "eslint . --ext .ts,.tsx",
     "type-check": "tsc --noEmit",
     "analyze": "source-map-explorer 'build/static/js/*.js'",
-    "profile": "react-scripts --profile build"
+    "profile": "react-scripts --profile build",
+    "build:quick": "node comprehensive-ci-fix.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",

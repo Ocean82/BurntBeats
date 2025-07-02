@@ -2,7 +2,9 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
-import { logger } from '../logger';
+import { Logger } from '../logger';
+
+// Logger class usage
 
 export interface AdvancedAIGenerationOptions {
   title: string;
@@ -52,7 +54,7 @@ export class AdvancedAIMusicService {
     const startTime = Date.now();
     
     try {
-      logger.info('Starting advanced AI music generation', {
+      Logger.info('Starting advanced AI music generation', {
         title: options.title,
         genre: options.genre,
         aiEnhanced: options.aiEnhanced
@@ -106,7 +108,7 @@ export class AdvancedAIMusicService {
         processingTime
       };
 
-      logger.info('Advanced AI music generation completed', {
+      Logger.info('Advanced AI music generation completed', {
         title: options.title,
         processingTime,
         hasAudio: !!finalAudioPath
@@ -116,7 +118,7 @@ export class AdvancedAIMusicService {
 
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      logger.error('Advanced AI music generation failed', { error, options, processingTime });
+      Logger.error('Advanced AI music generation failed', { error, options, processingTime });
       
       return {
         success: false,
@@ -147,7 +149,7 @@ export class AdvancedAIMusicService {
         args.push(`--duration=${options.duration}`);
       }
 
-      logger.info('Executing advanced AI MIDI generation', { args: args.slice(0, 3) }); // Log first 3 args for privacy
+      Logger.info('Executing advanced AI MIDI generation', { args: args.slice(0, 3) }); // Log first 3 args for privacy
 
       const process = spawn(this.pythonPath, args);
       let stdout = '';
@@ -210,7 +212,7 @@ export class AdvancedAIMusicService {
     try {
       // For now, we'll use a simple conversion
       // In production, this would integrate with advanced audio synthesis
-      logger.info('Converting MIDI to advanced audio', { midiPath, audioPath });
+      Logger.info('Converting MIDI to advanced audio', { midiPath, audioPath });
       
       // Placeholder for advanced audio conversion
       // This would integrate with FluidSynth, LMMS, or other advanced audio engines
@@ -219,7 +221,7 @@ export class AdvancedAIMusicService {
       return conversionResult;
       
     } catch (error) {
-      logger.error('Audio conversion failed', { error, midiPath });
+      Logger.error('Audio conversion failed', { error, midiPath });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Audio conversion failed'
@@ -305,7 +307,7 @@ export class AdvancedAIMusicService {
 
       return insights;
     } catch (error) {
-      logger.error('Failed to generate AI insights', { error });
+      Logger.error('Failed to generate AI insights', { error });
       return { error: 'AI insights generation failed' };
     }
   }

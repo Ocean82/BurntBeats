@@ -1,3 +1,5 @@
+//USE THIS ONE
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,7 +24,7 @@ const PRICING_TIERS = [
   {
     id: 'bonus',
     name: '🧪 Bonus Track',
-    description: 'Watermarked demo. Test the vibe before buying.',
+    description: 'Watermarked demo. Test the vibe before buying. Its nothing greath but you get to hear your song before you buy it.',
     price: 0.99,
     icon: <Music className="w-5 h-5" />,
     badge: null,
@@ -36,21 +38,21 @@ const PRICING_TIERS = [
   {
     id: 'base',
     name: '🔉 Base Song',
-    description: 'Tracks under 9MB. Great for quick loops or intros.',
+    description: 'Tracks under 9MB. Great for basic song. fine to play for your mom but I wouldnt use it for your demo track.',
     price: 1.99,
     icon: <Mic className="w-5 h-5" />,
     badge: null,
     features: [
       'Tracks under 9MB',
       'No watermarks',
-      'Perfect for loops & intros',
+      'Perfect for hearing dumb songs about how sad you are but not the kind thats going to get you on on that show you think youre good enough for',
       'High quality MP3'
     ]
   },
   {
     id: 'premium',
     name: '🎧 Premium Song',
-    description: 'Tracks between 9MB and 20MB. Crisp quality with depth.',
+    description: 'Tracks between 9MB and 20MB. Crisp quality with depth. Think Marvin Gaye.',
     price: 4.99,
     icon: <BarChart3 className="w-5 h-5" />,
     badge: <Badge variant="secondary">Most Popular</Badge>,
@@ -64,7 +66,7 @@ const PRICING_TIERS = [
   {
     id: 'ultra',
     name: '💽 Ultra Super Great Amazing Song',
-    description: 'Tracks over 20MB. Ideal for complex, layered creations.',
+    description: 'Tracks over 20MB. Ideal for complex, layered creations or those tender moments when you might finally...realize why youre alwasy missing one sock.',
     price: 8.99,
     icon: <Star className="w-5 h-5" />,
     badge: <Badge className="bg-gradient-to-r from-vibrant-orange to-orange-600 text-white">Best Value</Badge>,
@@ -78,7 +80,7 @@ const PRICING_TIERS = [
   {
     id: 'full_license',
     name: '🪪 Full License',
-    description: 'Grants full ownership. Use, distribute, modify, and monetize your track anywhere—forever.',
+    description: 'Grants full ownership. Use, distribute, modify, and monetize your track anywhere—forever. Its yours do what you want with it.',
     price: 10.00,
     icon: <Crown className="w-5 h-5 text-yellow-400" />,
     badge: <Badge className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black">Professional</Badge>,
@@ -186,9 +188,9 @@ export default function PricingPlans({ userId, onPurchase, user }: PricingPlansP
       </div>
 
       <div className="text-center text-sm text-gray-400 space-y-2">
-        <p>💰 No subscriptions • No monthly fees • Pay only for what you create</p>
-        <p>🎵 100% ownership • Commercial use allowed • No royalties</p>
-        <p>⚡ Instant downloads • Secure payments • Lifetime access</p>
+        <p>💰 No subscriptions • No monthly fees • Pay only for what you download • Publish your creations and see if you have what it takes to compete for TOP TEN SONGS OF THE MONTH</p>
+        <p>🎵 100% ownership. Monetize of your own creations • Commercial use allowed • No royalties paid to someone you dont know</p>
+        <p>⚡ Fast downloads • Secure payments • Lifetime access</p>
       </div>
 
       {/* Stripe Checkout Dialog */}

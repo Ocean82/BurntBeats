@@ -1,3 +1,5 @@
+//old pricing - dont use
+
 import { storage } from "./storage";
 import type { User } from "@shared/schema";
 import { generateLicense, generatePDFLicense } from "./utils/license-generator";
@@ -143,7 +145,16 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
       wav: true,
       flac: false,
     },
-    genres: ["Pop", "Rock", "Electronic", "Jazz", "Classical", "Hip-Hop", "Country", "R&B"],
+    genres: [
+      "Pop",
+      "Rock",
+      "Electronic",
+      "Jazz",
+      "Classical",
+      "Hip-Hop",
+      "Country",
+      "R&B",
+    ],
     pricing: {
       monthly: 12.99,
       displayPrice: "$12.99/month",
@@ -179,7 +190,16 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
       wav: true,
       flac: true,
     },
-    genres: ["Pop", "Rock", "Electronic", "Jazz", "Classical", "Hip-Hop", "Country", "R&B"],
+    genres: [
+      "Pop",
+      "Rock",
+      "Electronic",
+      "Jazz",
+      "Classical",
+      "Hip-Hop",
+      "Country",
+      "R&B",
+    ],
     pricing: {
       monthly: 39.99,
       displayPrice: "$39.99/month",
@@ -188,13 +208,16 @@ export const PLAN_LIMITS: Record<string, PlanLimits> = {
 };
 
 export class PricingService {
-  async checkUsageLimit(userId: string): Promise<{ canCreate: boolean; reason?: string }> {
+  async checkUsageLimit(
+    userId: string,
+  ): Promise<{ canCreate: boolean; reason?: string }> {
     const user = await storage.getUser(userId);
     if (!user) {
       return { canCreate: false, reason: "User not found" };
     }
 
-    const planLimits = PLAN_LIMITS[(user.plan as keyof typeof PLAN_LIMITS) || 'free'];
+    const planLimits =
+      PLAN_LIMITS[(user.plan as keyof typeof PLAN_LIMITS) || "free"];
     if (!planLimits) {
       return { canCreate: false, reason: "Invalid plan" };
     }
@@ -209,9 +232,9 @@ export class PricingService {
 
     // Check monthly limit
     if ((user.songsThisMonth || 0) >= planLimits.songsPerMonth) {
-      return { 
-        canCreate: false, 
-        reason: `Monthly limit reached (${planLimits.songsPerMonth} songs per month on ${user.plan} plan)` 
+      return {
+        canCreate: false,
+        reason: `Monthly limit reached (${planLimits.songsPerMonth} songs per month on ${user.plan} plan)`,
       };
     }
 
@@ -229,10 +252,15 @@ export class PricingService {
 
   async resetMonthlyUsageIfNeeded(user: User): Promise<void> {
     const now = new Date();
-    const lastReset = user.lastUsageReset ? new Date(user.lastUsageReset) : new Date(0);
+    const lastReset = user.lastUsageReset
+      ? new Date(user.lastUsageReset)
+      : new Date(0);
 
     // Check if it's a new month
-    if (now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear()) {
+    if (
+      now.getMonth() !== lastReset.getMonth() ||
+      now.getFullYear() !== lastReset.getFullYear()
+    ) {
       await storage.updateUser(user.id, {
         songsThisMonth: 0,
         lastUsageReset: now,
@@ -240,7 +268,10 @@ export class PricingService {
     }
   }
 
-  hasFeatureAccess(userPlan: string, feature: keyof PlanLimits['features']): boolean {
+  hasFeatureAccess(
+    userPlan: string,
+    feature: keyof PlanLimits["features"],
+  ): boolean {
     const planLimits = PLAN_LIMITS[userPlan];
     return planLimits?.features[feature] || false;
   }
@@ -285,16 +316,31 @@ export class PricingService {
     };
 
     // Special cases for specific features
-    if (requiredFeature === "voiceCloning" || requiredFeature === "textToSpeech") {
+    if (
+      requiredFeature === "voiceCloning" ||
+      requiredFeature === "textToSpeech"
+    ) {
       return "Voice features are available starting with Basic plan ($6.99/month) - includes voice cloning and text-to-speech";
     }
-    if (requiredFeature === "analytics" || requiredFeature === "versionControl" || requiredFeature === "collaboration") {
+    if (
+      requiredFeature === "analytics" ||
+      requiredFeature === "versionControl" ||
+      requiredFeature === "collaboration"
+    ) {
       return "Advanced tools are available with Free plan - includes unlimited songs, analytics, version control, and collaboration";
     }
-    if (requiredFeature === "realTimeCollaboration" || requiredFeature === "musicTheoryTools" || requiredFeature === "socialFeatures") {
+    if (
+      requiredFeature === "realTimeCollaboration" ||
+      requiredFeature === "musicTheoryTools" ||
+      requiredFeature === "socialFeatures"
+    ) {
       return "Professional features are available with Free plan ($0/month) - includes real-time collaboration, music theory tools, and social features";
     }
-    if (requiredFeature === "commercialUse" || requiredFeature === "prioritySupport" || requiredFeature === "apiAccess") {
+    if (
+      requiredFeature === "commercialUse" ||
+      requiredFeature === "prioritySupport" ||
+      requiredFeature === "apiAccess"
+    ) {
       return "Business features are available with Enterprise plan ($39.99/month) - includes commercial use license, priority support, and API access";
     }
 
@@ -304,58 +350,63 @@ export class PricingService {
   async generateCommercialLicense(options: {
     songTitle: string;
     userId: string;
-    tier: 'base' | 'top';
+    tier: "base" | "top";
     userEmail?: string;
-    format?: 'txt' | 'pdf' | 'both';
+    format?: "txt" | "pdf" | "both";
   }): Promise<{ textPath?: string; pdfPath?: string; licenseId: string }> {
-    const { songTitle, userId, tier, userEmail, format = 'both' } = options;
-    
+    const { songTitle, userId, tier, userEmail, format = "both" } = options;
+
     const user = await storage.getUser(userId);
-    const email = userEmail || user?.email || 'user@example.com';
-    
+    const email = userEmail || user?.email || "user@example.com";
+
     const licenseId = `BBX-${Math.random().toString(36).slice(2, 6).toUpperCase()}-${Date.now()}`;
-    
-    const result: { textPath?: string; pdfPath?: string; licenseId: string } = { licenseId };
-    
-    if (format === 'txt' || format === 'both') {
+
+    const result: { textPath?: string; pdfPath?: string; licenseId: string } = {
+      licenseId,
+    };
+
+    if (format === "txt" || format === "both") {
       result.textPath = generateLicense({
         songTitle,
         userId,
         licenseId,
         tier,
-        userEmail: email
+        userEmail: email,
       });
     }
-    
-    if (format === 'pdf' || format === 'both') {
+
+    if (format === "pdf" || format === "both") {
       result.pdfPath = createPDFLicense({
         songTitle,
         userId,
         licenseId,
         tier,
-        userEmail: email
+        userEmail: email,
       });
     }
-    
+
     // Store license info in database for verification
     await this.storeLicenseInfo(licenseId, {
       songTitle,
       userId,
       tier,
       userEmail: email,
-      issuedAt: new Date()
+      issuedAt: new Date(),
     });
-    
+
     return result;
   }
 
-  private async storeLicenseInfo(licenseId: string, info: {
-    songTitle: string;
-    userId: string;
-    tier: 'base' | 'top';
-    userEmail: string;
-    issuedAt: Date;
-  }): Promise<void> {
+  private async storeLicenseInfo(
+    licenseId: string,
+    info: {
+      songTitle: string;
+      userId: string;
+      tier: "base" | "top";
+      userEmail: string;
+      issuedAt: Date;
+    },
+  ): Promise<void> {
     // In a real implementation, you would store this in your database
     // For now, we'll just log it
     console.log(`📄 License ${licenseId} stored:`, info);
@@ -371,7 +422,10 @@ export class PricingService {
     return PLAN_LIMITS;
   }
 
-  checkLimitations(planType: string, currentUsage: { songsGenerated: number; storageUsed: number }) {
+  checkLimitations(
+    planType: string,
+    currentUsage: { songsGenerated: number; storageUsed: number },
+  ) {
     const planLimits = PLAN_LIMITS[planType];
     if (!planLimits) {
       return { error: "Invalid plan type" };
@@ -379,12 +433,15 @@ export class PricingService {
 
     return {
       songsPerMonth: planLimits.songsPerMonth,
-      songsRemaining: planLimits.songsPerMonth === -1 ? -1 : Math.max(0, planLimits.songsPerMonth - currentUsage.songsGenerated),
+      songsRemaining:
+        planLimits.songsPerMonth === -1
+          ? -1
+          : Math.max(0, planLimits.songsPerMonth - currentUsage.songsGenerated),
       storageLimit: planLimits.storage,
       storageUsed: currentUsage.storageUsed,
       features: planLimits.features,
       audioQuality: planLimits.audioQuality,
-      genres: planLimits.genres
+      genres: planLimits.genres,
     };
   }
 }
