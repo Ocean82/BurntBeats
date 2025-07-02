@@ -1,4 +1,3 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import BurntBeatsEnhancedComplete from './components/BurntBeatsEnhancedComplete';
 import { Toaster } from '@/components/ui/toaster';
@@ -8,14 +7,10 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <div className="App">
-          <Routes>
-            <Route path="/" element={<BurntBeatsEnhancedComplete />} />
-          </Routes>
-          <Toaster />
-        </div>
-      </Router>
+      <div className="App">
+        <BurntBeatsEnhancedComplete />
+        <Toaster />
+      </div>
     </QueryClientProvider>
   );
 }

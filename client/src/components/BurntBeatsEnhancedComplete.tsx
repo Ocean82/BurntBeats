@@ -251,17 +251,21 @@ export default function BurntBeatsEnhancedComplete() {
 
           {/* Song Library Tab */}
           <TabsContent value="library">
-            <SongLibrary songs={songs} />
+            <SongLibrary userId={user?.id || 1} onEditSong={(song) => console.log('Edit song:', song)} />
           </TabsContent>
 
           {/* Analytics Tab */}
           <TabsContent value="analytics">
-            <AnalyticsDashboard />
+            <AnalyticsDashboard userPlan="free" onUpgrade={() => console.log('Upgrade clicked')} />
           </TabsContent>
 
           {/* Collaboration Tab */}
           <TabsContent value="collaborate">
-            <CollaborativeWorkspace />
+            <CollaborativeWorkspace 
+              song={currentSong} 
+              currentUser={user || { id: 1, username: 'Demo User' }} 
+              onSongUpdate={(updatedSong) => setCurrentSong(updatedSong)} 
+            />
           </TabsContent>
 
           {/* Version Control Tab */}

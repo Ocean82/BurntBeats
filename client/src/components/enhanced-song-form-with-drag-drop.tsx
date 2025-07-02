@@ -39,6 +39,8 @@ export default function EnhancedSongFormWithDragDrop({ onSubmit, isGenerating = 
     melody: { volume: 85, muted: false },
   });
 
+  type StemKey = keyof typeof stems;
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const genres = [
@@ -393,47 +395,50 @@ export default function EnhancedSongFormWithDragDrop({ onSubmit, isGenerating = 
               
               {showMixer && (
                 <CardContent className="space-y-4">
-                  {Object.entries(stems).map(([stem, settings]) => (
-                    <div key={stem} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-white capitalize font-medium">{stem}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
+                  {Object.entries(stems).map(([stem, settings]) => {
+                    const stemKey = stem as StemKey;
+                    return (
+                      <div key={stem} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-white capitalize font-medium">{stem}</span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              setStems(prev => ({
+                                ...prev,
+                                [stemKey]: { ...prev[stemKey], muted: !prev[stemKey].muted }
+                              }))
+                            }
+                            className={cn(
+                              "text-xs",
+                              settings.muted ? "text-red-400" : "text-green-400"
+                            )}
+                          >
+                            {settings.muted ? 'Muted' : 'Active'}
+                          </Button>
+                        </div>
+                        <Slider
+                          value={[settings.volume]}
+                          onValueChange={([value]) =>
                             setStems(prev => ({
                               ...prev,
-                              [stem]: { ...prev[stem], muted: !prev[stem].muted }
+                              [stemKey]: { ...prev[stemKey], volume: value }
                             }))
                           }
-                          className={cn(
-                            "text-xs",
-                            settings.muted ? "text-red-400" : "text-green-400"
-                          )}
-                        >
-                          {settings.muted ? 'Muted' : 'Active'}
-                        </Button>
+                          min={0}
+                          max={100}
+                          step={1}
+                          className="w-full"
+                          disabled={settings.muted}
+                        />
+                        <div className="text-right text-xs text-gray-400">
+                          {settings.volume}%
+                        </div>
                       </div>
-                      <Slider
-                        value={[settings.volume]}
-                        onValueChange={([value]) =>
-                          setStems(prev => ({
-                            ...prev,
-                            [stem]: { ...prev[stem], volume: value }
-                          }))
-                        }
-                        min={0}
-                        max={100}
-                        step={1}
-                        className="w-full"
-                        disabled={settings.muted}
-                      />
-                      <div className="text-right text-xs text-gray-400">
-                        {settings.volume}%
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </CardContent>
               )}
             </Card>
