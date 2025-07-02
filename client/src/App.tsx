@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import BurntBeatsComplete from './components/BurntBeatsComplete';
+import BurntBeatsEnhancedComplete from './components/BurntBeatsEnhancedComplete';
 import { Toaster } from '@/components/ui/toaster';
 
 const queryClient = new QueryClient();
@@ -11,7 +11,7 @@ function App() {
       <Router>
         <div className="App">
           <Routes>
-            <Route path="/" element={<BurntBeatsComplete />} />
+            <Route path="/" element={<BurntBeatsEnhancedComplete />} />
           </Routes>
           <Toaster />
         </div>
