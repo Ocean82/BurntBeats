@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import EnhancedSongFormWithDragDrop from './enhanced-song-form-with-drag-drop';
 import EnhancedSassyAIChat from './enhanced-sassy-ai-chat';
 import LogoSelector from './logo-selector';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/contexts/auth-context';
 
 // Import existing components for other tabs
 import SongLibrary from './song-library';
