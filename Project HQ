@@ -1,0 +1,69 @@
+🏠 Burnt Beats – Project HQ
+
+“No subscriptions. No tokens. Just you and the beat.”  
+Own your music. Build your vibe. No gatekeeping here.
+
+---
+
+🎯 What is Burnt Beats?
+
+Burnt Beats is an AI-powered music generation platform that lets anyone create original, fully ownable songs using custom voices, vibe settings, and beat structure tools.
+
+- 🎙️ Custom vocals (male, female, genre-based)
+- 🎛️ Mood + tempo + structure control
+- 💿 Pay-per-download based on file size (no subscriptions)
+- 🔓 Licensing that puts creators first: use it, sell it, or just vibe to it
+
+---
+
+💸 Download Tiers & Pricing
+
+| 🔥 Tier          | 💾 File Size | 🎧 Format         | 💵 Price |
+|------------------|--------------|-------------------|----------|
+| Bonus Track       | Demo-quality | MP3               | $0.99    |
+| Base Song         | < 9MB        | High-Quality MP3  | $1.99    |
+| Premium Song      | 9–20MB       | MP3 + WAV         | $4.99    |
+| Ultra Song        | > 20MB       | All Formats       | $8.99    |
+| Full License      | N/A          | Ownership Rights  | $10.00   |
+
+💡 Want it free? You can preview everything watermarked before committing.
+
+---
+
+🧠 How Burnt Beats Talks (Voice Guide)
+
+We’re not a startup in a suit. We’re a music generator with opinions, grit, and late-night energy.
+
+| 🎙️ Trait          | 💬 Example                                           |
+|-------------------|------------------------------------------------------|
+| Witty Banter       | “At least no one’s going to hear that one but you.” |
+| Rebel Voice        | “We don’t take a cut of your work.”                 |
+| No-Nonsense        | “Okay, maybe someone will be proud of you now.”     |
+
+📣 Signature Sayings:
+- “Drop fire.”  
+- “No gatekeeping.”  
+- “Burnt T-shirts and other flammable merch coming soon.”
+
+---
+
+🛠️ Want to Contribute?
+
+Whether you're a dev, designer, or sound nerd:
+
+- GitHub Repo: `github.com/burntbeats`
+- Voice Guide: `BRAND_VOICE.md`
+- Business Summary: `BUSINESS_SUMMARY.md`
+- Pricing Logic: `PRICING_TIERS.md`
+- Stack: Next.js, Drizzle, Supabase, Stripe, Replit
+
+DM @burntbeats or fork the repo. We ship weird, beautiful things around here.
+
+---
+
+🗺️ Upcoming Features
+
+- 🎤 Upload your own voice model
+- 🎛️ In-app remix tools + multi-track layering
+- 🏆 Contests for “Top 10 Songs of the Month”
+- 📡 API licensing (for external tools or brands)
