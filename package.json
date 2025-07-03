@@ -142,6 +142,7 @@
     "esbuild": "^0.25.0",
     "glob": "^11.0.3",
     "jest": "^30.0.2",
+    "jest-environment-jsdom": "^30.0.4",
     "jsdom": "^26.1.0",
     "playwright": "^1.53.1",
     "postcss": "^8.4.47",
