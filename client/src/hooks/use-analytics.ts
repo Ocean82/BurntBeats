@@ -43,6 +43,10 @@ export const useAnalytics = ({ userId, enabled = true }: UseAnalyticsProps) => {
     },
     enabled: enabled && !!userId,
     staleTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 15 * 60 * 1000, // 15 minutes
+    refetchInterval: 30 * 60 * 1000, // Auto-refresh every 30 minutes
+    retry: 2,
+    retryDelay: 5000, // 5 second delay between retries
   });
 
   // Track event mutation

@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { useErrorHandler } from '@/hooks/use-error-handler';
@@ -114,27 +113,57 @@ export const useSongs = ({ userId, enabled = true }: UseSongsProps) => {
       .slice(0, limit);
   };
 
+  const generateSongMutation = useMutation({
+    mutationFn: async (songData: any) => {
+      // Extended timeout for song generation (5 minutes)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000);
+
+      try {
+        const response = await fetch('/api/generate-song', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(songData),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error('Generation failed');
+        return response.json();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
+    },
+    
+    onError: (error) => {
+      handleError(error as Error, 'Generation failed');
+    },
+  });
+
   return {
     // Data
     songs,
     isLoading,
     error,
-    
+
     // Actions
     getSong,
     refetch,
     deleteSong: deleteSongMutation.mutate,
     updateSong: updateSongMutation.mutate,
     toggleFavorite: toggleFavoriteMutation.mutate,
-    
+    generateSong: generateSongMutation.mutate,
+
     // Derived data
     getSongsByStatus,
     getFavoriteSongs,
     getRecentSongs,
-    
+
     // Status
     isDeleting: deleteSongMutation.isPending,
     isUpdating: updateSongMutation.isPending,
     isToggling: toggleFavoriteMutation.isPending,
+    isGenerating: generateSongMutation.isPending,
   };
 };

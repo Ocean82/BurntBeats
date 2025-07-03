@@ -1,4 +1,3 @@
-
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useCallback } from 'react';
 import { useToast } from './use-toast';
@@ -32,7 +31,7 @@ interface VoiceCloneProgress {
 
 const apiRequest = async (method: string, url: string, data?: any, isFormData = false) => {
   const headers: Record<string, string> = {};
-  
+
   if (!isFormData) {
     headers['Content-Type'] = 'application/json';
   }
@@ -75,12 +74,12 @@ export const useVoiceCloning = () => {
 
       const response = await apiRequest('POST', '/api/voice/clone', formData, true);
       const result = await response.json();
-      
+
       // Start polling for progress
       if (result.id) {
         pollCloningProgress(result.id);
       }
-      
+
       return result;
     },
     onSuccess: (data) => {
@@ -104,18 +103,18 @@ export const useVoiceCloning = () => {
       try {
         const response = await apiRequest('GET', `/api/voice/clone/${voiceId}/progress`);
         const progress: VoiceCloneProgress = await response.json();
-        
+
         setCloningProgress(progress.progress);
         setCloningStage(progress.stage);
-        
+
         if (progress.progress >= 100) {
           clearInterval(pollInterval);
           setIsCloning(false);
-          
+
           // Refresh voice clone data
           queryClient.invalidateQueries({ queryKey: ['voice-clones'] });
           queryClient.invalidateQueries({ queryKey: ['voice-clone', voiceId] });
-          
+
           toast({
             title: "Voice clone ready!",
             description: "Your voice has been successfully cloned and is ready to use.",
@@ -174,9 +173,19 @@ export const useVoiceCloning = () => {
 
   // Test voice clone mutation
   const testVoiceCloneMutation = useMutation({
-    mutationFn: async ({ voiceId, text }: { voiceId: string; text: string }) => {
-      const response = await apiRequest('POST', `/api/voice/clone/${voiceId}/test`, { text });
-      return response.json();
+    mutationFn: async ({ text, voiceId }: { text: string; voiceId: string }) => {
+      // Voice synthesis timeout (2 minutes)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000);
+
+      try {
+        const response = await apiRequest('POST', `/api/voice/clone/${voiceId}/test`, { text });
+        clearTimeout(timeoutId);
+        return response.json();
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({

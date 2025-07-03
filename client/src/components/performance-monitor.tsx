@@ -23,11 +23,11 @@ export function PerformanceMonitor() {
     if (process.env.NODE_ENV === 'development') {
       interval = setInterval(() => {
         measurePerformance();
-      }, 10000); // Every 10 seconds in development
+      }, 5000); // Every 5 seconds in development
     } else {
       interval = setInterval(() => {
         measurePerformance();
-      }, 60000); // Every minute in production
+      }, 30000); // Every 30 seconds in production
     }
 
     return () => clearInterval(interval);
@@ -37,11 +37,17 @@ export function PerformanceMonitor() {
     const startTime = performance.now();
     
     try {
-      // Measure connection latency
+      // Measure connection latency with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for health check
+
       const response = await fetch('/api/health', { 
         method: 'HEAD',
-        cache: 'no-cache'
+        cache: 'no-cache',
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       const latency = performance.now() - startTime;
 
       // Get memory usage if available
