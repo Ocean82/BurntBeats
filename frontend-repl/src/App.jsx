@@ -11,8 +11,8 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState('voice-clone');
   
-  // Replace with your backend Repl URL
-  const BACKEND_URL = "https://your-backend-username.backend-repl-name.repl.co";
+  // Backend URL for local development
+  const BACKEND_URL = "http://0.0.0.0:5000";
 
   const handleUpload = async () => {
     if (!file) return;
