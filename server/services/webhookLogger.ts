@@ -1,4 +1,3 @@
-
 import Stripe from 'stripe';
 import { Logger } from '../utils/logger';
 

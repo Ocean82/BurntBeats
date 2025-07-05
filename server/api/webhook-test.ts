@@ -1,4 +1,3 @@
-
 import { Router, Request, Response, NextFunction } from 'express';
 import Stripe from 'stripe';
 import crypto from 'crypto';
@@ -84,7 +83,7 @@ router.post('/webhook/stripe',
     try {
       const signature = req.headers['stripe-signature'];
       const payload = req.body;
-      
+
       if (!signature) {
         webhookLogger.logSecurityEvent({
           type: 'missing_signature',
@@ -99,7 +98,7 @@ router.post('/webhook/stripe',
 
       // Verify and parse the event with enhanced validation
       let event: Stripe.Event;
-      
+
       if (env.STRIPE_WEBHOOK_SECRET) {
         event = stripe.webhooks.constructEvent(
           payload,
@@ -171,7 +170,7 @@ router.post('/webhook/stripe',
 // Centralized error handling
 router.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   const errorId = crypto.randomUUID();
-  
+
   webhookLogger.logError({
     error: err,
     context: {

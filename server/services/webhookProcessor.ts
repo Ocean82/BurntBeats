@@ -1,4 +1,3 @@
-
 import Stripe from 'stripe';
 import { WebhookEventLogger } from './webhookLogger';
 import { EventQueue } from '../queues/eventQueue';
@@ -114,10 +113,10 @@ export class WebhookEventProcessor {
     if (clientReferenceId) {
       // Parse the client reference ID to get purchase details
       const [songId, tier, songTitle] = clientReferenceId.split('_');
-      
+
       console.log(`Payment completed for song ${songId}, tier ${tier}`);
       console.log(`Customer email: ${session.customer_details?.email}`);
-      
+
       // Store purchase record in database (implement based on your storage system)
       // await this.storePurchaseRecord({...});
     }
