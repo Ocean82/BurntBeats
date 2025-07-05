@@ -42,6 +42,10 @@ args = "nodejs"
 [[workflows.workflow.tasks]]
 task = "packager.installForAll"
 
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
 [[workflows.workflow]]
 name = "Production Server"
 author = 41134091

@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
+import { Logger } from '../utils/logger';
+import { WebhookHealthService } from '../services/webhook-health-service';
 import fs from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import { exec } from 'child_process';
 import os from 'os';
 import { env } from '../config/env';
-import { Logger } from '../utils/logger';
 import { DatabaseHealthChecker } from '../services/databaseHealthChecker';
 import { ExternalServiceHealthChecker } from '../services/externalServiceHealthChecker';
 import { rateLimiter } from '../middleware/rateLimiter';
@@ -127,6 +128,9 @@ export class HealthAPI {
       const totalMemory = os.totalmem();
       const memoryUsage = ((totalMemory - freeMemory) / totalMemory) * 100;
 
+      const webhookHealthService = new WebhookHealthService();
+      const webhookHealth = await webhookHealthService.checkWebhookHealth();
+
       const status = {
         status: "ok",
         timestamp: new Date().toISOString(),
@@ -176,6 +180,7 @@ export class HealthAPI {
         },
         environment: env.NODE_ENV,
         requestId,
+        webhooks: webhookHealth,
       };
 
       logger.info('System status check completed', { requestId });
@@ -183,7 +188,10 @@ export class HealthAPI {
       const [seconds, nanoseconds] = process.hrtime(startTime);
       const responseTime = `${seconds}.${nanoseconds.toString().padStart(9, '0')}s`;
 
-      res.json({
+      const isHealthy = webhookHealth.status === 'healthy';
+      const statusCode = isHealthy ? 200 : 503;
+
+      res.status(statusCode).json({
         ...status,
         responseTime,
       });

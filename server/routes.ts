@@ -124,7 +124,7 @@ export async function registerRoutes(app: express.Application): Promise<void> {
   app.get("/api/auth/check-username/:username", AuthAPI.checkUsername);
   app.post("/api/auth/accept-agreement", AuthAPI.acceptAgreement);
   app.get("/api/auth/get-ip", AuthAPI.getIpAddress);
-  
+
   // Legacy admin login for backwards compatibility
   app.post("/api/auth/admin-login", AuthAPI.adminLogin);
 
@@ -405,8 +405,7 @@ Taking over, making vows`
                 tier: feedbackData.purchaseTier,
                 purchaseDate: feedbackData.generatedAt,
                 aiScore: feedbackData.analysis.overallScore,
-                mood: feedbackData.analysis.mood,
-                genre: feedbackData.analysis.genre
+                mood: feedbackData.analysis.genre
               });
             }
           }
@@ -663,7 +662,7 @@ Taking over, making vows`
       try {
         const { AdvancedAIMusicService } = await import("./services/advanced-ai-music-service");
         const aiService = AdvancedAIMusicService.getInstance();
-        
+
         const options = {
           ...req.body,
           userId: req.user!.id,
@@ -671,9 +670,9 @@ Taking over, making vows`
           complexityLevel: req.body.complexityLevel || 'medium',
           outputFormat: req.body.outputFormat || 'both'
         };
-        
+
         const result = await aiService.generateAdvancedMusic(options);
-        
+
         if (result.success) {
           // Store in database
           const song = await storage.createSong({
@@ -685,7 +684,7 @@ Taking over, making vows`
             aiInsights: result.aiInsights,
             status: 'completed'
           });
-          
+
           res.json({
             success: true,
             song,
@@ -1135,12 +1134,17 @@ Taking over, making vows`
     app.use('/api/voice-bank', voiceBankRouter.default);
 
     // Voice Processing API routes
-    app.use('/api/voice-processing', voiceProcessingRouter.default);
+  app.use('/api/voice-processing', voiceProcessingRouter.default);
 
-    // Melody Preview API routes
-    app.use('/api/melody-preview', melodyPreviewRouter.default);
+  // Melody Preview API routes
+  app.use('/api/melody-preview', melodyPreviewRouter.default);
+
+  // Pipeline API routes
+  try {
+    const pipelineRouter = await import('./api/pipeline-api');
+    app.use('/api/pipeline', pipelineRouter.default);
   } catch (error) {
-    console.warn('⚠️  Some voice/melody APIs not available:', error);
+    console.warn('⚠️  Pipeline API not available:', error);
   }
 
   console.log('✅ All routes registered successfully');
