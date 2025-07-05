@@ -1,14 +1,11 @@
-# Deploy configuration for Burnt Beats Application
-
-# Entry point for the application
-entrypoint = "main.py"
 
 # Command to start the Node.js app
 externalPortCommand = "nvm start"
-modules = ["nodejs-20", "postgresql-16", "python-3.11"]
+modules = ["nodejs-18", "python-3.11", "web", "gcloud", "nodejs-23", "python-3.9", "pyright"]
 
 # Local port configuration
 localPort = 5000
+run = "main"
 
 [[ports]]
 localPort = 3000
@@ -28,7 +25,7 @@ externalPort = 8080
 
 [nix]
 channel = "stable-24_05"
-packages = ["run"]
+packages = ["run", "python312Packages.rpm", "autorestic"]
 
 [workflows]
 runButton = "Development Server"
@@ -73,9 +70,8 @@ task = "shell.exec"
 args = "npm run db:migrate"
 
 [deployment]
-run = ["sh", "-c", "npm start"]
+run = ["sh", "-c", "main"]
 deploymentTarget = "autoscale"
-build = ["sh", "-c", "node deploy-production-fix.cjs"]
 
 [env]
 NODE_ENV = "production"
