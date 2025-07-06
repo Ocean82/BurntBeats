@@ -30,6 +30,7 @@ export const env = {
 
   // Stripe
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY as string,
+  STRIPE_PUBLIC_KEY: process.env.VITE_STRIPE_PUBLIC_KEY || '',
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || '',
   STRIPE_WHITELISTED_IPS: parseWhitelistedIps(process.env.STRIPE_WHITELISTED_IPS),
 

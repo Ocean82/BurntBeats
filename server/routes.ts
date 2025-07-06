@@ -832,7 +832,7 @@ Taking over, making vows`
         const start = parseInt(parts[0], 10);
         const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
         const chunksize = (end - start) + 1;
-        const file = fs.createReadStream(previewPath, { start, end });
+const file = fs.createReadStream(previewPath, { start, end });
         const head = {
           'Content-Range': `bytes ${start}-${end}/${fileSize}`,
           'Accept-Ranges': 'bytes',
@@ -1149,3 +1149,4 @@ Taking over, making vows`
 
   console.log('✅ All routes registered successfully');
 }
+// Integrate Stripe secrets and payment system hooks for launch.
