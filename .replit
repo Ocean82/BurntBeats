@@ -74,8 +74,9 @@ task = "shell.exec"
 args = "npm run db:migrate"
 
 [deployment]
-run = ["sh", "-c", "main"]
+run = ["sh", "-c", "npm start"]
 deploymentTarget = "autoscale"
+build = ["sh", "-c", "npm run build"]
 
 [env]
 NODE_ENV = "production"

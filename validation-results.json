@@ -1,0 +1,73 @@
+{
+  "timestamp": "2025-07-05T15:34:50.657Z",
+  "overall": false,
+  "passed": 10,
+  "total": 15,
+  "details": [
+    {
+      "test": "Database Connection",
+      "status": "FAIL",
+      "error": "connect ECONNREFUSED 127.0.0.1:5432"
+    },
+    {
+      "test": "Health Check",
+      "status": "FAIL",
+      "error": "connect ECONNREFUSED 127.0.0.1:5000"
+    },
+    {
+      "test": "Business Profile",
+      "status": "FAIL",
+      "error": "connect ECONNREFUSED 127.0.0.1:5000"
+    },
+    {
+      "test": "System Status",
+      "status": "FAIL",
+      "error": "connect ECONNREFUSED 127.0.0.1:5000"
+    },
+    {
+      "test": "Homepage",
+      "status": "FAIL",
+      "error": "connect ECONNREFUSED 127.0.0.1:5000"
+    },
+    {
+      "test": "File server/index.ts",
+      "status": "PASS"
+    },
+    {
+      "test": "File server/routes.ts",
+      "status": "PASS"
+    },
+    {
+      "test": "File server/middleware/auth.ts",
+      "status": "PASS"
+    },
+    {
+      "test": "File server/storage.ts",
+      "status": "PASS"
+    },
+    {
+      "test": "File shared/schema.ts",
+      "status": "PASS"
+    },
+    {
+      "test": "File package.json",
+      "status": "PASS"
+    },
+    {
+      "test": "Auth authenticate",
+      "status": "PASS"
+    },
+    {
+      "test": "Auth authorizeOwnership",
+      "status": "PASS"
+    },
+    {
+      "test": "Auth rateLimitByPlan",
+      "status": "PASS"
+    },
+    {
+      "test": "Music Generation",
+      "status": "PASS"
+    }
+  ]
+}
