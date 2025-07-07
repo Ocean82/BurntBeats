@@ -862,6 +862,10 @@ Taking over, making vows`
     VoiceAPI.cloneVoice
   );
 
+  // RVC Voice Conversion API Routes
+  const rvcRouter = await import("./api/rvc-api");
+  app.use("/api/rvc", rvcRouter.default);
+
   // Text-to-Speech API Routes
   app.post("/api/tts/generate", 
     authenticate, 
