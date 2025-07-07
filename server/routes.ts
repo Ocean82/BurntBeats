@@ -184,7 +184,7 @@ Taking over, making vows`
       const feedbackPath = path.join(process.cwd(), 'uploads/feedback', `${songId}_feedback.json`);
 
       try {
-        const feedbackData = await fs.readFile(feedbackPath, 'utf8');
+        const feedbackData = await await fs.readFile(feedbackPath, 'utf8');
         const feedback = JSON.parse(feedbackData);
         res.json(feedback);
       } catch (error) {
@@ -1137,19 +1137,20 @@ const file = fs.createReadStream(previewPath, { start, end });
     app.use('/api/voice-bank', voiceBankRouter.default);
 
     // Voice Processing API routes
-  app.use('/api/voice-processing', voiceProcessingRouter.default);
+    app.use('/api/voice-processing', voiceProcessingRouter.default);
 
-  // Melody Preview API routes
-  app.use('/api/melody-preview', melodyPreviewRouter.default);
+    // Melody Preview API routes
+    app.use('/api/melody-preview', melodyPreviewRouter.default);
 
-  // Pipeline API routes
-  try {
-    const pipelineRouter = await import('./api/pipeline-api');
-    app.use('/api/pipeline', pipelineRouter.default);
-  } catch (error) {
-    console.warn('⚠️  Pipeline API not available:', error);
-  }
+    // Pipeline API routes
+    try {
+      const pipelineRouter = await import('./api/pipeline-api');
+      app.use('/api/pipeline', pipelineRouter.default);
+    } catch (error) {
+      console.warn('⚠️  Pipeline API not available:', error);
+    }
+
+    // Integrate Stripe secrets and payment system hooks for launch.
 
   console.log('✅ All routes registered successfully');
 }
-// Integrate Stripe secrets and payment system hooks for launch.
