@@ -28,10 +28,12 @@ export function RVCMusicGenerator({ onGenerate }: RVCMusicGeneratorProps) {
   });
   
   const [voiceModel, setVoiceModel] = useState<File | null>(null);
+  const [midiFile, setMidiFile] = useState<File | null>(null);
+  const [midiAnalysis, setMidiAnalysis] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<any>(null);
-  const [mode, setMode] = useState<'complete' | 'instrumental' | 'convert'>('complete');
+  const [mode, setMode] = useState<'complete' | 'instrumental' | 'convert' | 'midi'>('complete');
   
   const { toast } = useToast();
 
@@ -52,6 +54,51 @@ export function RVCMusicGenerator({ onGenerate }: RVCMusicGeneratorProps) {
         toast({
           title: "Invalid file type",
           description: "Please upload a .pth voice model file",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [toast]);
+
+  const handleMidiUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.name.endsWith('.mid') || file.name.endsWith('.midi')) {
+        setMidiFile(file);
+        
+        // Analyze MIDI file
+        const formData = new FormData();
+        formData.append('midi_file', file);
+        
+        try {
+          const response = await fetch('/api/rvc-music/process-midi', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            setMidiAnalysis(data.analysis);
+            setFormData(prev => ({
+              ...prev,
+              title: data.analysis.title || prev.title,
+              tempo: data.analysis.tempo || prev.tempo,
+              key: data.analysis.key || prev.key,
+              duration: Math.round(data.analysis.duration) || prev.duration
+            }));
+            
+            toast({
+              title: "MIDI file analyzed",
+              description: `${data.analysis.title} - ${data.analysis.tempo} BPM`,
+            });
+          }
+        } catch (error) {
+          console.error('MIDI analysis error:', error);
+        }
+      } else {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a .mid or .midi file",
           variant: "destructive",
         });
       }
@@ -170,6 +217,7 @@ export function RVCMusicGenerator({ onGenerate }: RVCMusicGeneratorProps) {
                 <SelectItem value="complete">Complete Track (Instrumental + Vocals)</SelectItem>
                 <SelectItem value="instrumental">Instrumental Only</SelectItem>
                 <SelectItem value="convert">Convert Existing Audio</SelectItem>
+                <SelectItem value="midi">MIDI to Vocal</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -266,8 +314,42 @@ export function RVCMusicGenerator({ onGenerate }: RVCMusicGeneratorProps) {
             </div>
           )}
 
+          {/* MIDI File Upload */}
+          {mode === 'midi' && (
+            <div className="space-y-2">
+              <Label htmlFor="midi-file">MIDI File (.mid/.midi)</Label>
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                <input
+                  id="midi-file"
+                  type="file"
+                  accept=".mid,.midi"
+                  onChange={handleMidiUpload}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="midi-file"
+                  className="cursor-pointer flex flex-col items-center gap-2"
+                >
+                  <Music className="w-8 h-8 text-gray-400" />
+                  <span className="text-sm text-gray-600">
+                    {midiFile ? midiFile.name : 'Click to upload MIDI file'}
+                  </span>
+                </label>
+              </div>
+              {midiAnalysis && (
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded">
+                  <p className="text-sm font-medium">MIDI Analysis:</p>
+                  <p className="text-sm">Duration: {Math.round(midiAnalysis.duration)}s</p>
+                  <p className="text-sm">Tempo: {midiAnalysis.tempo} BPM</p>
+                  <p className="text-sm">Key: {midiAnalysis.key}</p>
+                  <p className="text-sm">Tracks: {midiAnalysis.track_count}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Voice Model Upload */}
-          {mode === 'complete' && (
+          {(mode === 'complete' || mode === 'midi') && (
             <div className="space-y-2">
               <Label htmlFor="voice-model">Voice Model (.pth)</Label>
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">

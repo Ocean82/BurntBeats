@@ -1,4 +1,3 @@
-
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
@@ -136,7 +135,7 @@ router.post('/convert-vocals', authenticate, upload.fields([
 ]), async (req, res) => {
   try {
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    
+
     if (!files.audio || !files.voice_model) {
       return res.status(400).json({ error: 'Both audio and voice model files are required' });
     }
@@ -183,24 +182,96 @@ router.post('/convert-vocals', authenticate, upload.fields([
   }
 });
 
+// Process uploaded MIDI file
+router.post('/process-midi', authenticate, upload.single('midi_file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'MIDI file is required' });
+    }
+
+    const midiPath = req.file.path;
+
+    // Analyze MIDI file
+    const analysis = await rvcService.processMIDIFile(midiPath);
+
+    res.json({
+      success: true,
+      analysis,
+      midiPath: path.basename(midiPath),
+      message: 'MIDI file processed successfully'
+    });
+
+  } catch (error) {
+    logger.error('MIDI processing error:', error);
+    res.status(500).json({ error: 'MIDI processing failed' });
+  }
+});
+
+// Convert MIDI to vocal with RVC
+router.post('/midi-to-vocal', authenticate, upload.fields([
+  { name: 'midi_file', maxCount: 1 },
+  { name: 'voice_model', maxCount: 1 }
+]), async (req, res) => {
+  try {
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+    if (!files.midi_file || !files.voice_model) {
+      return res.status(400).json({ error: 'Both MIDI file and voice model are required' });
+    }
+
+    const {
+      lyrics,
+      pitchShift = 0,
+      indexRate = 0.75
+    } = req.body;
+
+    if (!lyrics) {
+      return res.status(400).json({ error: 'Lyrics are required for vocal conversion' });
+    }
+
+    const midiPath = files.midi_file[0].path;
+    const voiceModelPath = files.voice_model[0].path;
+
+    const rvcOptions = {
+      pitchShift: parseInt(pitchShift),
+      indexRate: parseFloat(indexRate)
+    };
+
+    const result = await rvcService.convertMIDIToVocal(
+      midiPath,
+      voiceModelPath,
+      lyrics,
+      rvcOptions
+    );
+
+    // Clean up uploaded files
+    await fs.unlink(midiPath).catch(() => {});
+    await fs.unlink(voiceModelPath).catch(() => {});
+
+    res.json({
+      success: true,
+      outputPath: result,
+      downloadUrl: `/api/rvc-music/download/${path.basename(result)}`,
+      message: 'MIDI to vocal conversion completed successfully'
+    });
+
+  } catch (error) {
+    logger.error('MIDI to vocal conversion error:', error);
+    res.status(500).json({ error: 'MIDI to vocal conversion failed' });
+  }
+});
+
 // Download generated audio
 router.get('/download/:filename', authenticate, async (req, res) => {
   try {
     const filename = req.params.filename;
     const filePath = path.join('uploads', filename);
 
-    const exists = await fs.access(filePath).then(() => true).catch(() => false);
-    
-    if (!exists) {
+    if (!await fs.access(filePath).then(() => true).catch(() => false)) {
       return res.status(404).json({ error: 'File not found' });
     }
 
-    res.setHeader('Content-Type', 'audio/wav');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    
-    const stream = require('fs').createReadStream(filePath);
-    stream.pipe(res);
-
+    res.download(filePath);
   } catch (error) {
     logger.error('Download error:', error);
     res.status(500).json({ error: 'Download failed' });

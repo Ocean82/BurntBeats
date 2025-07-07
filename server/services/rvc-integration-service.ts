@@ -165,6 +165,59 @@ export class RVCIntegrationService {
     }
   }
 
+  async processMIDIFile(midiFilePath: string): Promise<{
+    title: string;
+    duration: number;
+    tempo: number;
+    key: string;
+    trackCount: number;
+  }> {
+    try {
+      return new Promise((resolve, reject) => {
+        const args = [
+          'server/midi-analyzer.py',
+          '--midi_path', midiFilePath,
+          '--analyze_only'
+        ];
+
+        const process = spawn('python', args, {
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        process.stdout.on('data', (data) => {
+          stdout += data.toString();
+        });
+
+        process.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        process.on('close', (code) => {
+          if (code === 0) {
+            try {
+              const analysis = JSON.parse(stdout);
+              resolve(analysis);
+            } catch (e) {
+              reject(new Error(`Failed to parse MIDI analysis: ${e}`));
+            }
+          } else {
+            reject(new Error(`MIDI analysis failed: ${stderr}`));
+          }
+        });
+
+        process.on('error', (error) => {
+          reject(error);
+        });
+      });
+    } catch (error) {
+      logger.error('MIDI file processing failed:', error);
+      throw error;
+    }
+  }
+
   async generateCompleteTrack(
     musicParams: {
       title: string;
