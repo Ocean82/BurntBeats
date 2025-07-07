@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "tsx watch server/index.ts --clear-screen=false",
-    "build": "npm run build:server && npm run build:client",
+    "build": "npm run build:server && vite build",
     "build:server": "tsx build server/index.ts --outdir=dist",
     "build:client": "vite build",
     "build:production": "node deploy-production-fix.cjs",
