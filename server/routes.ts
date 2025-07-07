@@ -857,6 +857,9 @@ const file = fs.createReadStream(previewPath, { start, end });
     }
   });
 
+  // Ensure registerRoutes function is properly closed
+}
+
   // Voice cloning endpoint (authenticated version already exists above)
   app.post("/api/voice/clone", musicGenerationRateLimit, authenticate, validateVoiceInput, VoiceAPI.cloneVoice);
 
