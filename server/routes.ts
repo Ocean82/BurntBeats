@@ -830,5 +830,78 @@ Taking over, making vows`
       if (range) {
         const parts = range.replace(/bytes=/, "").split("-");
         const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(I will apply the provided change to fix the incomplete try-catch block by adding a `finally` block.
-</tool_code>
+        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+        const chunksize = (end - start) + 1;
+
+        res.status(206);
+        res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+        res.setHeader('Content-Length', chunksize);
+
+        const stream = fs.createReadStream(previewPath, { start, end });
+        stream.pipe(res);
+      } else {
+        res.setHeader('Content-Length', fileSize);
+        const stream = fs.createReadStream(previewPath);
+        stream.pipe(res);
+      }
+    } catch (error) {
+      console.error('Audio preview error:', error);
+      res.status(500).json({ success: false, error: 'Failed to generate audio preview' });
+    }
+  });
+
+  // AI Chat API (Burnt-GPT) Routes
+  app.post("/api/ai-chat/completions", aiChatRateLimit, authenticate, validateAIChatInput, AIChatService.handleCompletionRequest);
+  app.post("/api/ai-chat/retry", aiChatRateLimit, authenticate, AIChatService.handleRetryRequest);
+
+  // Voice Cloning API Routes
+  app.post("/api/voice/clone", 
+    authenticate, 
+    validateVoiceInput, 
+    VoiceAPI.cloneVoice
+  );
+
+  // Text-to-Speech API Routes
+  app.post("/api/tts/generate", 
+    authenticate, 
+    validateTTSInput,
+    TextToSpeechService.generateSpeech
+  );
+
+  // Enhanced Voice Pipeline Routes
+  app.post("/api/enhanced-voice/process", 
+    authenticate,
+    validateVoiceInput,
+    EnhancedVoicePipeline.processVoice
+  );
+
+  // Watermark Service API Routes
+  app.post("/api/watermark/apply", 
+    authenticate,
+    VoiceAPI.applyWatermark
+  );
+
+  // Pricing and Plan API Routes
+  app.get("/api/pricing/plans", PricingAPI.getPlans);
+  app.get("/api/pricing/plan/:id", PricingAPI.getPlan);
+
+  // File Upload Route (Example - adjust as needed)
+  const upload = multer({ dest: 'uploads/' });
+  app.post('/api/upload', upload.single('file'), (req: Request, res: Response) => {
+    if (!req.file) {
+      return res.status(400).send('No file uploaded.');
+    }
+    res.send('File uploaded successfully!');
+  });
+
+  // Error handling middleware (must be defined after all routes)
+  app.use(musicErrorHandler);
+  app.use(aiChatErrorHandler);
+
+  // Catch-all route to serve the React app for any other request.
+  app.use(express.static(path.join(__dirname, "../client/dist")));
+  app.get("*", (req: Request, res: Response) => {
+    res.sendFile(path.resolve(__dirname, "../client/dist", "index.html"));
+  });
+}
