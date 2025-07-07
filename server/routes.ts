@@ -56,6 +56,7 @@ import {
 } from './middleware/plan-enforcement';
 import { fileCleanupService } from "./file-cleanup-service";
 import { storage } from './storage';
+import RVCMusicGenerationAPI from "./api/rvc-music-generation-api";
 
 
 // Ensure uploads directory exists

@@ -165,6 +165,185 @@ export class RVCIntegrationService {
     }
   }
 
+  async generateCompleteTrack(
+    musicParams: {
+      title: string;
+      lyrics: string;
+      genre: string;
+      tempo: number;
+      key: string;
+      duration: number;
+    },
+    voiceModelPath: string,
+    options: Partial<RVCConversionOptions> = {}
+  ): Promise<string> {
+    try {
+      // Step 1: Generate instrumental track
+      const instrumentalPath = path.join(process.cwd(), 'uploads', `instrumental_${Date.now()}.wav`);
+      await this.generateInstrumentalTrack(musicParams, instrumentalPath);
+
+      // Step 2: Generate vocal track with RVC
+      const vocalPath = path.join(process.cwd(), 'uploads', `vocal_${Date.now()}.wav`);
+      await this.generateVocalTrack(musicParams.lyrics, voiceModelPath, vocalPath, options);
+
+      // Step 3: Mix instrumental and vocal tracks
+      const finalMixPath = path.join(process.cwd(), 'uploads', `complete_track_${Date.now()}.wav`);
+      await this.mixTracks(instrumentalPath, vocalPath, finalMixPath);
+
+      // Clean up temporary files
+      await fs.unlink(instrumentalPath).catch(() => {});
+      await fs.unlink(vocalPath).catch(() => {});
+
+      return finalMixPath;
+    } catch (error) {
+      logger.error('Complete track generation failed:', error);
+      throw error;
+    }
+  }
+
+  private async generateInstrumentalTrack(
+    musicParams: {
+      title: string;
+      genre: string;
+      tempo: number;
+      key: string;
+      duration: number;
+    },
+    outputPath: string
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const args = [
+        'server/music-generator.py',
+        '--title', musicParams.title,
+        '--genre', musicParams.genre,
+        '--tempo', musicParams.tempo.toString(),
+        '--key', musicParams.key,
+        '--duration', musicParams.duration.toString(),
+        '--output_path', outputPath,
+        '--instrumental_only'
+      ];
+
+      const process = spawn('python', args, {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      let stderr = '';
+
+      process.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      process.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`Instrumental generation failed: ${stderr}`));
+        }
+      });
+
+      process.on('error', (error) => {
+        reject(error);
+      });
+    });
+  }
+
+  private async generateVocalTrack(
+    lyrics: string,
+    voiceModelPath: string,
+    outputPath: string,
+    options: Partial<RVCConversionOptions> = {}
+  ): Promise<void> {
+    // Generate base vocal audio using TTS or simple vocal synthesis
+    const baseTTSPath = path.join(process.cwd(), 'uploads', `base_tts_${Date.now()}.wav`);
+    
+    // Use RVC pipeline for vocal generation
+    await this.generateBaseTTSVocal(lyrics, baseTTSPath);
+    
+    // Apply RVC voice conversion
+    const rvcOptions: RVCConversionOptions = {
+      inputAudioPath: baseTTSPath,
+      outputAudioPath: outputPath,
+      modelPath: voiceModelPath,
+      ...options
+    };
+
+    await this.convertVoice(rvcOptions);
+    
+    // Clean up base TTS file
+    await fs.unlink(baseTTSPath).catch(() => {});
+  }
+
+  private async generateBaseTTSVocal(lyrics: string, outputPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const args = [
+        'server/text-to-speech-service.py',
+        '--text', lyrics,
+        '--output_path', outputPath,
+        '--voice', 'neutral'
+      ];
+
+      const process = spawn('python', args, {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      let stderr = '';
+
+      process.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      process.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`TTS generation failed: ${stderr}`));
+        }
+      });
+
+      process.on('error', (error) => {
+        reject(error);
+      });
+    });
+  }
+
+  private async mixTracks(
+    instrumentalPath: string,
+    vocalPath: string,
+    outputPath: string
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const args = [
+        'ffmpeg',
+        '-i', instrumentalPath,
+        '-i', vocalPath,
+        '-filter_complex', '[0:0][1:0]amix=inputs=2:duration=longest',
+        '-y', outputPath
+      ];
+
+      const process = spawn('ffmpeg', args, {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      let stderr = '';
+
+      process.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      process.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`Track mixing failed: ${stderr}`));
+        }
+      });
+
+      process.on('error', (error) => {
+        reject(error);
+      });
+    });
+  }
+
   private async generateBaseAudioFromMIDI(
     midiPath: string,
     outputPath: string,
