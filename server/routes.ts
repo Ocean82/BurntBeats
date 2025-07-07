@@ -1,6 +1,3 @@
-I will apply the provided change to fix the incomplete try-catch block by adding a `finally` block.
-</tool_code>
-```replit_final_file>
 import express, { type Request, Response, NextFunction } from "express";
 import multer from "multer";
 import path from "path";
