@@ -261,6 +261,119 @@ router.post('/midi-to-vocal', authenticate, upload.fields([
   }
 });
 
+// Get available MIDI templates
+router.get('/midi-templates', authenticate, async (req, res) => {
+  try {
+    const midiFiles = await rvcService.listAvailableMIDIFiles();
+    
+    res.json({
+      success: true,
+      templates: midiFiles,
+      count: midiFiles.length
+    });
+
+  } catch (error) {
+    logger.error('MIDI templates listing error:', error);
+    res.status(500).json({ error: 'Failed to list MIDI templates' });
+  }
+});
+
+// Generate from MIDI template
+router.post('/generate-from-template', authenticate, upload.single('voice_model'), async (req, res) => {
+  try {
+    const {
+      midiTemplate,
+      lyrics,
+      preserveMelody = true,
+      adaptTempo = false,
+      customKey,
+      pitchShift = 0,
+      indexRate = 0.75
+    } = req.body;
+
+    if (!midiTemplate || !lyrics) {
+      return res.status(400).json({ error: 'MIDI template and lyrics are required' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'Voice model file is required' });
+    }
+
+    const voiceModelPath = req.file.path;
+
+    const options = {
+      preserveMelody: preserveMelody === 'true',
+      adaptTempo: adaptTempo === 'true',
+      customKey,
+      pitchShift: parseInt(pitchShift),
+      indexRate: parseFloat(indexRate)
+    };
+
+    const result = await rvcService.generateFromMIDITemplate(
+      midiTemplate,
+      voiceModelPath,
+      lyrics,
+      options
+    );
+
+    // Clean up uploaded voice model
+    await fs.unlink(voiceModelPath).catch(() => {});
+
+    res.json({
+      success: true,
+      outputPath: result,
+      downloadUrl: `/api/rvc-music/download/${path.basename(result)}`,
+      metadata: {
+        sourceTemplate: path.basename(midiTemplate),
+        lyrics,
+        options,
+        generatedWith: 'RVC MIDI Template'
+      }
+    });
+
+  } catch (error) {
+    logger.error('MIDI template generation error:', error);
+    res.status(500).json({ error: 'MIDI template generation failed' });
+  }
+});
+
+// Create melody variation
+router.post('/create-variation', authenticate, async (req, res) => {
+  try {
+    const {
+      originalTemplate,
+      variationStyle = 'jazz'
+    } = req.body;
+
+    if (!originalTemplate) {
+      return res.status(400).json({ error: 'Original MIDI template is required' });
+    }
+
+    const outputPath = path.join('uploads', `variation_${variationStyle}_${Date.now()}.mid`);
+
+    const result = await rvcService.createMelodyVariation(
+      originalTemplate,
+      variationStyle,
+      outputPath
+    );
+
+    res.json({
+      success: true,
+      variationPath: result,
+      downloadUrl: `/api/rvc-music/download/${path.basename(result)}`,
+      metadata: {
+        originalTemplate: path.basename(originalTemplate),
+        style: variationStyle,
+        type: 'melody_variation'
+      }
+    });
+
+  } catch (error) {
+    logger.error('Melody variation error:', error);
+    res.status(500).json({ error: 'Melody variation failed' });
+  }
+});
+
 // Download generated audio
 router.get('/download/:filename', authenticate, async (req, res) => {
   try {

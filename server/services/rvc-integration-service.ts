@@ -529,6 +529,204 @@ export class RVCIntegrationService {
       return [];
     }
   }
+
+  async listAvailableMIDIFiles(): Promise<Array<{ name: string; path: string; title: string }>> {
+    try {
+      const midiPath = path.join(process.cwd(), 'attached_assets');
+      const exists = await fs.access(midiPath).then(() => true).catch(() => false);
+      
+      if (!exists) {
+        return [];
+      }
+
+      const files = await fs.readdir(midiPath);
+      const midiFiles = [];
+
+      for (const file of files) {
+        if (file.endsWith('.mid') || file.endsWith('.midi')) {
+          const fullPath = path.join(midiPath, file);
+          const title = this.extractTitleFromFilename(file);
+          
+          midiFiles.push({
+            name: file,
+            path: fullPath,
+            title: title
+          });
+        }
+      }
+
+      return midiFiles;
+    } catch (error) {
+      logger.error('Failed to list MIDI files:', error);
+      return [];
+    }
+  }
+
+  private extractTitleFromFilename(filename: string): string {
+    // Remove timestamp suffix and extension
+    let title = filename.replace(/(_\d+)?\.(mid|midi)$/i, '');
+    
+    // Convert camelCase and handle special cases
+    const titleMap: { [key: string]: string } = {
+      'EnterSandman': 'Enter Sandman',
+      'FeelGoodInc': 'Feel Good Inc',
+      'Friends': 'Friends',
+      'Gladiator': 'Gladiator Theme',
+      'Godfather': 'The Godfather Theme',
+      'Hallelujah': 'Hallelujah',
+      'InDaClub': 'In Da Club',
+      'IronMan': 'Iron Man',
+      'Someonelikeyouwitlyric': 'Someone Like You',
+      'SuperMarioBrothers': 'Super Mario Brothers',
+      'SweetChildOfMine': 'Sweet Child O\' Mine'
+    };
+
+    return titleMap[title] || title.replace(/([A-Z])/g, ' $1').trim();
+  }
+
+  async generateFromMIDITemplate(
+    midiTemplatePath: string,
+    voiceModelPath: string,
+    lyrics: string,
+    options: {
+      preserveMelody?: boolean;
+      adaptTempo?: boolean;
+      customKey?: string;
+      pitchShift?: number;
+      indexRate?: number;
+    } = {}
+  ): Promise<string> {
+    try {
+      // Step 1: Analyze the MIDI template
+      const midiAnalysis = await this.processMIDIFile(midiTemplatePath);
+      logger.info(`Using MIDI template: ${midiAnalysis.title} - ${midiAnalysis.tempo} BPM, ${midiAnalysis.key}`);
+
+      // Step 2: Generate base audio using MIDI as melodic reference
+      const baseAudioPath = path.join(process.cwd(), 'uploads', `midi_base_${Date.now()}.wav`);
+      await this.generateAudioFromMIDITemplate(midiTemplatePath, lyrics, baseAudioPath, options);
+
+      // Step 3: Apply RVC voice conversion
+      const finalOutputPath = path.join(process.cwd(), 'uploads', `rvc_midi_vocal_${Date.now()}.wav`);
+      
+      const rvcOptions: RVCConversionOptions = {
+        inputAudioPath: baseAudioPath,
+        outputAudioPath: finalOutputPath,
+        modelPath: voiceModelPath,
+        pitchShift: options.pitchShift || 0,
+        indexRate: options.indexRate || 0.75,
+        method: 'rmvpe'
+      };
+
+      const result = await this.convertVoice(rvcOptions);
+
+      // Clean up temporary file
+      await fs.unlink(baseAudioPath).catch(() => {});
+
+      logger.info(`MIDI template conversion completed: ${result}`);
+      return result;
+    } catch (error) {
+      logger.error('MIDI template generation failed:', error);
+      throw error;
+    }
+  }
+
+  private async generateAudioFromMIDITemplate(
+    midiPath: string,
+    lyrics: string,
+    outputPath: string,
+    options: {
+      preserveMelody?: boolean;
+      adaptTempo?: boolean;
+      customKey?: string;
+    } = {}
+  ): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const args = [
+        'server/enhanced-rvc-pipeline.py',
+        '--midi_path', midiPath,
+        '--lyrics', lyrics,
+        '--output_path', outputPath,
+        '--mode', 'melody_template'
+      ];
+
+      if (options.preserveMelody) {
+        args.push('--preserve_melody');
+      }
+
+      if (options.adaptTempo) {
+        args.push('--adapt_tempo');
+      }
+
+      if (options.customKey) {
+        args.push('--custom_key', options.customKey);
+      }
+
+      const process = spawn('python', args, {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      let stderr = '';
+
+      process.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      process.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`MIDI template processing failed: ${stderr}`));
+        }
+      });
+
+      process.on('error', (error) => {
+        reject(error);
+      });
+    });
+  }
+
+  async createMelodyVariation(
+    originalMidiPath: string,
+    variationStyle: 'jazz' | 'rock' | 'classical' | 'electronic' | 'acoustic',
+    outputPath: string
+  ): Promise<string> {
+    try {
+      return new Promise((resolve, reject) => {
+        const args = [
+          'server/enhanced-rvc-pipeline.py',
+          '--midi_path', originalMidiPath,
+          '--output_path', outputPath,
+          '--mode', 'variation',
+          '--style', variationStyle
+        ];
+
+        const process = spawn('python', args, {
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+
+        let stderr = '';
+
+        process.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+
+        process.on('close', (code) => {
+          if (code === 0) {
+            resolve(outputPath);
+          } else {
+            reject(new Error(`Melody variation failed: ${stderr}`));
+          }
+        });
+
+        process.on('error', (error) => {
+          reject(error);
+        });
+      });
+    } catch (error) {
+      logger.error('Melody variation failed:', error);
+      throw error;
+    }
+  }
 }
 
 export default RVCIntegrationService;

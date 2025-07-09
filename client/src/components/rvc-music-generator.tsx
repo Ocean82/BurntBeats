@@ -33,12 +33,40 @@ export function RVCMusicGenerator({ onGenerate }: RVCMusicGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<any>(null);
-  const [mode, setMode] = useState<'complete' | 'instrumental' | 'convert' | 'midi'>('complete');
+  const [mode, setMode] = useState<'complete' | 'instrumental' | 'convert' | 'midi' | 'template'>('complete');
+  const [midiTemplates, setMidiTemplates] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [melodyOptions, setMelodyOptions] = useState({
+    preserveMelody: true,
+    adaptTempo: false,
+    customKey: ''
+  });
   
   const { toast } = useToast();
 
+  // Load MIDI templates on component mount
+  React.useEffect(() => {
+    const loadMidiTemplates = async () => {
+      try {
+        const response = await fetch('/api/rvc-music/midi-templates');
+        if (response.ok) {
+          const data = await response.json();
+          setMidiTemplates(data.templates);
+        }
+      } catch (error) {
+        console.error('Failed to load MIDI templates:', error);
+      }
+    };
+
+    loadMidiTemplates();
+  }, []);
+
   const handleInputChange = useCallback((field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleMelodyOptionChange = useCallback((field: string, value: any) => {
+    setMelodyOptions(prev => ({ ...prev, [field]: value }));
   }, []);
 
   const handleVoiceModelUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,10 +143,19 @@ export function RVCMusicGenerator({ onGenerate }: RVCMusicGeneratorProps) {
       return;
     }
 
-    if (mode === 'complete' && !voiceModel) {
+    if ((mode === 'complete' || mode === 'template') && !voiceModel) {
       toast({
         title: "Voice model required",
         description: "Please upload a voice model (.pth file)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (mode === 'template' && !selectedTemplate) {
+      toast({
+        title: "Template required",
+        description: "Please select a MIDI template",
         variant: "destructive",
       });
       return;
@@ -140,6 +177,16 @@ export function RVCMusicGenerator({ onGenerate }: RVCMusicGeneratorProps) {
         formDataToSend.append('voice_model', voiceModel);
       }
 
+      // Add template-specific data
+      if (mode === 'template') {
+        formDataToSend.append('midiTemplate', selectedTemplate);
+        formDataToSend.append('preserveMelody', melodyOptions.preserveMelody.toString());
+        formDataToSend.append('adaptTempo', melodyOptions.adaptTempo.toString());
+        if (melodyOptions.customKey) {
+          formDataToSend.append('customKey', melodyOptions.customKey);
+        }
+      }
+
       // Simulate progress
       const progressInterval = setInterval(() => {
         setProgress(prev => Math.min(prev + 10, 90));
@@ -147,6 +194,8 @@ export function RVCMusicGenerator({ onGenerate }: RVCMusicGeneratorProps) {
 
       const endpoint = mode === 'complete' 
         ? '/api/rvc-music/generate-track'
+        : mode === 'template'
+        ? '/api/rvc-music/generate-from-template'
         : '/api/rvc-music/generate-instrumental';
 
       const response = await fetch(endpoint, {
@@ -218,6 +267,7 @@ export function RVCMusicGenerator({ onGenerate }: RVCMusicGeneratorProps) {
                 <SelectItem value="instrumental">Instrumental Only</SelectItem>
                 <SelectItem value="convert">Convert Existing Audio</SelectItem>
                 <SelectItem value="midi">MIDI to Vocal</SelectItem>
+                <SelectItem value="template">Generate from MIDI Template</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -348,8 +398,77 @@ export function RVCMusicGenerator({ onGenerate }: RVCMusicGeneratorProps) {
             </div>
           )}
 
+          {/* MIDI Template Selection */}
+          {mode === 'template' && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="midi-template">Select MIDI Template</Label>
+                <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a melody template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {midiTemplates.map((template) => (
+                      <SelectItem key={template.path} value={template.path}>
+                        <div className="flex items-center gap-2">
+                          <Music className="w-4 h-4" />
+                          {template.title}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Melody Options */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Melody Options</h3>
+                
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="preserve-melody"
+                    checked={melodyOptions.preserveMelody}
+                    onChange={(e) => handleMelodyOptionChange('preserveMelody', e.target.checked)}
+                  />
+                  <Label htmlFor="preserve-melody">Preserve Original Melody</Label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="adapt-tempo"
+                    checked={melodyOptions.adaptTempo}
+                    onChange={(e) => handleMelodyOptionChange('adaptTempo', e.target.checked)}
+                  />
+                  <Label htmlFor="adapt-tempo">Adapt Tempo to Lyrics</Label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="custom-key">Custom Key (optional)</Label>
+                  <Select value={melodyOptions.customKey} onValueChange={(value) => handleMelodyOptionChange('customKey', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Keep original key" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Keep Original</SelectItem>
+                      <SelectItem value="C">C Major</SelectItem>
+                      <SelectItem value="G">G Major</SelectItem>
+                      <SelectItem value="D">D Major</SelectItem>
+                      <SelectItem value="A">A Major</SelectItem>
+                      <SelectItem value="E">E Major</SelectItem>
+                      <SelectItem value="F">F Major</SelectItem>
+                      <SelectItem value="Bb">Bb Major</SelectItem>
+                      <SelectItem value="Eb">Eb Major</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Voice Model Upload */}
-          {(mode === 'complete' || mode === 'midi') && (
+          {(mode === 'complete' || mode === 'midi' || mode === 'template') && (
             <div className="space-y-2">
               <Label htmlFor="voice-model">Voice Model (.pth)</Label>
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
@@ -429,7 +548,7 @@ export function RVCMusicGenerator({ onGenerate }: RVCMusicGeneratorProps) {
             ) : (
               <>
                 <Music className="w-4 h-4 mr-2" />
-                Generate {mode === 'complete' ? 'Complete Track' : 'Instrumental'}
+                Generate {mode === 'complete' ? 'Complete Track' : mode === 'template' ? 'From Template' : 'Instrumental'}
               </>
             )}
           </Button>
