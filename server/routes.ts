@@ -56,6 +56,7 @@ import {
 } from './middleware/plan-enforcement';
 import { fileCleanupService } from "./file-cleanup-service";
 import { storage } from './storage';
+import RVCMusicGenerationAPI from "./api/rvc-music-generation-api";
 
 
 // Ensure uploads directory exists
@@ -124,7 +125,7 @@ export async function registerRoutes(app: express.Application): Promise<void> {
   app.get("/api/auth/check-username/:username", AuthAPI.checkUsername);
   app.post("/api/auth/accept-agreement", AuthAPI.acceptAgreement);
   app.get("/api/auth/get-ip", AuthAPI.getIpAddress);
-  
+
   // Legacy admin login for backwards compatibility
   app.post("/api/auth/admin-login", AuthAPI.adminLogin);
 
@@ -184,7 +185,7 @@ Taking over, making vows`
       const feedbackPath = path.join(process.cwd(), 'uploads/feedback', `${songId}_feedback.json`);
 
       try {
-        const feedbackData = await fs.readFile(feedbackPath, 'utf8');
+        const feedbackData = await await fs.readFile(feedbackPath, 'utf8');
         const feedback = JSON.parse(feedbackData);
         res.json(feedback);
       } catch (error) {
@@ -405,8 +406,7 @@ Taking over, making vows`
                 tier: feedbackData.purchaseTier,
                 purchaseDate: feedbackData.generatedAt,
                 aiScore: feedbackData.analysis.overallScore,
-                mood: feedbackData.analysis.mood,
-                genre: feedbackData.analysis.genre
+                mood: feedbackData.analysis.genre
               });
             }
           }
@@ -663,7 +663,7 @@ Taking over, making vows`
       try {
         const { AdvancedAIMusicService } = await import("./services/advanced-ai-music-service");
         const aiService = AdvancedAIMusicService.getInstance();
-        
+
         const options = {
           ...req.body,
           userId: req.user!.id,
@@ -671,9 +671,9 @@ Taking over, making vows`
           complexityLevel: req.body.complexityLevel || 'medium',
           outputFormat: req.body.outputFormat || 'both'
         };
-        
+
         const result = await aiService.generateAdvancedMusic(options);
-        
+
         if (result.success) {
           // Store in database
           const song = await storage.createSong({
@@ -685,7 +685,7 @@ Taking over, making vows`
             aiInsights: result.aiInsights,
             status: 'completed'
           });
-          
+
           res.json({
             success: true,
             song,
@@ -832,316 +832,81 @@ Taking over, making vows`
         const parts = range.replace(/bytes=/, "").split("-");
         const start = parseInt(parts[0], 10);
         const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
         const chunksize = (end - start) + 1;
-        const file = fs.createReadStream(previewPath, { start, end });
-        const head = {
-          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-          'Accept-Ranges': 'bytes',
-          'Content-Length': chunksize,
-          'Content-Type': 'audio/mpeg',
-          'X-Preview-Type': isWatermarked ? 'watermarked' : 'clean'
-        };
-        res.writeHead(206, head);
-        file.pipe(res);
+
+        res.status(206);
+        res.setHeader('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+        res.setHeader('Content-Length', chunksize);
+
+        const stream = fs.createReadStream(previewPath, { start, end });
+        stream.pipe(res);
       } else {
-        const head = {
-          'Content-Length': fileSize,
-          'Content-Type': 'audio/mpeg',
-          'X-Preview-Type': isWatermarked ? 'watermarked' : 'clean'
-        };
-        res.writeHead(200, head);
-        fs.createReadStream(previewPath).pipe(res);
+        res.setHeader('Content-Length', fileSize);
+        const stream = fs.createReadStream(previewPath);
+        stream.pipe(res);
       }
     } catch (error) {
-      console.error('Error streaming preview:', error);
-      res.status(500).json({ success: false, error: 'Failed to generate preview' });
+      console.error('Audio preview error:', error);
+      res.status(500).json({ success: false, error: 'Failed to generate audio preview' });
     }
   });
 
-  // Voice cloning endpoint (authenticated version already exists above)
-  app.post("/api/voice/clone", musicGenerationRateLimit, authenticate, validateVoiceInput, VoiceAPI.cloneVoice);
+  // AI Chat API (Burnt-GPT) Routes
+  app.post("/api/ai-chat/completions", aiChatRateLimit, authenticate, validateAIChatInput, AIChatService.handleCompletionRequest);
+  app.post("/api/ai-chat/retry", aiChatRateLimit, authenticate, AIChatService.handleRetryRequest);
 
-  // Pricing and Plans API Routes
-  app.get("/api/pricing/plans", PricingAPI.getPricingPlans);
-  app.post("/api/pricing/check-limitations", PricingAPI.checkPlanLimitations);
-  app.post("/api/pricing/upgrade", PricingAPI.upgradePlan);
-  app.get("/api/pricing/subscription/:userId", PricingAPI.getUserSubscription);
+  // Voice Cloning API Routes
+  app.post("/api/voice/clone", 
+    authenticate, 
+    validateVoiceInput, 
+    VoiceAPI.cloneVoice
+  );
 
-  // AI Chat API Routes with proper middleware
-  app.post("/api/ai-chat", aiChatRateLimit, validateAIChatInput, AIChatService.handleChat, aiChatErrorHandler);
-  app.get("/api/ai-advice", generalRateLimit, AIChatService.getRandomAdvice);
-  app.get("/api/ai-roast", generalRateLimit, AIChatService.getRandomRoast);
+  // RVC Voice Conversion API Routes
+  const rvcRouter = await import("./api/rvc-api");
+  app.use("/api/rvc", rvcRouter.default);
 
-  // Size-based download payment (simplified for your Stripe setup)
-  app.post("/api/create-payment-intent", async (req: Request, res: Response) => {
-    try {
-      const { amount, downloadType, songId, features } = req.body;
+  // Text-to-Speech API Routes
+  app.post("/api/tts/generate", 
+    authenticate, 
+    validateTTSInput,
+    TextToSpeechService.generateSpeech
+  );
 
-      // Import Stripe dynamically
-      const { default: Stripe } = await import("stripe");
+  // Enhanced Voice Pipeline Routes
+  app.post("/api/enhanced-voice/process", 
+    authenticate,
+    validateVoiceInput,
+    EnhancedVoicePipeline.processVoice
+  );
 
-      if (!process.env.STRIPE_SECRET_KEY) {
-        throw new Error('Stripe secret key not configured');
-      }
+  // Watermark Service API Routes
+  app.post("/api/watermark/apply", 
+    authenticate,
+    VoiceAPI.applyWatermark
+  );
 
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  // Pricing and Plan API Routes
+  app.get("/api/pricing/plans", PricingAPI.getPlans);
+  app.get("/api/pricing/plan/:id", PricingAPI.getPlan);
 
-      // Create payment intent with metadata for tracking
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(amount * 100), // Convert to cents
-        currency: "usd",
-        metadata: {
-          downloadType: downloadType || 'unknown',
-          songId: songId || 'unknown',
-          features: features ? features.join(',') : 'none',
-          userId: (req as any).user?.id || 'guest'
-        },
-        description: `Burnt Beats - ${downloadType ? 'Download' : 'Features'}: $${amount}`
-      });
-
-      res.json({ clientSecret: paymentIntent.client_secret });
-    } catch (error: any) {
-      console.error("Payment intent creation failed:", error);
-      res.status(500).json({ message: "Error creating payment intent: " + error.message });
+  // File Upload Route (Example - adjust as needed)
+  const upload = multer({ dest: 'uploads/' });
+  app.post('/api/upload', upload.single('file'), (req: Request, res: Response) => {
+    if (!req.file) {
+      return res.status(400).send('No file uploaded.');
     }
+    res.send('File uploaded successfully!');
   });
 
-  // Helper function to verify purchase status
-  async function verifyPurchase(songId: string, sessionId: string): Promise<{verified: boolean, songId: string, songTitle: string, tier: string, downloadExpiry: string} | null> {
-    try {
-      // In a real implementation, this would check a database
-      // to confirm the session ID and song ID match a valid purchase.
-      console.log(`Verifying purchase for song ${songId} with session ${sessionId}`);
+  // Error handling middleware (must be defined after all routes)
+  app.use(musicErrorHandler);
+  app.use(aiChatErrorHandler);
 
-      // Mock purchase verification logic
-      const mockPurchase = {
-        verified: true,
-        songId: songId,
-        songTitle: 'Sample Song',
-        tier: 'base', // Could be 'bonus', 'base', or 'top'
-        downloadExpiry: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
-      };
-
-      return mockPurchase; // Replace with actual database lookup
-    } catch (error) {
-      console.error('Purchase verification failed:', error);
-      return null;
-    }
-  }
-
-  // Download endpoint after successful payment
-  // Verify purchase status for a song
-  app.get("/api/verify-purchase/:songId", async (req: Request, res: Response) => {
-    try {
-      const { songId } = req.params;
-      const sessionId = req.headers.authorization?.replace('Bearer ', '') || 
-                       req.headers['x-session-id'] as string;
-
-      // Check if this is a valid purchase
-      const purchaseData = await verifyPurchase(songId, sessionId);
-
-      if (purchaseData) {
-        res.json(purchaseData);
-      } else {
-        res.status(402).json({ 
-          verified: false, 
-          message: "Payment required",
-          purchaseUrl: `/api/create-payment-intent?songId=${songId}`
-        });
-      }
-    } catch (error) {
-      console.error('Purchase verification error:', error);
-      res.status(500).json({ message: "Verification error" });
-    }
+  // Catch-all route to serve the React app for any other request.
+  app.use(express.static(path.join(__dirname, "../client/dist")));
+  app.get("*", (req: Request, res: Response) => {
+    res.sendFile(path.resolve(__dirname, "../client/dist", "index.html"));
   });
-
-  // Secure download endpoint that requires payment verification
-  app.get("/api/download/secure/:songId", async (req: Request, res: Response) => {
-    try {
-      const { songId } = req.params;
-      const sessionId = req.headers.authorization?.replace('Bearer ', '');
-
-      if (!sessionId) {
-        return res.status(401).json({ message: "Authorization required" });
-      }
-
-      // Verify purchase before allowing download
-      const purchaseData = await verifyPurchase(songId, sessionId);
-      if (!purchaseData?.verified) {
-        return res.status(402).json({ message: "Payment required for download" });
-      }
-
-      // File paths for different quality downloads based on tier
-      const downloadPaths = {
-        'bonus': '/uploads/songs/sample-128.mp3',
-        'base': '/uploads/songs/sample-320.mp3', 
-        'top': '/uploads/songs/sample-studio.wav'
-      };
-
-      const filePath = downloadPaths[purchaseData.tier as keyof typeof downloadPaths];
-
-      if (!filePath) {
-        return res.status(404).json({ message: "Download not found" });
-      }
-
-      // Set headers for secure download
-      const fileExtension = filePath.includes('wav') ? 'wav' : 'mp3';
-      const filename = `${purchaseData.songTitle.replace(/[^a-z0-9]/gi, '_')}_${purchaseData.tier}.${fileExtension}`;
-
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Content-Type', filePath.includes('wav') ? 'audio/wav' : 'audio/mpeg');
-      res.setHeader('Cache-Control', 'private, no-cache');
-
-      // In production, serve the actual file
-      // For now, return download metadata
-      res.json({
-        downloadUrl: filePath,
-        message: "Download authorized",
-        tier: purchaseData.tier,
-        format: fileExtension,
-        expiresAt: purchaseData.downloadExpiry
-      });
-
-    } catch (error: any) {
-      res.status(500).json({ message: "Download error: " + error.message });
-    }
-  });
-
-  // Legacy download endpoint - redirect to secure version
-  app.get("/api/download/:downloadType", async (req: Request, res: Response) => {
-    res.status(301).redirect(`/api/download/secure/${req.params.downloadType}`);
-  });
-
-  // Stripe Payment Routes (existing)
-  app.post("/api/stripe/create-payment-intent", async (req: Request, res: Response) => {
-    try {
-      const { StripeService } = await import("./stripe-service");
-      const result = await StripeService.createPaymentIntent(req.body);
-      res.json(result);
-    } catch (error) {
-      console.error("Payment intent creation failed:", error);
-      res.status(500).json({ error: "Payment processing failed" });
-    }
-  });
-
-  app.post("/api/stripe/create-customer", async (req: Request, res: Response) => {
-    try {
-      const { StripeService } = await import("./stripe-service");
-      const { email, name } = req.body;
-      const customer = await StripeService.createCustomer(email, name);
-      res.json(customer);
-    } catch (error) {
-      console.error("Customer creation failed:", error);
-      res.status(500).json({ error: "Customer creation failed" });
-    }
-  });
-
-  app.post("/api/stripe/webhook", express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
-    try {
-      const { default: Stripe } = await import("stripe");
-
-      if (!process.env.STRIPE_SECRET_KEY) {
-        throw new Error('Stripe secret key not configured');
-      }
-
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-      const signature = req.headers['stripe-signature'] as string;
-      let event;
-
-      try {
-        // Verify webhook signature (you'll need to set STRIPE_WEBHOOK_SECRET)
-        const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-        if (webhookSecret) {
-          event = stripe.webhooks.constructEvent(req.body, signature, webhookSecret);
-        } else {
-          // For testing without webhook secret
-          event = JSON.parse(req.body.toString());
-        }
-      } catch (err: any) {
-        console.error('Webhook signature verification failed:', err.message);
-        return res.status(400).send(`Webhook Error: ${err.message}`);
-      }
-
-      // Handle different event types
-      switch (event.type) {
-        case 'payment_intent.succeeded':
-          const paymentIntent = event.data.object;
-          console.log(`PaymentIntent for ${paymentIntent.amount} was successful!`);
-          break;
-        case 'payment_method.attached':
-          const paymentMethod = event.data.object;
-          console.log('PaymentMethod was attached to Customer!');
-          break;
-        case 'customer.subscription.created':
-          const subscription = event.data.object;
-          console.log(`Subscription created: ${subscription.id}`);
-          break;
-        case 'customer.subscription.updated':
-          const subscriptionUpdated = event.data.object;
-          console.log(`Subscription updated: ${subscriptionUpdated.id}`);
-          break;
-        case 'customer.subscription.deleted':
-          const subscriptionDeleted = event.data.object;
-          console.log(`Subscription deleted: ${subscriptionDeleted.id}`);
-          break;
-        default:
-          // Unexpected event type
-          console.log(`Unhandled event type ${event.type}.`);
-      }
-
-      // Acknowledge receipt of the event
-      res.json({ received: true });
-    } catch (error: any) {
-      console.error("Stripe webhook error:", error);
-      res.status(400).send(`Webhook Error: ${error.message}`);
-    }
-  });
-
-  // Health check and error reporting endpoints
-  const setupHealthAndErrorEndpoints = async () => {
-    try {
-      // Health check endpoint
-      app.get("/health", (req: Request, res: Response) => {
-        res.json({ 
-          status: "ok", 
-          timestamp: new Date().toISOString(),
-          environment: process.env.NODE_ENV 
-        });
-      });
-
-      // Error reporting endpoints  
-      app.post("/api/error-report", (req: Request, res: Response) => {
-        res.json({ success: true, message: "Error reported" });
-      });
-
-      app.get("/api/error-summary", (req: Request, res: Response) => {
-        res.json({ errors: [], summary: "No errors" });
-      });
-    } catch (error) {
-      console.error("Error setting up health and error endpoints:", error);
-    }
-  };
-
-  // Initialize health and error endpoints
-  setupHealthAndErrorEndpoints();
-
-  try {
-    const voiceBankRouter = await import('./api/voice-bank');
-    const voiceProcessingRouter = await import('./api/voice-processing');
-    const melodyPreviewRouter = await import('./api/melody-preview-api');
-
-    // Voice Bank API routes
-    app.use('/api/voice-bank', voiceBankRouter.default);
-
-    // Voice Processing API routes
-    app.use('/api/voice-processing', voiceProcessingRouter.default);
-
-    // Melody Preview API routes
-    app.use('/api/melody-preview', melodyPreviewRouter.default);
-  } catch (error) {
-    console.warn('⚠️  Some voice/melody APIs not available:', error);
-  }
-
-  console.log('✅ All routes registered successfully');
 }

@@ -313,13 +313,13 @@ app.get('/health', (req, res) => {
 // ======================
 async function initializeRoutes() {
   console.log('🔧 Registering routes...');
-  
+
   // Add a simple test route first
   app.get('/api/test', (req, res) => {
     res.json({ message: 'Test route working', timestamp: new Date().toISOString() });
   });
   console.log('✅ Test route added');
-  
+
   try {
     await registerRoutes(app);
     console.log('✅ Routes registered successfully');
@@ -349,7 +349,7 @@ if (process.env.NODE_ENV === 'production') {
     path.join(process.cwd(), 'client', 'dist'),
     path.join(process.cwd(), 'dist')
   ];
-  
+
   let frontendPath = null;
   for (const possiblePath of possiblePaths) {
     if (fs.existsSync(path.join(possiblePath, 'index.html'))) {
@@ -357,7 +357,7 @@ if (process.env.NODE_ENV === 'production') {
       break;
     }
   }
-  
+
   if (frontendPath) {
     app.use(express.static(frontendPath, {
       maxAge: 0,
@@ -377,7 +377,7 @@ if (process.env.NODE_ENV === 'production') {
       if (req.path.startsWith('/api/')) {
         return next();
       }
-      
+
       const indexPath = path.join(frontendPath, 'index.html');
       if (fs.existsSync(indexPath)) {
         res.sendFile(indexPath);
@@ -426,7 +426,7 @@ import { Logger } from './utils/logger';
 app.post('/api/generate', requireAuth, async (req, res) => {
   try {
     const { title, lyrics, genre, tempo, key, duration, mood, vocalStyle, singingStyle, tone } = req.body;
-    
+
     // Simulate song generation with proper response structure
     const songDetails = {
       id: Date.now(),
@@ -473,7 +473,7 @@ app.post('/api/generate', requireAuth, async (req, res) => {
 async function startServer() {
   // Wait for routes to be initialized
   await initializeRoutes();
-  
+
   // Start the server after routes are ready
   server.listen(port, '0.0.0.0', () => {
     console.log(`🚀 Burnt Beats server running on http://0.0.0.0:${port}`);
